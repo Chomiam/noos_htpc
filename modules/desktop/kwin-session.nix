@@ -61,8 +61,33 @@ let
     export MOZ_ENABLE_WAYLAND=1
     export WEBKIT_DISABLE_COMPOSITING_MODE=0
 
+    # Configuration du clavier physique en Français AZERTY pour Wayland (Cage & KWin)
+    export XKB_DEFAULT_LAYOUT="fr"
+    export XKB_DEFAULT_MODEL="pc105"
+    export XKB_DEFAULT_VARIANT=""
+    export XKB_DEFAULT_OPTIONS=""
+
     # 2. Vérification et création des dossiers multimédias et rétro
     mkdir -p /home/noos/Retro/ROMS /home/noos/Retro/BIOS /home/noos/IPTV /home/noos/.config
+    cat << 'EOF' > /home/noos/.config/kxkbrc
+[Layout]
+DisplayNames=
+ExtraNames=
+LayoutAlternativeNames=
+LayoutList=fr
+LayoutLoopCount=-1
+Model=pc105
+Options=
+ResetOldOptions=false
+ShowFlag=false
+ShowLabel=true
+ShowLayoutIndicator=true
+ShowSingle=false
+SwitchMode=Global
+Use=true
+VariantList=
+EOF
+
 
     # 3. Détection intelligente de l'écran : HDR natif ou Fallback SDR avec tonemapping
     ${lib.optionalString gpuCfg.enableHDR ''

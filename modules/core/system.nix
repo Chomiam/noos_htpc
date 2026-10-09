@@ -82,6 +82,17 @@ in
   };
   console.keyMap = "fr";
 
+  # Configuration du clavier physique en Français AZERTY (X11, Wayland, Cage, KWin)
+  services.xserver.xkb = {
+    layout = "fr";
+    variant = "";
+  };
+
+  environment.sessionVariables = {
+    XKB_DEFAULT_LAYOUT = "fr";
+    XKB_DEFAULT_MODEL = "pc105";
+  };
+
   # 3. Gestion de la mémoire et swap ZRAM (optimal pour mini-PC HTPC)
   zramSwap = {
     enable = true;
