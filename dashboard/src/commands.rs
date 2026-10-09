@@ -269,6 +269,15 @@ pub async fn launch_app(app: AppHandle, app_id: String) -> Result<bool, String> 
                 )
             }
         }
+        "jellyfin" => {
+            if Command::new("which").arg("jellyfin-tv").output().map(|o| o.status.success()).unwrap_or(false) {
+                ("jellyfin-tv".to_string(), vec![])
+            } else if Command::new("which").arg("jellyfin-desktop").output().map(|o| o.status.success()).unwrap_or(false) {
+                ("jellyfin-desktop".to_string(), vec!["--tv".to_string(), "--fullscreen".to_string()])
+            } else {
+                ("jellyfin-media-player".to_string(), vec!["--tv".to_string(), "--fullscreen".to_string()])
+            }
+        }
         "noos-iptv" => ("noos-iptv".to_string(), vec![]),
         "retroarch" => ("retroarch".to_string(), vec![]),
         "es-de" => ("es-de".to_string(), vec![]),
@@ -341,17 +350,23 @@ pub fn trigger_home_action(app: &AppHandle) {
         // Fermeture des processus multimédias / jeux éventuels
         let _ = Command::new("pkill").args(["-TERM", "-f", "rocks.shy.VacuumTube"]).status();
         let _ = Command::new("pkill").args(["-TERM", "-f", "vacuumtube"]).status();
+        let _ = Command::new("pkill").args(["-TERM", "-f", "jellyfin-desktop"]).status();
+        let _ = Command::new("pkill").args(["-TERM", "-f", "jellyfin"]).status();
         let _ = Command::new("pkill").args(["-TERM", "-f", "mpv"]).status();
         let _ = Command::new("pkill").args(["-TERM", "-f", "retroarch"]).status();
         let _ = Command::new("pkill").args(["-TERM", "-f", "es-de"]).status();
 
         APP_RUNNING.store(false, Ordering::SeqCst);
         let _ = app.emit("app_state_changed", false);
-        let _ = app.emit("app_closed", "home_pressed");
+        let _ = app_handle_closed_helper(app);
     }
 
     // Notifier le frontend pour fermer les dialogues et recentrer le focus sur l'accueil
     let _ = app.emit("home_pressed", ());
+}
+
+fn app_handle_closed_helper(app: &AppHandle) {
+    let _ = app.emit("app_closed", "home_pressed");
 }
 
 #[tauri::command]

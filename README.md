@@ -48,6 +48,7 @@ Distribution NixOS personnalisée, légère, hautement optimisée et 100% reprod
 │   │   ├── mpv.nix                          # MPV 4K, shaders upscaling iGPU vs dGPU, passthrough
 │   │   ├── iptv.nix                         # Hypnotix, script noos-iptv
 │   │   ├── flatpak.nix                      # nix-flatpak, VacuumTube (YouTube TV) Flatpak déclaratif
+│   │   ├── jellyfin.nix                     # Jellyfin Media Player (moteur MPV 4K HDR & mode TV 10-foot)
 │   │   └── storage-network.nix              # Samba (partage /home), SFTP/SSHFS, UDisks2, Thunar
 │   └── gaming/                              # Émulation
 │       ├── emulationstation.nix             # ES-DE préconfiguré pour la TV

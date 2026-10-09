@@ -5,6 +5,7 @@
     ./mpv.nix
     ./iptv.nix
     ./flatpak.nix
+    ./jellyfin.nix
     ./storage-network.nix
   ];
 
