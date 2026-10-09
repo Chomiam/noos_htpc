@@ -512,49 +512,55 @@
       <!-- Vue 2 : Formulaire de connexion Xtream Codes -->
       <div id="iptv-view-login" class="iptv-view hidden">
         <div class="iptv-section-heading">
-          <span class="heading-title">Connexion à votre abonnement</span>
-          <span class="heading-meta">Vos identifiants sont chiffrés localement (AES / ChaCha20)</span>
+          <span class="heading-title">Connexion à votre abonnement Xtream Codes</span>
+          <span class="heading-meta">Vos identifiants sont chiffrés localement (AES / ChaCha20) pour une sécurité absolue</span>
         </div>
         <form id="iptv-login-form" class="iptv-form" onsubmit="event.preventDefault();">
-          <div class="iptv-form-group">
-            <label for="iptv-input-name">Nom du profil (optionnel)</label>
-            <input type="text" id="iptv-input-name" placeholder="Ex: Mon Fournisseur IPTV" class="iptv-input" />
+          <!-- Ligne 1 : URL & Nom de profil -->
+          <div class="iptv-form-row">
+            <div class="iptv-form-group flex-1">
+              <label for="iptv-input-url">URL du serveur Xtream Codes *</label>
+              <input type="text" id="iptv-input-url" placeholder="http://serveur-fournisseur.com:8080" class="iptv-input" autocomplete="off" spellcheck="false" required />
+            </div>
+            <div class="iptv-form-group flex-1">
+              <label for="iptv-input-name">Nom du profil (optionnel)</label>
+              <input type="text" id="iptv-input-name" placeholder="Ex: Mon Fournisseur IPTV" class="iptv-input" autocomplete="off" spellcheck="false" />
+            </div>
           </div>
 
-          <div class="iptv-form-group">
-            <label for="iptv-input-url">URL du serveur Xtream Codes *</label>
-            <input type="text" id="iptv-input-url" placeholder="http://serveur-fournisseur.com:8080" class="iptv-input" autocomplete="off" spellcheck="false" required />
-          </div>
-
+          <!-- Ligne 2 : Identifiant & Mot de passe -->
           <div class="iptv-form-row">
             <div class="iptv-form-group flex-1">
               <label for="iptv-input-user">Nom d'utilisateur *</label>
-              <input type="text" id="iptv-input-user" placeholder="Nom d'utilisateur" class="iptv-input" required />
+              <input type="text" id="iptv-input-user" placeholder="Nom d'utilisateur" class="iptv-input" autocomplete="off" spellcheck="false" required />
             </div>
             <div class="iptv-form-group flex-1">
               <label for="iptv-input-pass">Mot de passe *</label>
-              <input type="password" id="iptv-input-pass" placeholder="Mot de passe" class="iptv-input" required />
+              <input type="password" id="iptv-input-pass" placeholder="Mot de passe" class="iptv-input" autocomplete="off" spellcheck="false" required />
             </div>
           </div>
 
-          <div class="iptv-checkbox-group">
-            <label class="iptv-checkbox-label">
-              <input type="checkbox" id="iptv-check-save" checked />
-              <span class="checkbox-custom"></span>
-              <span class="checkbox-text">Mémoriser ce compte de façon chiffrée pour les connexions rapides ultérieures</span>
-            </label>
+          <!-- Ligne 3 : Options & Actions -->
+          <div class="iptv-form-bottom-row">
+            <div class="iptv-checkbox-group">
+              <label class="iptv-checkbox-label">
+                <input type="checkbox" id="iptv-check-save" checked />
+                <span class="checkbox-custom"></span>
+                <span class="checkbox-text">Mémoriser ce compte de façon chiffrée</span>
+              </label>
+            </div>
+
+            <div class="iptv-form-actions">
+              <button type="button" id="btn-iptv-back-profiles" class="btn-action-secondary hidden">
+                <span class="btn-key-hint">B</span> Annuler
+              </button>
+              <button type="submit" id="btn-iptv-submit-login" class="btn-action-primary">
+                <span class="btn-key-hint">A</span> Se connecter & Mettre en cache
+              </button>
+            </div>
           </div>
 
           <div id="iptv-login-error" class="iptv-error-msg hidden"></div>
-
-          <div class="iptv-form-actions">
-            <button type="button" id="btn-iptv-back-profiles" class="btn-action-secondary hidden">
-              <span class="btn-key-hint">B</span> Annuler
-            </button>
-            <button type="submit" id="btn-iptv-submit-login" class="btn-action-primary">
-              <span class="btn-key-hint">A</span> Se connecter & Mettre en cache
-            </button>
-          </div>
         </form>
       </div>
 
