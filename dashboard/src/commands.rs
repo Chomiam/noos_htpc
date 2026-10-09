@@ -282,6 +282,24 @@ pub async fn launch_app(app: AppHandle, app_id: String) -> Result<bool, String> 
         "noos-iptv" => ("noos-iptv".to_string(), vec![]),
         "retroarch" => ("retroarch".to_string(), vec![]),
         "es-de" => ("es-de".to_string(), vec![]),
+        "sober" => {
+            ensure_sober_console_config();
+            if Command::new("which").arg("sober").output().map(|o| o.status.success()).unwrap_or(false) {
+                ("sober".to_string(), vec![])
+            } else {
+                (
+                    "flatpak".to_string(),
+                    vec![
+                        "run".to_string(),
+                        "--device=all".to_string(),
+                        "--socket=wayland".to_string(),
+                        "--nosocket=x11".to_string(),
+                        "--nosocket=fallback-x11".to_string(),
+                        "org.vinegarhq.Sober".to_string(),
+                    ],
+                )
+            }
+        }
         "thunar" => ("thunar".to_string(), vec!["/home/noos".to_string()]),
         _ => return Err(format!("Application inconnue : {}", app_id)),
     };
@@ -553,6 +571,39 @@ fn ensure_jellyfin_fullscreen_config() {
     let mpv_conf_dir = std::path::PathBuf::from(&home).join(".config/mpv");
     let _ = std::fs::create_dir_all(&mpv_conf_dir);
     let _ = std::fs::write(mpv_conf_dir.join("mpv.conf"), mpv_content);
+}
+
+/// S'assure que Sober (Roblox) est préconfiguré pour démarrer directement en mode console TV avec manette
+fn ensure_sober_console_config() {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/home/noos".to_string());
+    let sober_dir = std::path::PathBuf::from(&home).join(".var/app/org.vinegarhq.Sober/config/sober");
+    let _ = std::fs::create_dir_all(&sober_dir);
+    let conf_path = sober_dir.join("config.json");
+
+    if let Ok(mut content) = std::fs::read_to_string(&conf_path) {
+        content = content.replace("\"use_console_experience\": false", "\"use_console_experience\": true");
+        content = content.replace("\"allow_gamepad_permission\": false", "\"allow_gamepad_permission\": true");
+        content = content.replace("\"close_on_leave\": false", "\"close_on_leave\": true");
+        content = content.replace("\"enable_hidpi\": false", "\"enable_hidpi\": true");
+        let _ = std::fs::write(&conf_path, content);
+    } else {
+        let default_conf = r#"{
+    "allow_gamepad_permission": true,
+    "close_on_leave": true,
+    "discord_rpc_enabled": false,
+    "discord_rpc_show_join_button": false,
+    "enable_gamemode": true,
+    "enable_hidpi": true,
+    "enable_mobile_home_screen": false,
+    "graphics_optimization_mode": "quality",
+    "server_location_indicator_enabled": false,
+    "touch_mode": "off",
+    "use_console_experience": true,
+    "use_libsecret": false,
+    "use_opengl": false
+}"#;
+        let _ = std::fs::write(&conf_path, default_conf);
+    }
 }
 
 /* ========================================================================= */

@@ -6,7 +6,8 @@
   'use strict';
 
   // Sélecteurs DOM Principaux
-  const cards = Array.from(document.querySelectorAll('.app-card'));
+  const allCards = Array.from(document.querySelectorAll('.app-card'));
+  const navItems = Array.from(document.querySelectorAll('.nav-item'));
   const ambientGlow = document.getElementById('ambient-glow');
   const heroBadge = document.getElementById('hero-badge');
   const heroTitle = document.getElementById('hero-title');
@@ -147,25 +148,72 @@
     }
   }
 
-  // 4. Sélection et focus d'une carte
-  function selectCard(index, playAudio = true) {
-    if (cards.length === 0) return;
-    if (index < 0) index = 0;
-    if (index >= cards.length) index = cards.length - 1;
+  // 4. Catégories & Sélection / focus d'une carte
+  const CATEGORIES = ['home', 'media', 'games', 'settings'];
+  let currentCategory = 'home';
 
-    cards.forEach((c, idx) => {
-      if (idx === index) {
-        c.classList.add('focused');
-        c.focus();
-        updateHero(c);
-        c.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      } else {
-        c.classList.remove('focused');
-      }
-    });
+  function getVisibleCards() {
+    if (currentCategory === 'home') {
+      return allCards;
+    }
+    return allCards.filter(c => c.getAttribute('data-category') === currentCategory);
+  }
+
+  function getActiveCard() {
+    const visible = getVisibleCards();
+    return visible[currentIndex] || visible[0];
+  }
+
+  function selectCard(index, playAudio = true) {
+    const visibleCards = getVisibleCards();
+    if (visibleCards.length === 0) return;
+    if (index < 0) index = 0;
+    if (index >= visibleCards.length) index = visibleCards.length - 1;
+
+    allCards.forEach(c => c.classList.remove('focused'));
+
+    const targetCard = visibleCards[index];
+    if (targetCard) {
+      targetCard.classList.add('focused');
+      targetCard.focus();
+      updateHero(targetCard);
+      targetCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
 
     currentIndex = index;
     if (playAudio) playTickSound();
+  }
+
+  function setCategory(category, playAudio = true) {
+    if (!CATEGORIES.includes(category)) return;
+    currentCategory = category;
+
+    navItems.forEach(item => {
+      if (item.getAttribute('data-category') === category) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+
+    allCards.forEach(card => {
+      const cardCat = card.getAttribute('data-category');
+      if (currentCategory === 'home' || cardCat === currentCategory) {
+        card.classList.remove('category-hidden');
+      } else {
+        card.classList.remove('focused');
+        card.classList.add('category-hidden');
+      }
+    });
+
+    selectCard(0, playAudio);
+  }
+
+  function cycleCategory(direction) {
+    let idx = CATEGORIES.indexOf(currentCategory);
+    if (idx === -1) idx = 0;
+    idx = (idx + direction + CATEGORIES.length) % CATEGORIES.length;
+    setCategory(CATEGORIES[idx], true);
   }
 
   // 5. Lancement d'application
@@ -620,7 +668,7 @@
           cardDiscPlayer.setAttribute('data-meta', `Lecteur ${drive.transport} • Menu & Chapitres`);
         }
 
-        if (cards[currentIndex] === cardDiscPlayer) {
+        if (getActiveCard() === cardDiscPlayer) {
           updateHero(cardDiscPlayer);
         }
       } catch (err) {
@@ -633,18 +681,28 @@
   checkOpticalDrive();
 
   // 13. Événements DOM (Souris / Clavier)
-  cards.forEach((card, index) => {
+  allCards.forEach(card => {
     card.addEventListener('mouseenter', () => {
-      if (!isAnyModalOpen()) selectCard(index);
+      if (!isAnyModalOpen()) {
+        const visible = getVisibleCards();
+        const idx = visible.indexOf(card);
+        if (idx !== -1) selectCard(idx);
+      }
     });
     card.addEventListener('click', () => {
       launchApplication(card.getAttribute('data-id'));
     });
   });
 
+  navItems.forEach(btn => {
+    btn.addEventListener('click', () => {
+      setCategory(btn.getAttribute('data-category'));
+    });
+  });
+
   if (btnLaunchHero) {
     btnLaunchHero.addEventListener('click', () => {
-      const activeCard = cards[currentIndex];
+      const activeCard = getActiveCard();
       if (activeCard) launchApplication(activeCard.getAttribute('data-id'));
     });
   }
@@ -699,12 +757,20 @@
       return;
     }
 
+    if (e.key === 'PageUp' || e.key === 'q' || e.key === 'Q') {
+      cycleCategory(-1);
+      return;
+    } else if (e.key === 'PageDown' || e.key === 'e' || e.key === 'E') {
+      cycleCategory(1);
+      return;
+    }
+
     if (e.key === 'ArrowRight') {
       selectCard(currentIndex + 1);
     } else if (e.key === 'ArrowLeft') {
       selectCard(currentIndex - 1);
     } else if (e.key === 'Enter' || e.key === ' ') {
-      const activeCard = cards[currentIndex];
+      const activeCard = getActiveCard();
       if (activeCard) launchApplication(activeCard.getAttribute('data-id'));
     } else if (e.key === 'Escape') {
       openSettings();
@@ -730,6 +796,8 @@
       const btnB = gp.buttons[1]?.pressed;       // Rond / B (Retour)
       const btnX = gp.buttons[2]?.pressed;       // Carré / X (Options)
       const btnY = gp.buttons[3]?.pressed;       // Triangle / Y (Alimentation)
+      const btnLB = gp.buttons[4]?.pressed;      // Bumper Gauche (LB / L1) -> Onglet précédent
+      const btnRB = gp.buttons[5]?.pressed;      // Bumper Droit (RB / R1) -> Onglet suivant
       const btnHome = gp.buttons[16]?.pressed;   // Guide / Xbox / PS / Home (Bouton HOME)
 
       // Sticks analogiques avec zone morte 0.45
@@ -753,11 +821,20 @@
         }
       }
 
+      // Bumpers LB / RB pour navigation entre onglets
+      if (btnLB && !prevButtonsState['LB']) {
+        if (!isAnyModalOpen()) cycleCategory(-1);
+      }
+      if (btnRB && !prevButtonsState['RB']) {
+        if (!isAnyModalOpen()) cycleCategory(1);
+      }
+
       // Action HOME (Retour direct au lanceur / Accueil TV)
       if (btnHome && !prevButtonsState['Home']) {
         playConfirmSound();
         if (isUpdateModalOpen) closeUpdateModal();
         if (isModalOpen) closeSettings();
+        setCategory('home', false);
         selectCard(0);
       }
 
@@ -771,7 +848,7 @@
           const activeEl = document.activeElement;
           if (activeEl && activeEl.click) activeEl.click();
         } else {
-          const activeCard = cards[currentIndex];
+          const activeCard = getActiveCard();
           if (activeCard) launchApplication(activeCard.getAttribute('data-id'));
         }
       }
@@ -795,7 +872,7 @@
 
       // Action Y (Éjection si sur le lecteur disque, sinon alimentation)
       if (btnY && !prevButtonsState['Y']) {
-        if (!isAnyModalOpen() && cards[currentIndex] === cardDiscPlayer) {
+        if (!isAnyModalOpen() && getActiveCard() === cardDiscPlayer) {
           playConfirmSound();
           if (window.__TAURI__ && window.__TAURI__.core) {
             window.__TAURI__.core.invoke('eject_disc', { device: null });
@@ -810,6 +887,8 @@
       prevButtonsState['B'] = btnB;
       prevButtonsState['X'] = btnX;
       prevButtonsState['Y'] = btnY;
+      prevButtonsState['LB'] = btnLB;
+      prevButtonsState['RB'] = btnRB;
       prevButtonsState['Home'] = btnHome;
     }
 

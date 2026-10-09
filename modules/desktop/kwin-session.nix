@@ -8,8 +8,8 @@ let
   # Règles de fenêtrage KWin pour forcer le plein écran sans bordures façon Smart TV
   kwinRules = ''
     [General]
-    count=2
-    rules=1,2
+    count=3
+    rules=1,2,3
 
     [1]
     Description=Noos HTPC Plein Ecran Universel
@@ -27,6 +27,15 @@ let
     fullscreen=true
     fullscreenrule=2
     wmclass=jellyfin.*
+    wmclassmatch=3
+
+    [3]
+    Description=Noos HTPC Sober Roblox Plein Ecran Strict
+    noborder=true
+    noborderrule=2
+    fullscreen=true
+    fullscreenrule=2
+    wmclass=sober.*
     wmclassmatch=3
   '';
 
