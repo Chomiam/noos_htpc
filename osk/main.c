@@ -337,10 +337,17 @@ static void create_keyboard_ui(void) {
         gtk_layer_set_exclusive_zone(GTK_WINDOW(window), 0);
     } else {
         gtk_window_set_keep_above(GTK_WINDOW(window), TRUE);
-        gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     }
 
+    GdkScreen *screen = gtk_widget_get_screen(window);
+    GdkVisual *visual = gdk_screen_get_rgba_visual(screen);
+    if (visual) {
+        gtk_widget_set_visual(window, visual);
+    }
+    gtk_widget_set_app_paintable(window, TRUE);
+
     GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    gtk_widget_set_valign(main_box, GTK_ALIGN_END);
     gtk_style_context_add_class(gtk_widget_get_style_context(main_box), "osk-container");
     gtk_container_add(GTK_CONTAINER(window), main_box);
 
@@ -391,6 +398,7 @@ static void create_keyboard_ui(void) {
     /* CSS Styling élégant Glassmorphism */
     GtkCssProvider *provider = gtk_css_provider_new();
     const char *css =
+        "window { background-color: transparent; }\n"
         ".osk-container { background: rgba(8, 12, 20, 0.94); padding: 12px 24px 18px 24px; border-top: 2px solid #38bdf8; }\n"
         ".osk-topbar { padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px; }\n"
         ".osk-brand { font-size: 13px; font-weight: 700; color: #38bdf8; letter-spacing: 1px; }\n"
