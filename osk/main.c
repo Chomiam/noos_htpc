@@ -327,13 +327,18 @@ static void create_keyboard_ui(void) {
     gtk_window_set_decorated(GTK_WINDOW(window), FALSE);
 
     /* Configuration Layer Shell pour Wayland (KWin / Cage) */
-    gtk_layer_init_for_window(GTK_WINDOW(window));
-    gtk_layer_set_layer(GTK_WINDOW(window), GTK_LAYER_SHELL_LAYER_OVERLAY);
-    gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_BOTTOM, TRUE);
-    gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_LEFT, TRUE);
-    gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
-    gtk_layer_set_keyboard_mode(GTK_WINDOW(window), GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
-    gtk_layer_set_exclusive_zone(GTK_WINDOW(window), 0);
+    if (gtk_layer_is_supported()) {
+        gtk_layer_init_for_window(GTK_WINDOW(window));
+        gtk_layer_set_layer(GTK_WINDOW(window), GTK_LAYER_SHELL_LAYER_OVERLAY);
+        gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_BOTTOM, TRUE);
+        gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_LEFT, TRUE);
+        gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
+        gtk_layer_set_keyboard_mode(GTK_WINDOW(window), GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
+        gtk_layer_set_exclusive_zone(GTK_WINDOW(window), 0);
+    } else {
+        gtk_window_set_keep_above(GTK_WINDOW(window), TRUE);
+        gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+    }
 
     GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
     gtk_style_context_add_class(gtk_widget_get_style_context(main_box), "osk-container");
@@ -383,19 +388,19 @@ static void create_keyboard_ui(void) {
         gtk_box_pack_start(GTK_BOX(main_box), row_box, FALSE, FALSE, 0);
     }
 
-    /* CSS Styling élégant Catppuccin / Glassmorphism */
+    /* CSS Styling élégant Glassmorphism */
     GtkCssProvider *provider = gtk_css_provider_new();
     const char *css =
-        ".osk-container { background: rgba(8, 12, 20, 0.94); padding: 12px 24px 18px 24px; border-top: 2px solid #38bdf8; box-shadow: 0 -10px 40px rgba(0,0,0,0.8); }"
-        ".osk-topbar { padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px; }"
-        ".osk-brand { font-size: 13px; font-weight: 700; color: #38bdf8; letter-spacing: 1px; }"
-        ".osk-hints { font-size: 12px; color: #94a3b8; font-weight: 500; }"
-        ".osk-key { min-width: 54px; min-height: 48px; border-radius: 8px; background: rgba(30, 41, 59, 0.85); color: #f8fafc; font-size: 18px; font-weight: 600; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: all 150ms ease; }"
-        ".osk-key:hover { background: rgba(51, 65, 85, 0.95); border-color: rgba(255,255,255,0.2); }"
-        ".key-wide { min-width: 90px; font-size: 14px; }"
-        ".key-collapse { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #fca5a5; }"
-        ".key-enter { background: rgba(16, 185, 129, 0.25); border-color: rgba(16, 185, 129, 0.5); color: #6ee7b7; }"
-        ".key-focused { background: #38bdf8 !important; color: #020617 !important; border-color: #ffffff !important; box-shadow: 0 0 18px #38bdf8, 0 0 30px rgba(56, 189, 248, 0.6) !important; transform: scale(1.08); }";
+        ".osk-container { background: rgba(8, 12, 20, 0.94); padding: 12px 24px 18px 24px; border-top: 2px solid #38bdf8; }\n"
+        ".osk-topbar { padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px; }\n"
+        ".osk-brand { font-size: 13px; font-weight: 700; color: #38bdf8; letter-spacing: 1px; }\n"
+        ".osk-hints { font-size: 12px; color: #94a3b8; font-weight: 500; }\n"
+        ".osk-key { min-width: 54px; min-height: 48px; border-radius: 8px; background: rgba(30, 41, 59, 0.85); color: #f8fafc; font-size: 18px; font-weight: 600; border: 1px solid rgba(255,255,255,0.08); }\n"
+        ".osk-key:hover { background: rgba(51, 65, 85, 0.95); border-color: rgba(255,255,255,0.2); }\n"
+        ".key-wide { min-width: 90px; font-size: 14px; }\n"
+        ".key-collapse { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #fca5a5; }\n"
+        ".key-enter { background: rgba(16, 185, 129, 0.25); border-color: rgba(16, 185, 129, 0.5); color: #6ee7b7; }\n"
+        ".key-focused { background: #38bdf8; color: #020617; border-color: #ffffff; font-weight: 800; }\n";
 
     gtk_css_provider_load_from_data(provider, css, -1, NULL);
     gtk_style_context_add_provider_for_screen(gdk_screen_get_default(), GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);

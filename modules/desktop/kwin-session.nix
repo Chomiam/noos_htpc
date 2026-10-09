@@ -89,14 +89,24 @@ let
       IS_VM=1
     fi
 
-    # Lancement du clavier virtuel universel Wayland en arrière-plan
-    (${oskPkg}/bin/noos-osk &) || true
+    # Lancement du clavier virtuel universel dès que Wayland est prêt
+    (
+      for i in $(seq 1 40); do
+        if [ -e "${config.services.noos-htpc.desktop.runtimeDir or "/run/user/1000"}/wayland-0" ] || [ -e "/run/user/1000/wayland-0" ]; then
+          sleep 0.5
+          export WAYLAND_DISPLAY=wayland-0
+          ${oskPkg}/bin/noos-osk &
+          break
+        fi
+        sleep 0.5
+      done
+    ) &
 
     if [ "$IS_VM" = "1" ]; then
       echo "[Noos HTPC] Environnement virtualisé détecté : démarrage optimisé avec Cage (pixman)..."
       export WLR_RENDERER=pixman
       export LIBGL_ALWAYS_SOFTWARE=1
-      exec ${pkgs.cage}/bin/cage -s -- ${dashboardPkg}/bin/noos-tv-dashboard
+      exec ${pkgs.cage}/bin/cage -- ${dashboardPkg}/bin/noos-tv-dashboard
     fi
 
     echo "[Noos HTPC] Matériel physique TV détecté : démarrage de KWin Wayland (HDR & DRM)..."
