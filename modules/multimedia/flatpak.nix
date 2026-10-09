@@ -38,6 +38,17 @@ let
     export DBUS_SESSION_BUS_ADDRESS="''${DBUS_SESSION_BUS_ADDRESS:-unix:path=''${XDG_RUNTIME_DIR}/bus}"
     export WAYLAND_DISPLAY="''${WAYLAND_DISPLAY:-wayland-0}"
 
+    # Nettoyage préventif des processus résiduels pour éviter le blocage "instance already running"
+    pkill -9 -x sober 2>/dev/null || true
+    pkill -9 -x sober_services 2>/dev/null || true
+    sleep 0.2
+
+    # Assurer la détection dynamique propre du GPU et bon fonctionnement SDL2 sans forçage inapproprié
+    unset AMD_VULKAN_ICD
+    unset RADV_PERFTEST
+    unset LIBGL_ALWAYS_SOFTWARE
+    unset SDL_VIDEODRIVER
+
     # Assurer la configuration console & manette dans ~/.var/app/org.vinegarhq.Sober/config/sober/config.json
     SOBER_CONF_DIR="$HOME/.var/app/org.vinegarhq.Sober/config/sober"
     mkdir -p "$SOBER_CONF_DIR"
@@ -65,6 +76,7 @@ EOF
       ${pkgs.gnused}/bin/sed -i 's/"use_console_experience": false/"use_console_experience": true/g' "$SOBER_CONF" || true
       ${pkgs.gnused}/bin/sed -i 's/"allow_gamepad_permission": false/"allow_gamepad_permission": true/g' "$SOBER_CONF" || true
       ${pkgs.gnused}/bin/sed -i 's/"close_on_leave": false/"close_on_leave": true/g' "$SOBER_CONF" || true
+      ${pkgs.gnused}/bin/sed -i 's/"use_opengl": true/"use_opengl": false/g' "$SOBER_CONF" || true
     fi
 
     if ! flatpak list --app 2>/dev/null | grep -q "org.vinegarhq.Sober"; then
@@ -75,6 +87,7 @@ EOF
     exec ${pkgs.flatpak}/bin/flatpak run \
       --device=all \
       --socket=wayland \
+      --socket=x11 \
       --socket=fallback-x11 \
       org.vinegarhq.Sober \
       "$@"
@@ -92,7 +105,7 @@ in
       "org.vinegarhq.Sober" = {
         Context = {
           devices = [ "all" ];
-          sockets = [ "wayland" "fallback-x11" "pulseaudio" ];
+          sockets = [ "wayland" "x11" "fallback-x11" "pulseaudio" ];
           shared = [ "network" "ipc" ];
         };
       };

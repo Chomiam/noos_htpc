@@ -284,6 +284,11 @@ pub async fn launch_app(app: AppHandle, app_id: String) -> Result<bool, String> 
         "es-de" => ("es-de".to_string(), vec![]),
         "sober" => {
             ensure_sober_console_config();
+            // Nettoyage préventif des processus résiduels Sober pour éviter le verrouillage "instance already running"
+            let _ = Command::new("pkill").args(["-9", "-x", "sober"]).status();
+            let _ = Command::new("pkill").args(["-9", "-x", "sober_services"]).status();
+            std::thread::sleep(std::time::Duration::from_millis(150));
+
             if Command::new("which").arg("sober").output().map(|o| o.status.success()).unwrap_or(false) {
                 ("sober".to_string(), vec![])
             } else {
@@ -293,6 +298,7 @@ pub async fn launch_app(app: AppHandle, app_id: String) -> Result<bool, String> 
                         "run".to_string(),
                         "--device=all".to_string(),
                         "--socket=wayland".to_string(),
+                        "--socket=x11".to_string(),
                         "--socket=fallback-x11".to_string(),
                         "org.vinegarhq.Sober".to_string(),
                     ],
@@ -326,6 +332,11 @@ pub async fn launch_app(app: AppHandle, app_id: String) -> Result<bool, String> 
         cmd.env("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1");
         cmd.env("QT_QPA_PLATFORM", "wayland;xcb");
         cmd.env("QT_WAYLAND_SHELL_INTEGRATION", "xdg-shell");
+        // Assainir l'environnement pour garantir une détection native du GPU et le bon fonctionnement de SDL2
+        cmd.env_remove("AMD_VULKAN_ICD");
+        cmd.env_remove("RADV_PERFTEST");
+        cmd.env_remove("LIBGL_ALWAYS_SOFTWARE");
+        cmd.env_remove("SDL_VIDEODRIVER");
 
         match cmd.spawn() {
             Ok(mut child) => {
@@ -584,6 +595,7 @@ fn ensure_sober_console_config() {
         content = content.replace("\"allow_gamepad_permission\": false", "\"allow_gamepad_permission\": true");
         content = content.replace("\"close_on_leave\": false", "\"close_on_leave\": true");
         content = content.replace("\"enable_hidpi\": false", "\"enable_hidpi\": true");
+        content = content.replace("\"use_opengl\": true", "\"use_opengl\": false");
         let _ = std::fs::write(&conf_path, content);
     } else {
         let default_conf = r#"{

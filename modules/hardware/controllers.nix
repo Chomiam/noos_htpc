@@ -28,10 +28,18 @@
     game-devices-udev-rules
   ];
 
-  # 3. Règles udev spécifiques Noos HTPC pour permissions /dev/uinput et manettes courantes
+  # 3. Règles udev spécifiques Noos HTPC pour permissions /dev/uinput, manettes et accès DRI conteneurs
   services.udev.extraRules = ''
-    # Accès direct à /dev/uinput pour le groupe input
-    KERNEL=="uinput", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"
+    # Accès direct à /dev/uinput pour jeux et claviers virtuels
+    KERNEL=="uinput", MODE="0666", GROUP="input", OPTIONS+="static_node=uinput"
+
+    # Accès universel manettes et contrôleurs (SDL2, Sober, Flatpak, émulateurs)
+    KERNEL=="event[0-9]*", SUBSYSTEM=="input", MODE="0666", GROUP="input"
+    KERNEL=="js[0-9]*", SUBSYSTEM=="input", MODE="0666", GROUP="input"
+
+    # Accès universel DRI / DRM pour les sandbox Flatpak (évite permission denied sur card*)
+    KERNEL=="card[0-9]*", SUBSYSTEM=="drm", MODE="0666", GROUP="video"
+    KERNEL=="renderD[0-9]*", SUBSYSTEM=="drm", MODE="0666", GROUP="render"
 
     # Sony PlayStation DualShock 4 / DualSense PS5
     KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="05c4|09cc|0ce6|0df2", MODE="0666", GROUP="input"

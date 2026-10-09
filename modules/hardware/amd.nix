@@ -32,9 +32,8 @@ in
       ];
     };
 
-    # 5. Variables d'environnement pour RADV, Gamescope et HDR
+    # 5. Variables d'environnement pour RADV (optimisations ACO), Gamescope et HDR
     environment.variables = {
-      AMD_VULKAN_ICD = "RADV";
       RADV_PERFTEST = "aco";
     } // lib.optionalAttrs cfg.enableHDR {
       ENABLE_GAMESCOPE_WSI = "1";

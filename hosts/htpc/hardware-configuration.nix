@@ -9,7 +9,7 @@
     (modulesPath + "/installer/scan/not-detected.nix")
   ];
 
-  # Modules noyau essentiels pour mini-PC (NVMe, SATA, USB, stockage)
+  # Modules noyau essentiels pour mini-PC et virtualisation (NVMe, SATA, USB, VirtIO)
   boot.initrd.availableKernelModules = [
     "xhci_pci"
     "ahci"
@@ -17,6 +17,10 @@
     "usb_storage"
     "usbhid"
     "sd_mod"
+    "virtio_pci"
+    "virtio_blk"
+    "virtio_scsi"
+    "virtio_net"
   ];
   boot.initrd.kernelModules = [ ];
   boot.kernelModules = [ "kvm-intel" "kvm-amd" ];

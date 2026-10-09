@@ -35,7 +35,7 @@ let
     noborderrule=2
     fullscreen=true
     fullscreenrule=2
-    wmclass=sober.*
+    wmclass=.*(sober|Sober|vinegar|roblox|Roblox).*
     wmclassmatch=3
   '';
 
@@ -57,7 +57,7 @@ let
     export QT_QPA_PLATFORM="wayland;xcb"
     export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
     export QT_WAYLAND_SHELL_INTEGRATION=xdg-shell
-    export SDL_VIDEODRIVER="wayland,x11"
+    export SDL_VIDEODRIVER="wayland"
     export MOZ_ENABLE_WAYLAND=1
     export WEBKIT_DISABLE_COMPOSITING_MODE=0
 
@@ -112,10 +112,8 @@ let
     ) &
 
     if [ "$IS_VM" = "1" ]; then
-      echo "[Noos HTPC] Environnement virtualisé détecté : démarrage optimisé avec Cage (pixman)..."
-      export WLR_RENDERER=pixman
-      export LIBGL_ALWAYS_SOFTWARE=1
-      exec ${pkgs.cage}/bin/cage -- ${dashboardPkg}/bin/noos-tv-dashboard
+      echo "[Noos HTPC] Environnement virtualisé détecté : démarrage optimisé avec Cage..."
+      exec ${pkgs.cage}/bin/cage -s -- ${dashboardPkg}/bin/noos-tv-dashboard
     fi
 
     echo "[Noos HTPC] Matériel physique TV détecté : démarrage de KWin Wayland (HDR & DRM)..."
