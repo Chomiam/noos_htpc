@@ -692,6 +692,12 @@
     card.addEventListener('click', () => {
       launchApplication(card.getAttribute('data-id'));
     });
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        launchApplication(card.getAttribute('data-id'));
+      }
+    });
   });
 
   navItems.forEach(btn => {
