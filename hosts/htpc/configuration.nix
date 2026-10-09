@@ -29,8 +29,8 @@
   #   - "nvidia"        : Pour cartes graphiques Nvidia modernes (GTX 1650 et supérieur)
   #   - "nvidia-legacy" : Pour anciennes cartes GeForce (pilotes 470xx)
   hardware.noos-htpc.gpu = {
-    profile = "amd";    # <-- Modifiez ici selon votre GPU
-    enableHDR = true;   # Active le support HDR sur TV compatible (AMD / Nvidia)
+    profile = lib.mkDefault "amd";    # <-- Modifiez ici selon votre GPU
+    enableHDR = lib.mkDefault true;   # Active le support HDR sur TV compatible (AMD / Nvidia)
   };
 
   # ==============================================================================

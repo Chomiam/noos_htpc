@@ -135,6 +135,14 @@
                 <h4>NVIDIA Legacy</h4>
                 <p>Pilotes propriétaires 470xx (anciennes GeForce séries 6/7/8)</p>
               </div>
+              <div class="gpu-card" data-focusable data-profile="vm">
+                <h4>Machine Virtuelle (VM)</h4>
+                <p>QEMU, KVM, VirtIO, VirtualBox, VMware. Modesetting & guest agent</p>
+              </div>
+              <div class="gpu-card" data-focusable data-profile="generic">
+                <h4>Générique / Autre</h4>
+                <p>Pilotes Mesa standard sans accélération propriétaire</p>
+              </div>
             </div>
           </div>
 
@@ -155,18 +163,43 @@
         </div>
       </section>
 
-      <!-- Étape 5 : Installation en Cours (Logs & Progression) -->
+      <!-- Étape 5 : Installation en Cours (Console stylisée, Glassy Blur & Progression) -->
       <section class="wizard-step" id="step-5">
-        <h1 class="step-title">Installation de Noos HTPC...</h1>
-        <p class="step-subtitle" id="install-current-step">Initialisation du système...</p>
-
-        <div class="progress-bar-container">
-          <div class="progress-bar-fill" id="progress-fill" style="width: 10%;"></div>
+        <div class="install-header">
+          <div>
+            <h1 class="step-title">Installation de Noos HTPC</h1>
+            <p class="step-subtitle" id="install-current-step">Initialisation du système...</p>
+          </div>
+          <div class="package-counter-badge" id="package-counter" style="display: none;">
+            <span class="pkg-icon">📦</span>
+            <span class="pkg-label">Composants :</span>
+            <span class="pkg-numbers" id="package-numbers">0 / 0</span>
+          </div>
         </div>
-        <div class="progress-percentage" id="progress-text">10%</div>
 
-        <div class="terminal-log-box" id="terminal-logs">
-          <div class="log-line">[Noos HTPC] Démarrage du processus d'installation...</div>
+        <div class="progress-container-glass">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progress-fill" style="width: 10%;"></div>
+          </div>
+          <div class="progress-info-row">
+            <span class="progress-phase" id="progress-phase">Étape 1 / 6 : Préparation du stockage</span>
+            <span class="progress-percentage" id="progress-text">10%</span>
+          </div>
+        </div>
+
+        <div class="terminal-glass-window">
+          <div class="terminal-titlebar">
+            <div class="terminal-dots">
+              <span class="dot close"></span>
+              <span class="dot min"></span>
+              <span class="dot max"></span>
+            </div>
+            <div class="terminal-title">Console Système — nixos-install (logs en direct)</div>
+            <div class="terminal-live-badge"><span class="pulse-dot"></span> ACTIF</div>
+          </div>
+          <div class="terminal-log-box" id="terminal-logs">
+            <div class="log-line notice">[Noos HTPC] Démarrage de la séquence d'installation...</div>
+          </div>
         </div>
       </section>
 

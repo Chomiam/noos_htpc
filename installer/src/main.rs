@@ -5,7 +5,7 @@ mod commands;
 use commands::disk::list_disks;
 use commands::gpu::detect_gpu;
 use commands::network::{scan_wifi, connect_wifi, get_network_status};
-use commands::install::{start_installation, reboot_system};
+use commands::install::{start_installation, get_install_progress, reboot_system};
 
 fn main() {
     tracing_subscriber::fmt::init();
@@ -18,6 +18,7 @@ fn main() {
             connect_wifi,
             get_network_status,
             start_installation,
+            get_install_progress,
             reboot_system
         ])
         .run(tauri::generate_context!())

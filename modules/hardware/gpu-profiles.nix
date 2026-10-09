@@ -14,7 +14,7 @@ in
 
   options.hardware.noos-htpc.gpu = {
     profile = lib.mkOption {
-      type = lib.types.enum [ "amd" "intel" "nvidia" "nvidia-legacy" "generic" ];
+      type = lib.types.enum [ "amd" "intel" "nvidia" "nvidia-legacy" "generic" "vm" ];
       default = "amd";
       description = ''
         Sélectionne le profil graphique cible pour Noos HTPC.
@@ -23,6 +23,7 @@ in
         - "nvidia": Pilotes propriétaires récents (GTX 1650+ / RTX), modesetting et NVDEC.
         - "nvidia-legacy": Pilotes propriétaires legacy 470xx pour anciennes cartes GeForce.
         - "generic": Pilotes Mesa génériques sans spécificité propriétaire.
+        - "vm": Machine virtuelle (QEMU/KVM, VirtIO, VirtualBox, VMware) avec modesetting et agents invités.
       '';
     };
 
@@ -36,8 +37,16 @@ in
     };
   };
 
-  config = lib.mkIf (cfg.profile == "generic") {
-    services.xserver.videoDrivers = [ "modesetting" ];
-    hardware.graphics.enable = true;
-  };
+  config = lib.mkMerge [
+    (lib.mkIf (cfg.profile == "generic") {
+      services.xserver.videoDrivers = [ "modesetting" ];
+      hardware.graphics.enable = true;
+    })
+    (lib.mkIf (cfg.profile == "vm") {
+      services.xserver.videoDrivers = [ "modesetting" ];
+      hardware.graphics.enable = true;
+      services.qemuGuest.enable = lib.mkDefault true;
+      services.spice-vdagentd.enable = lib.mkDefault true;
+    })
+  ];
 }

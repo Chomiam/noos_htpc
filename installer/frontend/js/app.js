@@ -69,15 +69,24 @@
   async function initStep1() {
     try {
       const gpu = await tauriInvoke("detect_gpu");
-      document.getElementById("gpu-info-text").textContent = gpu.detected_name;
-      const badge = document.getElementById("gpu-badge");
-      badge.textContent = `Profil recommandé : ${gpu.recommended_profile.toUpperCase()}`;
+      const name = gpu.detected_name || gpu.detectedName || "Carte graphique détectée";
+      const profile = gpu.recommended_profile || gpu.recommendedProfile || "generic";
+      const hdr = gpu.hdr_supported !== undefined ? gpu.hdr_supported : (gpu.hdrSupported !== undefined ? gpu.hdrSupported : false);
 
-      selectedGpuProfile = gpu.recommended_profile;
-      enableHDR = gpu.hdr_supported;
+      document.getElementById("gpu-info-text").textContent = name;
+      const badge = document.getElementById("gpu-badge");
+      if (badge) badge.textContent = `Profil recommandé : ${profile.toUpperCase()}`;
+
+      selectedGpuProfile = profile;
+      enableHDR = hdr;
 
       // Présélectionner dans l'étape 4
       updateGpuSelection(selectedGpuProfile);
+      const hdrBtn = document.getElementById("btn-toggle-hdr");
+      if (hdrBtn) {
+        hdrBtn.textContent = enableHDR ? "HDR : Activé" : "HDR : Désactivé";
+        hdrBtn.className = enableHDR ? "tv-btn toggle active" : "tv-btn toggle";
+      }
     } catch (err) {
       document.getElementById("gpu-info-text").textContent = "Détection générique standard";
     }
@@ -194,6 +203,16 @@
       card.addEventListener("click", () => {
         selectedGpuProfile = card.dataset.profile;
         updateGpuSelection(selectedGpuProfile);
+        if (selectedGpuProfile === "vm" || selectedGpuProfile === "generic" || selectedGpuProfile === "nvidia-legacy") {
+          enableHDR = false;
+        } else {
+          enableHDR = true;
+        }
+        const hdrBtn = document.getElementById("btn-toggle-hdr");
+        if (hdrBtn) {
+          hdrBtn.textContent = enableHDR ? "HDR : Activé" : "HDR : Désactivé";
+          hdrBtn.className = enableHDR ? "tv-btn toggle active" : "tv-btn toggle";
+        }
       });
     });
 
@@ -224,34 +243,88 @@
       }
     });
 
-    // Écoute des événements de progression en direct
-    tauriListen("install_progress", (event) => {
-      const payload = event.payload;
+    // Fonction centralisée de rafraîchissement UI d'installation
+    function updateInstallUI(payload) {
+      if (!payload) return;
       const stepTitle = document.getElementById("install-current-step");
       const progressFill = document.getElementById("progress-fill");
       const progressText = document.getElementById("progress-text");
+      const progressPhase = document.getElementById("progress-phase");
+      const packageCounter = document.getElementById("package-counter");
+      const packageNumbers = document.getElementById("package-numbers");
       const logs = document.getElementById("terminal-logs");
 
-      if (stepTitle) stepTitle.textContent = payload.step_name;
-      if (progressFill) {
-        progressFill.style.width = `${payload.percent}%`;
-        if (payload.step_name.toLowerCase().includes("erreur")) {
-          progressFill.style.background = "var(--ctp-red)";
+      if (stepTitle && payload.step_name) stepTitle.textContent = payload.step_name;
+
+      if (progressPhase && payload.step && payload.total_steps) {
+        progressPhase.textContent = `Étape ${payload.step} / ${payload.total_steps} : ${payload.step_name}`;
+      }
+
+      if (packageCounter && packageNumbers) {
+        if (payload.packages_total > 0) {
+          packageCounter.style.display = "inline-flex";
+          const pct = Math.min(100, Math.round((payload.packages_done / payload.packages_total) * 100));
+          packageNumbers.textContent = `${payload.packages_done} / ${payload.packages_total} (${pct}%)`;
+        } else if (payload.step === 6) {
+          packageCounter.style.display = "inline-flex";
+          packageNumbers.textContent = "Calcul de l'arbre Nix...";
+        } else {
+          packageCounter.style.display = "none";
         }
       }
-      if (progressText) progressText.textContent = `${payload.percent}%`;
+
+      if (progressFill && payload.percent !== undefined) {
+        progressFill.style.width = `${payload.percent}%`;
+        if (payload.step_name && payload.step_name.toLowerCase().includes("erreur")) {
+          progressFill.style.background = "var(--ctp-red)";
+        } else {
+          progressFill.style.background = "linear-gradient(90deg, #74c7ec, #cba6f7, #a6e3a1)";
+        }
+      }
+      if (progressText && payload.percent !== undefined) progressText.textContent = `${payload.percent}%`;
 
       if (logs && payload.log_line) {
         const line = document.createElement("div");
-        line.className = "log-line" + (payload.step_name.toLowerCase().includes("erreur") ? " error" : "");
-        line.textContent = `[${payload.step}/${payload.total_steps}] ${payload.log_line}`;
+        const lower = payload.log_line.toLowerCase();
+        let typeClass = "normal";
+
+        if (lower.includes("error:") || lower.includes("failed") || (payload.step_name && payload.step_name.toLowerCase().includes("erreur"))) {
+          typeClass = "error";
+        } else if (lower.includes("copying path") || lower.includes("fetching path") || lower.includes("fetching")) {
+          typeClass = "fetch";
+        } else if (lower.includes("building") || lower.includes("compilation")) {
+          typeClass = "build";
+        } else if (lower.includes("terminé") || lower.includes("succès")) {
+          typeClass = "success";
+        } else if (lower.includes("étape") || lower.includes("préparation") || lower.includes("partitionnement") || lower.includes("formatage")) {
+          typeClass = "notice";
+        }
+
+        line.className = `log-line ${typeClass}`;
+        const timeStr = new Date().toLocaleTimeString("fr-FR", { hour12: false });
+        line.innerHTML = `<span class="log-time">[${timeStr}]</span> <span class="log-tag">[${payload.step}/${payload.total_steps}]</span> <span class="log-msg">${payload.log_line}</span>`;
         logs.appendChild(line);
+
+        // Limite pour préserver les performances WebKit
+        if (logs.childNodes.length > 500) {
+          logs.removeChild(logs.firstChild);
+        }
+
+        // Défilement automatique fluide vers le bas
         logs.scrollTop = logs.scrollHeight;
       }
 
       if (payload.percent >= 100) {
-        setTimeout(() => setStep(6), 1500);
+        setTimeout(() => setStep(6), 1800);
       }
+    }
+
+    // Hook global direct pour appel depuis Rust via Webview eval
+    window.onInstallProgress = updateInstallUI;
+
+    // Écoute des événements de progression en direct (Tauri events)
+    tauriListen("install_progress", (event) => {
+      updateInstallUI(event.payload);
     });
 
     // Lancement de l'Installation
@@ -265,6 +338,17 @@
       setStep(5);
       const hostname = "noos-htpc"; // Forcé et déclaratif
 
+      // Polling actif toutes les 400ms pour garantir un rafraîchissement temps réel
+      const pollTimer = setInterval(async () => {
+        try {
+          const status = await tauriInvoke("get_install_progress");
+          if (status) {
+            updateInstallUI(status);
+            if (status.percent >= 100) clearInterval(pollTimer);
+          }
+        } catch (_) {}
+      }, 400);
+
       try {
         await tauriInvoke("start_installation", {
           req: {
@@ -275,6 +359,7 @@
           }
         });
       } catch (err) {
+        clearInterval(pollTimer);
         const logs = document.getElementById("terminal-logs");
         if (logs) {
           const line = document.createElement("div");

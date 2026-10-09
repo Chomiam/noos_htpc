@@ -48,38 +48,52 @@
     }
 
     const currentRect = currentFocusElem.getBoundingClientRect();
-    let bestElem = null;
-    let minDistance = Infinity;
+    const currentCenter = {
+      x: currentRect.left + currentRect.width / 2,
+      y: currentRect.top + currentRect.height / 2,
+    };
+
+    const candidates = [];
 
     focusables.forEach((elem) => {
       if (elem === currentFocusElem) return;
       const rect = elem.getBoundingClientRect();
+      const center = {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      };
 
-      let isCandidate = false;
-      let dist = Infinity;
-
-      if (direction === "up" && rect.bottom <= currentRect.top + 20) {
-        dist = Math.hypot(rect.left - currentRect.left, currentRect.top - rect.bottom);
-        isCandidate = true;
-      } else if (direction === "down" && rect.top >= currentRect.bottom - 20) {
-        dist = Math.hypot(rect.left - currentRect.left, rect.top - currentRect.bottom);
-        isCandidate = true;
-      } else if (direction === "left" && rect.right <= currentRect.left + 20) {
-        dist = Math.hypot(currentRect.left - rect.right, rect.top - currentRect.top);
-        isCandidate = true;
-      } else if (direction === "right" && rect.left >= currentRect.right - 20) {
-        dist = Math.hypot(rect.left - currentRect.right, rect.top - currentRect.top);
-        isCandidate = true;
-      }
-
-      if (isCandidate && dist < minDistance) {
-        minDistance = dist;
-        bestElem = elem;
+      if (direction === "up" && rect.bottom <= currentRect.top + 25) {
+        const primaryDist = currentRect.top - rect.bottom;
+        const secondaryDist = Math.abs(center.x - currentCenter.x);
+        candidates.push({ elem, primaryDist, secondaryDist });
+      } else if (direction === "down" && rect.top >= currentRect.bottom - 25) {
+        const primaryDist = rect.top - currentRect.bottom;
+        const secondaryDist = Math.abs(center.x - currentCenter.x);
+        candidates.push({ elem, primaryDist, secondaryDist });
+      } else if (direction === "left" && rect.right <= currentRect.left + 25) {
+        const primaryDist = currentRect.left - rect.right;
+        const secondaryDist = Math.abs(center.y - currentCenter.y);
+        candidates.push({ elem, primaryDist, secondaryDist });
+      } else if (direction === "right" && rect.left >= currentRect.right - 25) {
+        const primaryDist = rect.left - currentRect.right;
+        const secondaryDist = Math.abs(center.y - currentCenter.y);
+        candidates.push({ elem, primaryDist, secondaryDist });
       }
     });
 
-    if (bestElem) {
-      setFocus(bestElem);
+    if (candidates.length === 0) return;
+
+    // Trouver le palier le plus proche sur l'axe principal
+    const minPrimary = Math.min(...candidates.map((c) => c.primaryDist));
+    // Tolérance de 60px pour regrouper les éléments d'une même ligne / colonne
+    const bandCandidates = candidates.filter((c) => c.primaryDist <= minPrimary + 60);
+
+    // Parmi ceux-ci, sélectionner le plus proche sur l'axe secondaire
+    bandCandidates.sort((a, b) => a.secondaryDist - b.secondaryDist);
+
+    if (bandCandidates.length > 0) {
+      setFocus(bandCandidates[0].elem);
     }
   }
 
@@ -211,9 +225,11 @@
     refreshFocus: () => {
       const elems = getFocusableElements();
       if (elems.length > 0 && (!currentFocusElem || !elems.includes(currentFocusElem))) {
-        // Privilégier le bouton primaire ou la première carte au lieu du bouton Retour
-        const primary = elems.find(el => el.classList.contains("primary") || el.classList.contains("disk-card") || el.classList.contains("gpu-card"));
-        setFocus(primary || elems[0]);
+        // Privilégier un élément déjà sélectionné, puis le bouton d'action principal
+        const preferred = elems.find(el => el.classList.contains("selected"))
+          || elems.find(el => el.classList.contains("primary") || el.classList.contains("danger"))
+          || elems[0];
+        setFocus(preferred);
       }
     }
   };
@@ -245,8 +261,15 @@
       handleButtonPress(1);
     } else if (e.key === "Tab") {
       e.preventDefault();
-      if (e.shiftKey) navigate("left");
-      else navigate("right");
+      const elems = getFocusableElements();
+      if (elems.length === 0) return;
+      let idx = elems.indexOf(currentFocusElem);
+      if (e.shiftKey) {
+        idx = idx <= 0 ? elems.length - 1 : idx - 1;
+      } else {
+        idx = idx < 0 || idx >= elems.length - 1 ? 0 : idx + 1;
+      }
+      setFocus(elems[idx]);
     }
   });
 
