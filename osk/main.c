@@ -401,13 +401,13 @@ static void create_keyboard_ui(void) {
     GtkCssProvider *provider = gtk_css_provider_new();
     const char *css =
         "window { background-color: transparent; }\n"
-        ".osk-container { background: rgba(10, 14, 23, 0.96); padding: 8px 14px 10px 14px; border: 1.5px solid rgba(56, 189, 248, 0.35); border-radius: 16px; box-shadow: 0 16px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(56, 189, 248, 0.2); max-width: 800px; }\n"
+        ".osk-container { background: rgba(10, 14, 23, 0.96); padding: 6px 10px 8px 10px; border: 1.5px solid rgba(56, 189, 248, 0.35); border-radius: 16px; box-shadow: 0 16px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(56, 189, 248, 0.2); max-width: 480px; }\n"
         ".osk-topbar { padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 4px; }\n"
         ".osk-brand { font-size: 11px; font-weight: 700; color: #38bdf8; letter-spacing: 1px; }\n"
         ".osk-hints { font-size: 10px; color: #94a3b8; font-weight: 500; }\n"
-        ".osk-key { min-width: 44px; min-height: 38px; border-radius: 7px; background: rgba(30, 41, 59, 0.9); color: #f8fafc; font-size: 15px; font-weight: 600; border: 1px solid rgba(255,255,255,0.08); margin: 1.5px; }\n"
+        ".osk-key { min-width: 32px; min-height: 32px; border-radius: 6px; background: rgba(30, 41, 59, 0.9); color: #f8fafc; font-size: 13px; font-weight: 600; border: 1px solid rgba(255,255,255,0.08); margin: 1px; }\n"
         ".osk-key:hover { background: rgba(51, 65, 85, 0.95); border-color: rgba(255,255,255,0.25); }\n"
-        ".key-wide { min-width: 70px; font-size: 12px; }\n"
+        ".key-wide { min-width: 50px; font-size: 11px; }\n"
         ".key-collapse { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #fca5a5; }\n"
         ".key-enter { background: rgba(16, 185, 129, 0.25); border-color: rgba(16, 185, 129, 0.5); color: #6ee7b7; }\n"
         ".key-focused { background: #38bdf8; color: #020617; border-color: #ffffff; font-weight: 800; box-shadow: 0 0 12px rgba(56, 189, 248, 0.8); }\n";

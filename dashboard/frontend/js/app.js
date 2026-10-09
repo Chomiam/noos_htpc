@@ -260,6 +260,11 @@
     } catch (_) {}
   }
 
+  window.playTickSound = playTickSound;
+  window.playConfirmSound = playConfirmSound;
+  window.playNavSound = playNavSound;
+  window.playCancelSound = playCancelSound;
+
   function showNotification(msg) {
     let toast = document.getElementById('noos-toast');
     if (!toast) {
@@ -2021,31 +2026,41 @@
     });
   });
 
-  // Détection automatique universelle des champs de saisie pour afficher le clavier virtuel
+  // Détection automatique universelle des champs de saisie pour afficher le clavier virtuel TV compact
   document.addEventListener('focusin', (e) => {
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
-      if (window.__TAURI__ && window.__TAURI__.core) {
-        window.__TAURI__.core.invoke('show_virtual_keyboard').catch(() => {});
-      }
-      e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (e.target && window.TVKeyboard && window.TVKeyboard.isInput(e.target)) {
+      window.TVKeyboard.open(e.target);
     }
   });
 
   document.addEventListener('focusout', (e) => {
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+    if (e.target && window.TVKeyboard && window.TVKeyboard.isInput(e.target)) {
       setTimeout(() => {
         const active = document.activeElement;
-        if (!active || (active.tagName !== 'INPUT' && active.tagName !== 'TEXTAREA')) {
-          if (window.__TAURI__ && window.__TAURI__.core) {
-            window.__TAURI__.core.invoke('hide_virtual_keyboard').catch(() => {});
-          }
+        const kbContainer = document.getElementById('noos-tv-keyboard');
+        if (!active || (!window.TVKeyboard.isInput(active) && (!kbContainer || !kbContainer.contains(active)))) {
+          window.TVKeyboard.close();
         }
-      }, 150);
+      }, 180);
     }
   });
 
   // Clavier physique
   window.addEventListener('keydown', (e) => {
+    const isInsideInput = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
+
+    if (e.key === 'Escape') {
+      if (window.TVKeyboard && window.TVKeyboard.isOpen()) {
+        window.TVKeyboard.close();
+        return;
+      }
+    }
+
+    // Si on est dans un champ de saisie, laisser le navigateur et le clavier virtuel agir sans conflit
+    if (isInsideInput) {
+      return;
+    }
+
     if (e.key === 'Home') {
       if (isIptvModalOpen && !isIptvSyncing) closeIptvModal();
       if (isUpdateModalOpen) closeUpdateModal();
@@ -2193,9 +2208,32 @@
       const stickUp = axisY < -0.45;
       const stickDown = axisY > 0.45;
 
-      // Navigation Horizontale D-Pad / Stick
+      // Navigation Horizontale / Verticale D-Pad / Stick
       if (now - lastNavTime > NAV_COOLDOWN) {
-        if (!isAnyModalOpen()) {
+        if (window.TVKeyboard && window.TVKeyboard.isOpen() && window.TVKeyboard.isFocused()) {
+          // Navigation précise dans la grille du clavier virtuel TV
+          if (dpadRight || stickRight) {
+            window.TVKeyboard.moveFocus(0, 1);
+            lastNavTime = now;
+          } else if (dpadLeft || stickLeft) {
+            window.TVKeyboard.moveFocus(0, -1);
+            lastNavTime = now;
+          } else if (dpadDown || stickDown) {
+            window.TVKeyboard.moveFocus(1, 0);
+            lastNavTime = now;
+          } else if (dpadUp || stickUp) {
+            if (window.TVKeyboard.canMoveUp()) {
+              window.TVKeyboard.moveFocus(-1, 0);
+            } else {
+              window.TVKeyboard.defocus();
+            }
+            lastNavTime = now;
+          }
+        } else if (window.TVKeyboard && window.TVKeyboard.isOpen() && (dpadDown || stickDown) && window.TVKeyboard.getTargetInput() === document.activeElement) {
+          // Entrer dans le clavier virtuel depuis le champ sélectionné
+          window.TVKeyboard.focusKeys(0, 4);
+          lastNavTime = now;
+        } else if (!isAnyModalOpen()) {
           if (dpadRight || stickRight) {
             selectCard(currentIndex + 1);
             lastNavTime = now;
@@ -2233,6 +2271,7 @@
       // Action HOME (Retour direct au lanceur / Accueil TV)
       if (btnHome && !prevButtonsState['Home']) {
         playConfirmSound();
+        if (window.TVKeyboard && window.TVKeyboard.isOpen()) window.TVKeyboard.close();
         if (isIptvModalOpen && !isIptvSyncing) closeIptvModal();
         if (isUpdateModalOpen) closeUpdateModal();
         if (isModalOpen) closeSettings();
@@ -2242,7 +2281,11 @@
 
       // Action A (Ouvrir / Valider)
       if (btnA && !prevButtonsState['A']) {
-        if (isIptvModalOpen) {
+        if (window.TVKeyboard && window.TVKeyboard.isOpen() && window.TVKeyboard.isFocused()) {
+          window.TVKeyboard.activateKey();
+        } else if (window.TVKeyboard && window.TVKeyboard.isOpen() && window.TVKeyboard.getTargetInput() === document.activeElement) {
+          window.TVKeyboard.focusKeys(0, 4);
+        } else if (isIptvModalOpen) {
           if (!isIptvSyncing) {
             const activeEl = document.activeElement;
             if (activeEl && activeEl.click) activeEl.click();
@@ -2260,9 +2303,11 @@
         }
       }
 
-      // Action B (Retour / Fermer modal)
+      // Action B (Retour / Fermer modal / Fermer clavier)
       if (btnB && !prevButtonsState['B']) {
-        if (modalIptvDetails && !modalIptvDetails.classList.contains('hidden')) {
+        if (window.TVKeyboard && window.TVKeyboard.isOpen()) {
+          window.TVKeyboard.close();
+        } else if (modalIptvDetails && !modalIptvDetails.classList.contains('hidden')) {
           closeIptvDetailsModal();
         } else if (isIptvModalOpen) {
           if (!isIptvSyncing) {
@@ -2278,9 +2323,11 @@
         else if (isModalOpen) closeSettings();
       }
 
-      // Action X (Paramètres ou Vérifier MàJ si modal ouvert)
+      // Action X (Effacer si clavier ouvert, sinon Paramètres ou MàJ)
       if (btnX && !prevButtonsState['X']) {
-        if (isUpdateModalOpen) {
+        if (window.TVKeyboard && window.TVKeyboard.isOpen()) {
+          window.TVKeyboard.backspace();
+        } else if (isUpdateModalOpen) {
           checkForUpdates(currentChannel);
         } else if (!isModalOpen) {
           openSettings();
@@ -2289,15 +2336,25 @@
         }
       }
 
-      // Action Y (Éjection si sur le lecteur disque, sinon alimentation)
+      // Action Y (Espace si clavier ouvert, sinon Éjection disque ou menu)
       if (btnY && !prevButtonsState['Y']) {
-        if (!isAnyModalOpen() && getActiveCard() === cardDiscPlayer) {
+        if (window.TVKeyboard && window.TVKeyboard.isOpen()) {
+          window.TVKeyboard.type(' ');
+        } else if (!isAnyModalOpen() && getActiveCard() === cardDiscPlayer) {
           playConfirmSound();
           if (window.__TAURI__ && window.__TAURI__.core) {
             window.__TAURI__.core.invoke('eject_disc', { device: null });
           }
         } else if (!isAnyModalOpen()) {
           openSettings();
+        }
+      }
+
+      // Action Start / Menu (Validation formulaire / Clavier)
+      const btnStart = gp.buttons[9]?.pressed;
+      if (btnStart && !prevButtonsState['Start']) {
+        if (window.TVKeyboard && window.TVKeyboard.isOpen()) {
+          window.TVKeyboard.submit();
         }
       }
 
@@ -2309,6 +2366,7 @@
       prevButtonsState['LB'] = btnLB;
       prevButtonsState['RB'] = btnRB;
       prevButtonsState['Home'] = btnHome;
+      prevButtonsState['Start'] = btnStart;
     }
 
     requestAnimationFrame(pollGamepad);

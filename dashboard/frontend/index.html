@@ -935,7 +935,27 @@
     </div>
   </div>
 
+  <!-- Clavier Virtuel TV Compact Haute Précision (Style Android TV Gboard) -->
+  <div id="noos-tv-keyboard" class="tv-keyboard-container" aria-label="Clavier virtuel TV">
+    <div class="tv-keyboard-panel">
+      <div class="tv-keyboard-header">
+        <div class="tv-keyboard-input-hint">
+          <span class="tv-kb-icon">⌨</span>
+          <span id="tv-kb-target-label" class="tv-kb-label">Saisie de texte</span>
+        </div>
+        <div class="tv-keyboard-header-actions">
+          <button type="button" id="tv-kb-btn-layout" class="tv-kb-chip-btn" tabindex="-1">AZERTY</button>
+          <button type="button" id="tv-kb-btn-close" class="tv-kb-chip-btn close-btn" tabindex="-1" title="Fermer le clavier">✕ Fermer (B)</button>
+        </div>
+      </div>
+      <div id="tv-keyboard-grid" class="tv-keyboard-grid">
+        <!-- Généré dynamiquement par js/keyboard.js -->
+      </div>
+    </div>
+  </div>
+
   <script src="js/logo_asset.js"></script>
+  <script src="js/keyboard.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
