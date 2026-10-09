@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -70,6 +71,132 @@ pub struct IptvCacheSummary {
     pub series_count: usize,
     pub status: String,
     pub exp_date: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IptvCategory {
+    pub category_id: String,
+    pub category_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IptvLiveStream {
+    pub num: Option<u32>,
+    pub name: String,
+    pub stream_type: Option<String>,
+    pub stream_id: u64,
+    pub stream_icon: Option<String>,
+    pub epg_channel_id: Option<String>,
+    pub category_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IptvVodStream {
+    pub num: Option<u32>,
+    pub name: String,
+    pub stream_type: Option<String>,
+    pub stream_id: u64,
+    pub stream_icon: Option<String>,
+    pub rating: Option<String>,
+    pub year: Option<String>,
+    pub category_id: String,
+    pub container_extension: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IptvSeriesItem {
+    pub num: Option<u32>,
+    pub name: String,
+    pub series_id: u64,
+    pub cover: Option<String>,
+    pub rating: Option<String>,
+    pub year: Option<String>,
+    pub category_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IptvCatalogResponse {
+    pub categories: Vec<IptvCategory>,
+    pub live_streams: Option<Vec<IptvLiveStream>>,
+    pub vod_streams: Option<Vec<IptvVodStream>>,
+    pub series_streams: Option<Vec<IptvSeriesItem>>,
+    pub hidden_category_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IptvEpgProgram {
+    pub id: String,
+    pub title: String,
+    pub start: String,
+    pub stop: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IptvEpisode {
+    pub id: String,
+    pub episode_num: u32,
+    pub title: String,
+    pub container_extension: String,
+    pub duration: Option<String>,
+    pub plot: Option<String>,
+    pub season: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IptvSeriesDetails {
+    pub series_id: u64,
+    pub name: String,
+    pub cover: Option<String>,
+    pub backdrop: Option<String>,
+    pub plot: Option<String>,
+    pub cast: Option<String>,
+    pub director: Option<String>,
+    pub genre: Option<String>,
+    pub release_date: Option<String>,
+    pub rating: Option<String>,
+    pub seasons: Vec<u32>,
+    pub episodes: HashMap<String, Vec<IptvEpisode>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IptvFiltersData {
+    pub live_categories: Vec<IptvCategory>,
+    pub vod_categories: Vec<IptvCategory>,
+    pub series_categories: Vec<IptvCategory>,
+    pub hidden_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IptvFavorite {
+    pub id: String,
+    pub item_type: String, // "live", "movie", "series"
+    pub stream_id: u64,
+    pub name: String,
+    pub icon: Option<String>,
+    pub category_name: Option<String>,
+    pub extra: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IptvPlayerSettings {
+    pub upscale_profile: String,
+    pub deband: bool,
+    pub interpolation: bool,
+    pub buffer_seconds: u32,
+    pub audio_passthrough: bool,
+}
+
+impl Default for IptvPlayerSettings {
+    fn default() -> Self {
+        Self {
+            upscale_profile: "fsr-ultra".to_string(),
+            deband: true,
+            interpolation: false,
+            buffer_seconds: 5,
+            audio_passthrough: true,
+        }
+    }
 }
 
 /* ========================================================================= */
@@ -739,6 +866,755 @@ pub async fn iptv_login_and_sync(
             exp_date,
             max_connections,
         })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn get_field_as_string(v: &serde_json::Value, key: &str) -> Option<String> {
+    v.get(key).and_then(|val| {
+        if let Some(s) = val.as_str() {
+            Some(s.to_string())
+        } else if let Some(n) = val.as_i64() {
+            Some(n.to_string())
+        } else if let Some(u) = val.as_u64() {
+            Some(u.to_string())
+        } else {
+            None
+        }
+    })
+}
+
+fn get_field_as_u64(v: &serde_json::Value, key: &str) -> Option<u64> {
+    v.get(key).and_then(|val| {
+        if let Some(u) = val.as_u64() {
+            Some(u)
+        } else if let Some(i) = val.as_i64() {
+            Some(i as u64)
+        } else if let Some(s) = val.as_str() {
+            s.parse::<u64>().ok()
+        } else {
+            None
+        }
+    })
+}
+
+fn get_iptv_settings_path() -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/home/noos".to_string());
+    let dir = PathBuf::from(home).join(".config/noos-tv");
+    let _ = fs::create_dir_all(&dir);
+    dir.join("iptv_settings.json")
+}
+
+pub fn load_player_settings() -> IptvPlayerSettings {
+    let p = get_iptv_settings_path();
+    if let Ok(data) = fs::read_to_string(&p) {
+        if let Ok(settings) = serde_json::from_str::<IptvPlayerSettings>(&data) {
+            return settings;
+        }
+    }
+    IptvPlayerSettings::default()
+}
+
+pub fn save_player_settings(settings: &IptvPlayerSettings) -> Result<(), String> {
+    let p = get_iptv_settings_path();
+    let json = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
+    fs::write(p, json).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn load_hidden_categories(profile_id: &str) -> Vec<String> {
+    let path = get_iptv_cache_dir().join(format!("profile_{}_hidden_categories.json", profile_id));
+    if let Ok(data) = fs::read_to_string(&path) {
+        if let Ok(ids) = serde_json::from_str::<Vec<String>>(&data) {
+            return ids;
+        }
+    }
+    Vec::new()
+}
+
+fn save_hidden_categories(profile_id: &str, ids: &[String]) -> Result<(), String> {
+    let path = get_iptv_cache_dir().join(format!("profile_{}_hidden_categories.json", profile_id));
+    let json = serde_json::to_string_pretty(ids).map_err(|e| e.to_string())?;
+    fs::write(path, json).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn load_favorites(profile_id: &str) -> Vec<IptvFavorite> {
+    let path = get_iptv_cache_dir().join(format!("profile_{}_favorites.json", profile_id));
+    if let Ok(data) = fs::read_to_string(&path) {
+        if let Ok(favs) = serde_json::from_str::<Vec<IptvFavorite>>(&data) {
+            return favs;
+        }
+    }
+    Vec::new()
+}
+
+fn save_favorites(profile_id: &str, favs: &[IptvFavorite]) -> Result<(), String> {
+    let path = get_iptv_cache_dir().join(format!("profile_{}_favorites.json", profile_id));
+    let json = serde_json::to_string_pretty(favs).map_err(|e| e.to_string())?;
+    fs::write(path, json).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/* Fallbacks de démonstration riches pour tester et naviguer immédiatement */
+fn get_demo_catalog(section: &str) -> IptvCatalogResponse {
+    match section {
+        "live" => {
+            let categories = vec![
+                IptvCategory { category_id: "1".into(), category_name: "TNT & Généralistes France".into() },
+                IptvCategory { category_id: "2".into(), category_name: "Cinéma & Séries".into() },
+                IptvCategory { category_id: "3".into(), category_name: "Sport & Événements".into() },
+                IptvCategory { category_id: "4".into(), category_name: "Information 24/7".into() },
+                IptvCategory { category_id: "5".into(), category_name: "Documentaires & Découverte".into() },
+            ];
+            let live_streams = vec![
+                IptvLiveStream { num: Some(1), name: "TF1 UHD 4K HDR".into(), stream_type: Some("live".into()), stream_id: 101, stream_icon: Some("https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tf1-fr.png".into()), epg_channel_id: Some("TF1.fr".into()), category_id: "1".into() },
+                IptvLiveStream { num: Some(2), name: "France 2 UHD 4K".into(), stream_type: Some("live".into()), stream_id: 102, stream_icon: Some("https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/france-2-fr.png".into()), epg_channel_id: Some("France2.fr".into()), category_id: "1".into() },
+                IptvLiveStream { num: Some(3), name: "Canal+ UHD 4K Live".into(), stream_type: Some("live".into()), stream_id: 103, stream_icon: Some("https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-plus-fr.png".into()), epg_channel_id: Some("CanalPlus.fr".into()), category_id: "1".into() },
+                IptvLiveStream { num: Some(4), name: "France 3 National HD".into(), stream_type: Some("live".into()), stream_id: 104, stream_icon: Some("https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/france-3-fr.png".into()), epg_channel_id: Some("France3.fr".into()), category_id: "1".into() },
+                IptvLiveStream { num: Some(5), name: "M6 HDR Ultra HD".into(), stream_type: Some("live".into()), stream_id: 105, stream_icon: Some("https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/m6-fr.png".into()), epg_channel_id: Some("M6.fr".into()), category_id: "1".into() },
+                IptvLiveStream { num: Some(6), name: "Arte Concert & Culture UHD".into(), stream_type: Some("live".into()), stream_id: 106, stream_icon: Some("https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/arte-fr.png".into()), epg_channel_id: Some("Arte.fr".into()), category_id: "1".into() },
+                IptvLiveStream { num: Some(7), name: "Canal+ Cinéma 4K".into(), stream_type: Some("live".into()), stream_id: 201, stream_icon: Some("https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-plus-cinema-fr.png".into()), epg_channel_id: Some("CanalCinema.fr".into()), category_id: "2".into() },
+                IptvLiveStream { num: Some(8), name: "Ciné+ Premier 4K".into(), stream_type: Some("live".into()), stream_id: 202, stream_icon: Some("https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-premier-fr.png".into()), epg_channel_id: Some("CinePremier.fr".into()), category_id: "2".into() },
+                IptvLiveStream { num: Some(9), name: "beIN Sports 1 4K UHD".into(), stream_type: Some("live".into()), stream_id: 301, stream_icon: Some("https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-fr.png".into()), epg_channel_id: Some("Bein1.fr".into()), category_id: "3".into() },
+                IptvLiveStream { num: Some(10), name: "beIN Sports 2 HD".into(), stream_type: Some("live".into()), stream_id: 302, stream_icon: Some("https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-2-fr.png".into()), epg_channel_id: Some("Bein2.fr".into()), category_id: "3".into() },
+                IptvLiveStream { num: Some(11), name: "Canal+ Sport 360".into(), stream_type: Some("live".into()), stream_id: 303, stream_icon: Some("https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-plus-sport-360-fr.png".into()), epg_channel_id: Some("CanalSport.fr".into()), category_id: "3".into() },
+                IptvLiveStream { num: Some(12), name: "franceinfo: 4K Direct".into(), stream_type: Some("live".into()), stream_id: 401, stream_icon: Some("https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/franceinfo-fr.png".into()), epg_channel_id: Some("FranceInfo.fr".into()), category_id: "4".into() },
+                IptvLiveStream { num: Some(13), name: "National Geographic UHD".into(), stream_type: Some("live".into()), stream_id: 501, stream_icon: Some("https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/national-geographic-fr.png".into()), epg_channel_id: Some("NatGeo.fr".into()), category_id: "5".into() },
+            ];
+            IptvCatalogResponse {
+                categories,
+                live_streams: Some(live_streams),
+                vod_streams: None,
+                series_streams: None,
+                hidden_category_ids: Vec::new(),
+            }
+        }
+        "vod" => {
+            let categories = vec![
+                IptvCategory { category_id: "10".into(), category_name: "Films 4K HDR".into() },
+                IptvCategory { category_id: "11".into(), category_name: "Action & Aventure".into() },
+                IptvCategory { category_id: "12".into(), category_name: "Science-Fiction".into() },
+                IptvCategory { category_id: "13".into(), category_name: "Animation & Famille".into() },
+            ];
+            let vod_streams = vec![
+                IptvVodStream { num: Some(1), name: "Dune : Deuxième Partie".into(), stream_type: Some("movie".into()), stream_id: 1001, stream_icon: Some("https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg".into()), rating: Some("8.6".into()), year: Some("2024".into()), category_id: "10".into(), container_extension: Some("mkv".into()) },
+                IptvVodStream { num: Some(2), name: "Oppenheimer Ultra HD".into(), stream_type: Some("movie".into()), stream_id: 1002, stream_icon: Some("https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg".into()), rating: Some("8.9".into()), year: Some("2023".into()), category_id: "10".into(), container_extension: Some("mkv".into()) },
+                IptvVodStream { num: Some(3), name: "Avatar : La Voie de l'Eau".into(), stream_type: Some("movie".into()), stream_id: 1003, stream_icon: Some("https://image.tmdb.org/t/p/w500/t6HIqrRAclMCA60NsSmeqe9RmNV.jpg".into()), rating: Some("7.8".into()), year: Some("2022".into()), category_id: "10".into(), container_extension: Some("mkv".into()) },
+                IptvVodStream { num: Some(4), name: "Top Gun : Maverick".into(), stream_type: Some("movie".into()), stream_id: 1004, stream_icon: Some("https://image.tmdb.org/t/p/w500/62HCnUTziyWcpDaBO2i1DX17ljH.jpg".into()), rating: Some("8.3".into()), year: Some("2022".into()), category_id: "11".into(), container_extension: Some("mkv".into()) },
+                IptvVodStream { num: Some(5), name: "Interstellar 4K HDR".into(), stream_type: Some("movie".into()), stream_id: 1005, stream_icon: Some("https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg".into()), rating: Some("8.7".into()), year: Some("2014".into()), category_id: "12".into(), container_extension: Some("mkv".into()) },
+                IptvVodStream { num: Some(6), name: "Blade Runner 2049".into(), stream_type: Some("movie".into()), stream_id: 1006, stream_icon: Some("https://image.tmdb.org/t/p/w500/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg".into()), rating: Some("8.0".into()), year: Some("2017".into()), category_id: "12".into(), container_extension: Some("mkv".into()) },
+                IptvVodStream { num: Some(7), name: "Spider-Man : Across the Spider-Verse".into(), stream_type: Some("movie".into()), stream_id: 1007, stream_icon: Some("https://image.tmdb.org/t/p/w500/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg".into()), rating: Some("8.7".into()), year: Some("2023".into()), category_id: "13".into(), container_extension: Some("mkv".into()) },
+                IptvVodStream { num: Some(8), name: "Le Comte de Monte-Cristo".into(), stream_type: Some("movie".into()), stream_id: 1008, stream_icon: Some("https://image.tmdb.org/t/p/w500/zw4OLmzFg0P12Q8xWf2G4l2o2t3.jpg".into()), rating: Some("8.2".into()), year: Some("2024".into()), category_id: "11".into(), container_extension: Some("mkv".into()) },
+            ];
+            IptvCatalogResponse {
+                categories,
+                live_streams: None,
+                vod_streams: Some(vod_streams),
+                series_streams: None,
+                hidden_category_ids: Vec::new(),
+            }
+        }
+        "series" => {
+            let categories = vec![
+                IptvCategory { category_id: "20".into(), category_name: "Séries 4K HDR".into() },
+                IptvCategory { category_id: "21".into(), category_name: "Drame & Mystère".into() },
+                IptvCategory { category_id: "22".into(), category_name: "Science-Fiction & Fantastique".into() },
+            ];
+            let series_streams = vec![
+                IptvSeriesItem { num: Some(1), name: "Fallout".into(), series_id: 2001, cover: Some("https://image.tmdb.org/t/p/w500/AnsZu4h0wYwJ38e7s5pP6G2xQ2z.jpg".into()), rating: Some("8.4".into()), year: Some("2024".into()), category_id: "22".into() },
+                IptvSeriesItem { num: Some(2), name: "The Last of Us".into(), series_id: 2002, cover: Some("https://image.tmdb.org/t/p/w500/uKvVjHNqB5VmOrdxqMisSYaq9e3.jpg".into()), rating: Some("8.8".into()), year: Some("2023".into()), category_id: "21".into() },
+                IptvSeriesItem { num: Some(3), name: "House of the Dragon".into(), series_id: 2003, cover: Some("https://image.tmdb.org/t/p/w500/1X4h40fcB4WWUmIBK0auT4zRBAV.jpg".into()), rating: Some("8.5".into()), year: Some("2024".into()), category_id: "22".into() },
+                IptvSeriesItem { num: Some(4), name: "Shōgun".into(), series_id: 2004, cover: Some("https://image.tmdb.org/t/p/w500/7O4iVfOMQmdCSxhOg1WNzG1AgYT.jpg".into()), rating: Some("8.7".into()), year: Some("2024".into()), category_id: "21".into() },
+                IptvSeriesItem { num: Some(5), name: "Severance".into(), series_id: 2005, cover: Some("https://image.tmdb.org/t/p/w500/p1cu0gS84yvQkQ1uN2f3E4z6L1u.jpg".into()), rating: Some("8.7".into()), year: Some("2022".into()), category_id: "22".into() },
+                IptvSeriesItem { num: Some(6), name: "Stranger Things".into(), series_id: 2006, cover: Some("https://image.tmdb.org/t/p/w500/49WJfeN0moxb9IPfGn8AIqMGskD.jpg".into()), rating: Some("8.7".into()), year: Some("2022".into()), category_id: "22".into() },
+            ];
+            IptvCatalogResponse {
+                categories,
+                live_streams: None,
+                vod_streams: None,
+                series_streams: Some(series_streams),
+                hidden_category_ids: Vec::new(),
+            }
+        }
+        _ => IptvCatalogResponse {
+            categories: Vec::new(),
+            live_streams: None,
+            vod_streams: None,
+            series_streams: None,
+            hidden_category_ids: Vec::new(),
+        },
+    }
+}
+
+#[tauri::command]
+pub async fn iptv_get_catalog(profile_id: String, section: String) -> Result<IptvCatalogResponse, String> {
+    tokio::task::spawn_blocking(move || {
+        let cache_dir = get_iptv_cache_dir();
+        let hidden = load_hidden_categories(&profile_id);
+
+        let cat_file = match section.as_str() {
+            "live" => cache_dir.join(format!("profile_{}_live_categories.json", profile_id)),
+            "vod" => cache_dir.join(format!("profile_{}_vod_categories.json", profile_id)),
+            "series" => cache_dir.join(format!("profile_{}_series_categories.json", profile_id)),
+            _ => return Err("Section IPTV inconnue.".to_string()),
+        };
+
+        let streams_file = match section.as_str() {
+            "live" => cache_dir.join(format!("profile_{}_live_streams.json", profile_id)),
+            "vod" => cache_dir.join(format!("profile_{}_vod_streams.json", profile_id)),
+            "series" => cache_dir.join(format!("profile_{}_series.json", profile_id)),
+            _ => return Err("Section IPTV inconnue.".to_string()),
+        };
+
+        let raw_cat = fs::read_to_string(&cat_file).unwrap_or_default();
+        let raw_streams = fs::read_to_string(&streams_file).unwrap_or_default();
+
+        if raw_cat.trim().is_empty() || raw_streams.trim().is_empty() {
+            let mut demo = get_demo_catalog(&section);
+            demo.hidden_category_ids = hidden;
+            return Ok(demo);
+        }
+
+        let cat_values = serde_json::from_str::<Vec<serde_json::Value>>(&raw_cat).unwrap_or_default();
+        let categories: Vec<IptvCategory> = cat_values
+            .into_iter()
+            .filter_map(|v| {
+                let cat_id = get_field_as_string(&v, "category_id")?;
+                let cat_name = get_field_as_string(&v, "category_name").unwrap_or_else(|| "Général".into());
+                Some(IptvCategory { category_id: cat_id, category_name: cat_name })
+            })
+            .collect();
+
+        match section.as_str() {
+            "live" => {
+                let st_values = serde_json::from_str::<Vec<serde_json::Value>>(&raw_streams).unwrap_or_default();
+                let live_streams: Vec<IptvLiveStream> = st_values
+                    .into_iter()
+                    .filter_map(|v| {
+                        let stream_id = get_field_as_u64(&v, "stream_id")?;
+                        let name = get_field_as_string(&v, "name").unwrap_or_else(|| "Chaîne Direct".into());
+                        let category_id = get_field_as_string(&v, "category_id").unwrap_or_else(|| "1".into());
+                        let stream_icon = get_field_as_string(&v, "stream_icon");
+                        let epg_channel_id = get_field_as_string(&v, "epg_channel_id");
+                        let num = get_field_as_u64(&v, "num").map(|n| n as u32);
+                        Some(IptvLiveStream {
+                            num,
+                            name,
+                            stream_type: Some("live".into()),
+                            stream_id,
+                            stream_icon,
+                            epg_channel_id,
+                            category_id,
+                        })
+                    })
+                    .collect();
+
+                Ok(IptvCatalogResponse {
+                    categories,
+                    live_streams: Some(live_streams),
+                    vod_streams: None,
+                    series_streams: None,
+                    hidden_category_ids: hidden,
+                })
+            }
+            "vod" => {
+                let st_values = serde_json::from_str::<Vec<serde_json::Value>>(&raw_streams).unwrap_or_default();
+                let vod_streams: Vec<IptvVodStream> = st_values
+                    .into_iter()
+                    .filter_map(|v| {
+                        let stream_id = get_field_as_u64(&v, "stream_id")?;
+                        let name = get_field_as_string(&v, "name").unwrap_or_else(|| "Film".into());
+                        let category_id = get_field_as_string(&v, "category_id").unwrap_or_else(|| "1".into());
+                        let stream_icon = get_field_as_string(&v, "stream_icon");
+                        let rating = get_field_as_string(&v, "rating");
+                        let year = get_field_as_string(&v, "year");
+                        let container_extension = get_field_as_string(&v, "container_extension").or_else(|| Some("mkv".into()));
+                        let num = get_field_as_u64(&v, "num").map(|n| n as u32);
+                        Some(IptvVodStream {
+                            num,
+                            name,
+                            stream_type: Some("movie".into()),
+                            stream_id,
+                            stream_icon,
+                            rating,
+                            year,
+                            category_id,
+                            container_extension,
+                        })
+                    })
+                    .collect();
+
+                Ok(IptvCatalogResponse {
+                    categories,
+                    live_streams: None,
+                    vod_streams: Some(vod_streams),
+                    series_streams: None,
+                    hidden_category_ids: hidden,
+                })
+            }
+            "series" => {
+                let st_values = serde_json::from_str::<Vec<serde_json::Value>>(&raw_streams).unwrap_or_default();
+                let series_streams: Vec<IptvSeriesItem> = st_values
+                    .into_iter()
+                    .filter_map(|v| {
+                        let series_id = get_field_as_u64(&v, "series_id")?;
+                        let name = get_field_as_string(&v, "name").unwrap_or_else(|| "Série".into());
+                        let category_id = get_field_as_string(&v, "category_id").unwrap_or_else(|| "1".into());
+                        let cover = get_field_as_string(&v, "cover");
+                        let rating = get_field_as_string(&v, "rating");
+                        let year = get_field_as_string(&v, "year");
+                        let num = get_field_as_u64(&v, "num").map(|n| n as u32);
+                        Some(IptvSeriesItem {
+                            num,
+                            name,
+                            series_id,
+                            cover,
+                            rating,
+                            year,
+                            category_id,
+                        })
+                    })
+                    .collect();
+
+                Ok(IptvCatalogResponse {
+                    categories,
+                    live_streams: None,
+                    vod_streams: None,
+                    series_streams: Some(series_streams),
+                    hidden_category_ids: hidden,
+                })
+            }
+            _ => Err("Section non gérée.".into()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn iptv_get_channel_epg(profile_id: String, stream_id: u64) -> Result<Vec<IptvEpgProgram>, String> {
+    tokio::task::spawn_blocking(move || {
+        let profiles = load_internal_profiles();
+        let found = profiles.into_iter().find(|p| p.id == profile_id);
+
+        if let Some(p) = found {
+            if !p.server_url.contains("demo") && p.username.to_lowercase() != "demo" {
+                let url = format!(
+                    "{}/player_api.php?username={}&password={}&action=get_short_epg&stream_id={}&limit=6",
+                    clean_server_url(&p.server_url),
+                    urlencoding(&p.username),
+                    urlencoding(&p.password),
+                    stream_id
+                );
+
+                if let Ok(output) = Command::new("curl")
+                    .args(["-s", "-L", "-k", "--max-time", "8", "-A", "IPTVSmarters/1.0", &url])
+                    .output()
+                {
+                    if output.status.success() {
+                        let text = String::from_utf8_lossy(&output.stdout);
+                        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
+                            if let Some(listings) = val.get("epg_listings").and_then(|l| l.as_array()) {
+                                let mut results = Vec::new();
+                                for item in listings {
+                                    let title_raw = get_field_as_string(item, "title").unwrap_or_default();
+                                    // Décodage base64 si présent
+                                    let title = if let Ok(dec) = base64_simple_decode(&title_raw) {
+                                        dec
+                                    } else {
+                                        title_raw
+                                    };
+                                    let desc_raw = get_field_as_string(item, "descr").or_else(|| get_field_as_string(item, "description")).unwrap_or_default();
+                                    let desc = if let Ok(dec) = base64_simple_decode(&desc_raw) {
+                                        dec
+                                    } else {
+                                        desc_raw
+                                    };
+                                    let start = get_field_as_string(item, "start").unwrap_or_default();
+                                    let stop = get_field_as_string(item, "stop").unwrap_or_default();
+                                    let id = get_field_as_string(item, "id").unwrap_or_else(|| format!("{}", stream_id));
+                                    results.push(IptvEpgProgram { id, title, start, stop, description: desc });
+                                }
+                                if !results.is_empty() {
+                                    return Ok(results);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Guide TV démonstration fluide & réaliste
+        let epg_demo = vec![
+            IptvEpgProgram {
+                id: "epg1".into(),
+                title: "Programme en cours • Diffusion Direct 4K".into(),
+                start: "20:50".into(),
+                stop: "22:45".into(),
+                description: "Retrouvez votre émission en direct avec traitement sonore cinéma, sous-titres et qualité 4K Ultra HD.".into(),
+            },
+            IptvEpgProgram {
+                id: "epg2".into(),
+                title: "Journal Télévisé & Édition Spéciale".into(),
+                start: "22:45".into(),
+                stop: "23:30".into(),
+                description: "Le tour complet de l'actualité nationale et internationale en direct avec nos envoyés spéciaux.".into(),
+            },
+            IptvEpgProgram {
+                id: "epg3".into(),
+                title: "Grand Documentaire Découverte".into(),
+                start: "23:30".into(),
+                stop: "01:00".into(),
+                description: "Une immersion inédite au cœur des espaces naturels les plus spectaculaires de notre planète.".into(),
+            },
+        ];
+        Ok(epg_demo)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn base64_simple_decode(input: &str) -> Result<String, ()> {
+    // Si la chaîne n'est pas en base64 valide ou vide, retourne Err
+    let clean = input.trim();
+    if clean.is_empty() || clean.len() % 4 != 0 {
+        return Err(());
+    }
+    let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut buffer = 0u32;
+    let mut bits = 0;
+    let mut bytes = Vec::new();
+
+    for &b in clean.as_bytes() {
+        if b == b'=' {
+            break;
+        }
+        let pos = chars.find(b as char).ok_or(())? as u32;
+        buffer = (buffer << 6) | pos;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            bytes.push((buffer >> bits) as u8);
+            buffer &= (1 << bits) - 1;
+        }
+    }
+    String::from_utf8(bytes).map_err(|_| ())
+}
+
+#[tauri::command]
+pub async fn iptv_get_series_details(profile_id: String, series_id: u64) -> Result<IptvSeriesDetails, String> {
+    tokio::task::spawn_blocking(move || {
+        let profiles = load_internal_profiles();
+        let found = profiles.into_iter().find(|p| p.id == profile_id);
+
+        if let Some(p) = found {
+            if !p.server_url.contains("demo") && p.username.to_lowercase() != "demo" {
+                let url = format!(
+                    "{}/player_api.php?username={}&password={}&action=get_series_info&series_id={}",
+                    clean_server_url(&p.server_url),
+                    urlencoding(&p.username),
+                    urlencoding(&p.password),
+                    series_id
+                );
+
+                if let Ok(output) = Command::new("curl")
+                    .args(["-s", "-L", "-k", "--max-time", "15", "-A", "IPTVSmarters/1.0", &url])
+                    .output()
+                {
+                    if output.status.success() {
+                        let text = String::from_utf8_lossy(&output.stdout);
+                        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
+                            let info = val.get("info").unwrap_or(&serde_json::Value::Null);
+                            let name = get_field_as_string(info, "name").unwrap_or_else(|| "Série".into());
+                            let cover = get_field_as_string(info, "cover");
+                            let backdrop = get_field_as_string(info, "backdrop_path")
+                                .and_then(|b| if b.is_empty() { None } else { Some(b) });
+                            let plot = get_field_as_string(info, "plot").or_else(|| get_field_as_string(info, "description"));
+                            let cast = get_field_as_string(info, "cast");
+                            let director = get_field_as_string(info, "director");
+                            let genre = get_field_as_string(info, "genre");
+                            let release_date = get_field_as_string(info, "releaseDate").or_else(|| get_field_as_string(info, "year"));
+                            let rating = get_field_as_string(info, "rating");
+
+                            let mut episodes_map: HashMap<String, Vec<IptvEpisode>> = HashMap::new();
+                            let mut seasons_set = std::collections::BTreeSet::new();
+
+                            if let Some(ep_obj) = val.get("episodes").and_then(|e| e.as_object()) {
+                                for (season_str, ep_array) in ep_obj {
+                                    if let Some(arr) = ep_array.as_array() {
+                                        let season_num = season_str.parse::<u32>().unwrap_or(1);
+                                        seasons_set.insert(season_num);
+                                        let mut eps = Vec::new();
+                                        for ep in arr {
+                                            let id = get_field_as_string(ep, "id").unwrap_or_default();
+                                            let ep_num = get_field_as_u64(ep, "episode_num").unwrap_or(1) as u32;
+                                            let title = get_field_as_string(ep, "title").unwrap_or_else(|| format!("Épisode {}", ep_num));
+                                            let container_ext = get_field_as_string(ep, "container_extension").unwrap_or_else(|| "mp4".into());
+                                            let ep_info = ep.get("info").unwrap_or(&serde_json::Value::Null);
+                                            let plot = get_field_as_string(ep_info, "plot").or_else(|| get_field_as_string(ep, "plot"));
+                                            let duration = get_field_as_string(ep_info, "duration").or_else(|| get_field_as_string(ep, "duration"));
+                                            eps.push(IptvEpisode {
+                                                id,
+                                                episode_num: ep_num,
+                                                title,
+                                                container_extension: container_ext,
+                                                duration,
+                                                plot,
+                                                season: season_num,
+                                            });
+                                        }
+                                        episodes_map.insert(season_str.clone(), eps);
+                                    }
+                                }
+                            }
+
+                            let seasons: Vec<u32> = if seasons_set.is_empty() { vec![1] } else { seasons_set.into_iter().collect() };
+
+                            return Ok(IptvSeriesDetails {
+                                series_id,
+                                name,
+                                cover,
+                                backdrop,
+                                plot,
+                                cast,
+                                director,
+                                genre,
+                                release_date,
+                                rating,
+                                seasons,
+                                episodes: episodes_map,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // Données complètes de démonstration pour séries
+        let mut ep_map = HashMap::new();
+        let s1_eps = vec![
+            IptvEpisode {
+                id: "ep_1".into(),
+                episode_num: 1,
+                title: "Épisode 1 • Les Débuts".into(),
+                container_extension: "mp4".into(),
+                duration: Some("58 min".into()),
+                plot: Some("Un événement inattendu bouleverse l'équilibre établi et force les protagonistes à franchir un nouveau cap.".into()),
+                season: 1,
+            },
+            IptvEpisode {
+                id: "ep_2".into(),
+                episode_num: 2,
+                title: "Épisode 2 • La Traque".into(),
+                container_extension: "mp4".into(),
+                duration: Some("54 min".into()),
+                plot: Some("Alors que les indices s'accumulent, une alliance improbable se forme pour contrer une menace grandissante.".into()),
+                season: 1,
+            },
+            IptvEpisode {
+                id: "ep_3".into(),
+                episode_num: 3,
+                title: "Épisode 3 • Révélations".into(),
+                container_extension: "mp4".into(),
+                duration: Some("62 min".into()),
+                plot: Some("Les vérités enfouies refont surface au pire moment, provoquant une confrontation sous haute tension.".into()),
+                season: 1,
+            },
+        ];
+        ep_map.insert("1".into(), s1_eps);
+
+        Ok(IptvSeriesDetails {
+            series_id,
+            name: "Série Démo 4K".into(),
+            cover: Some("https://image.tmdb.org/t/p/w500/AnsZu4h0wYwJ38e7s5pP6G2xQ2z.jpg".into()),
+            backdrop: Some("https://image.tmdb.org/t/p/original/4HodYYKEIsGOdinkGi2Ucz6X9i0.jpg".into()),
+            plot: Some("Dans un univers post-apocalyptique fascinant et impitoyable, une habitante d'un abri souterrain d'élite est forcée d'explorer le monde extérieur pour sauver les siens.".into()),
+            cast: Some("Ella Purnell, Aaron Moten, Walton Goggins".into()),
+            director: Some("Jonathan Nolan".into()),
+            genre: Some("Science-Fiction • Action • Aventure".into()),
+            release_date: Some("2024".into()),
+            rating: Some("8.5".into()),
+            seasons: vec![1],
+            episodes: ep_map,
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn iptv_get_filters_data(profile_id: String) -> Result<IptvFiltersData, String> {
+    tokio::task::spawn_blocking(move || {
+        let cache_dir = get_iptv_cache_dir();
+        let hidden = load_hidden_categories(&profile_id);
+
+        let read_cats = |fname: &str, default_cats: Vec<IptvCategory>| -> Vec<IptvCategory> {
+            let path = cache_dir.join(format!("profile_{}_{}.json", profile_id, fname));
+            if let Ok(raw) = fs::read_to_string(path) {
+                if let Ok(cat_values) = serde_json::from_str::<Vec<serde_json::Value>>(&raw) {
+                    let parsed: Vec<IptvCategory> = cat_values
+                        .into_iter()
+                        .filter_map(|v| {
+                            let cat_id = get_field_as_string(&v, "category_id")?;
+                            let cat_name = get_field_as_string(&v, "category_name").unwrap_or_else(|| "Général".into());
+                            Some(IptvCategory { category_id: cat_id, category_name: cat_name })
+                        })
+                        .collect();
+                    if !parsed.is_empty() {
+                        return parsed;
+                    }
+                }
+            }
+            default_cats
+        };
+
+        let live = read_cats("live_categories", get_demo_catalog("live").categories);
+        let vod = read_cats("vod_categories", get_demo_catalog("vod").categories);
+        let series = read_cats("series_categories", get_demo_catalog("series").categories);
+
+        Ok(IptvFiltersData {
+            live_categories: live,
+            vod_categories: vod,
+            series_categories: series,
+            hidden_ids: hidden,
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn iptv_save_hidden_categories(profile_id: String, hidden_ids: Vec<String>) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        save_hidden_categories(&profile_id, &hidden_ids)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn iptv_get_favorites(profile_id: String) -> Result<Vec<IptvFavorite>, String> {
+    tokio::task::spawn_blocking(move || {
+        Ok(load_favorites(&profile_id))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn iptv_toggle_favorite(profile_id: String, item: IptvFavorite) -> Result<bool, String> {
+    tokio::task::spawn_blocking(move || {
+        let mut favs = load_favorites(&profile_id);
+        let pos = favs.iter().position(|f| f.stream_id == item.stream_id && f.item_type == item.item_type);
+        let is_now_fav = if let Some(idx) = pos {
+            favs.remove(idx);
+            false
+        } else {
+            favs.push(item);
+            true
+        };
+        save_favorites(&profile_id, &favs)?;
+        Ok(is_now_fav)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn iptv_play_stream(
+    profile_id: String,
+    item_type: String,
+    stream_id: u64,
+    extension: Option<String>,
+) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        let profiles = load_internal_profiles();
+        let p = profiles.into_iter().find(|x| x.id == profile_id);
+
+        let (server_url, username, password) = if let Some(found) = p {
+            (found.server_url, found.username, found.password)
+        } else {
+            ("http://demo.noos.tv:8080".to_string(), "demo".to_string(), "demo".to_string())
+        };
+
+        let ext = extension.unwrap_or_else(|| {
+            if item_type == "live" { "ts".to_string() } else { "mp4".to_string() }
+        });
+
+        let stream_url = if server_url.contains("demo") || username == "demo" {
+            if item_type == "live" {
+                "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8".to_string()
+            } else if item_type == "movie" {
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4".to_string()
+            } else {
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4".to_string()
+            }
+        } else {
+            let clean_url = clean_server_url(&server_url);
+            match item_type.as_str() {
+                "live" => format!("{}/live/{}/{}/{}.{}", clean_url, username, password, stream_id, ext),
+                "movie" => format!("{}/movie/{}/{}/{}.{}", clean_url, username, password, stream_id, ext),
+                "series" => format!("{}/series/{}/{}/{}.{}", clean_url, username, password, stream_id, ext),
+                _ => format!("{}/live/{}/{}/{}.{}", clean_url, username, password, stream_id, ext),
+            }
+        };
+
+        // Arrêter toute instance MPV existante pour une transition propre
+        let _ = Command::new("pkill").args(["-TERM", "-f", "mpv"]).status();
+
+        let settings = load_player_settings();
+        let mut mpv_cmd = Command::new("mpv");
+        mpv_cmd.args([
+            "--fs",
+            "--border=no",
+            "--vo=gpu-next",
+            "--gpu-context=wayland",
+            "--hwdec=auto-safe",
+            "--force-window=yes",
+            "--keep-open=no",
+            "--title=Noos IPTV MPV Player",
+            &format!("--cache-secs={}", settings.buffer_seconds),
+            &stream_url,
+        ]);
+
+        if settings.deband {
+            mpv_cmd.args(["--deband=yes", "--deband-iterations=4", "--deband-threshold=48"]);
+        }
+        if settings.interpolation {
+            mpv_cmd.args(["--interpolation=yes", "--video-sync=display-resample"]);
+        }
+
+        let child = mpv_cmd.spawn()
+            .map_err(|e| format!("Erreur lors du lancement de MPV : {}", e))?;
+
+        Ok(format!("Lecture IPTV MPV lancée avec succès (PID {})", child.id()))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn iptv_get_player_settings() -> Result<IptvPlayerSettings, String> {
+    tokio::task::spawn_blocking(move || {
+        Ok(load_player_settings())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn iptv_save_player_settings(settings: IptvPlayerSettings) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        save_player_settings(&settings)?;
+        // Applique également le profil d'upscale mpv dans ~/.config/mpv/mpv.conf si configuré
+        let upscale_profiles = crate::commands::get_all_upscale_profiles("4K (3840x2160)");
+        if let Some(prof) = upscale_profiles.into_iter().find(|p| p.id == settings.upscale_profile) {
+            crate::commands::apply_mpv_profile(&prof, "4K (3840x2160)");
+        }
+        Ok(())
     })
     .await
     .map_err(|e| e.to_string())?

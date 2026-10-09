@@ -10,7 +10,10 @@ use commands::{
     restart_dashboard, set_keyboard_config, set_upscale_profile, show_virtual_keyboard, toggle_hdr,
 };
 use iptv::{
-    iptv_delete_profile, iptv_get_cache_summary, iptv_get_saved_profiles, iptv_login_and_sync,
+    iptv_delete_profile, iptv_get_cache_summary, iptv_get_catalog, iptv_get_channel_epg,
+    iptv_get_favorites, iptv_get_filters_data, iptv_get_player_settings, iptv_get_saved_profiles,
+    iptv_get_series_details, iptv_login_and_sync, iptv_play_stream, iptv_save_hidden_categories,
+    iptv_save_player_settings, iptv_toggle_favorite,
 };
 use tauri::Emitter;
 
@@ -55,6 +58,16 @@ fn main() {
             iptv_login_and_sync,
             iptv_delete_profile,
             iptv_get_cache_summary,
+            iptv_get_catalog,
+            iptv_get_channel_epg,
+            iptv_get_series_details,
+            iptv_get_filters_data,
+            iptv_save_hidden_categories,
+            iptv_get_favorites,
+            iptv_toggle_favorite,
+            iptv_play_stream,
+            iptv_get_player_settings,
+            iptv_save_player_settings,
             show_virtual_keyboard,
             hide_virtual_keyboard
         ])

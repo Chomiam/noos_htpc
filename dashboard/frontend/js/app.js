@@ -89,6 +89,95 @@
   const iptvSyncSuccessActions = document.getElementById('iptv-sync-success-actions');
   const btnIptvOpenCatalog = document.getElementById('btn-iptv-open-catalog');
 
+  // Sélecteurs Interface Principale Noos IPTV MPV Player
+  const iptvContainer = document.querySelector('.iptv-fullscreen-container');
+  const iptvViewMain = document.getElementById('iptv-view-main');
+  const btnIptvMainBack = document.getElementById('btn-iptv-main-back');
+  const iptvTabButtons = document.querySelectorAll('.iptv-tab-btn');
+  const iptvCategoriesList = document.getElementById('iptv-categories-list');
+  const iptvCatCount = document.getElementById('iptv-cat-count');
+
+  // Sous-vues
+  const iptvSubviewLive = document.getElementById('iptv-subview-live');
+  const iptvSubviewVod = document.getElementById('iptv-subview-vod');
+  const iptvSubviewSeries = document.getElementById('iptv-subview-series');
+  const iptvSubviewFavorites = document.getElementById('iptv-subview-favorites');
+  const iptvSubviewFilters = document.getElementById('iptv-subview-filters');
+  const iptvSubviewSettings = document.getElementById('iptv-subview-settings');
+
+  // Éléments Live
+  const iptvCurrentCatName = document.getElementById('iptv-current-cat-name');
+  const iptvChannelsCount = document.getElementById('iptv-channels-count');
+  const iptvChannelsList = document.getElementById('iptv-channels-list');
+  const previewChannelLogo = document.getElementById('preview-channel-logo');
+  const previewChannelName = document.getElementById('preview-channel-name');
+  const previewChannelCategory = document.getElementById('preview-channel-category');
+  const btnIptvPlayFullscreen = document.getElementById('btn-iptv-play-fullscreen');
+  const epgNowTime = document.getElementById('epg-now-time');
+  const epgNowTitle = document.getElementById('epg-now-title');
+  const epgNowDesc = document.getElementById('epg-now-desc');
+  const iptvEpgUpcomingList = document.getElementById('iptv-epg-upcoming-list');
+
+  // Éléments VOD & Séries & Favoris
+  const iptvVodGrid = document.getElementById('iptv-vod-grid');
+  const vodCatTitle = document.getElementById('vod-cat-title');
+  const vodItemsCount = document.getElementById('vod-items-count');
+  const iptvSeriesGrid = document.getElementById('iptv-series-grid');
+  const seriesCatTitle = document.getElementById('series-cat-title');
+  const seriesItemsCount = document.getElementById('series-items-count');
+  const iptvFavoritesGrid = document.getElementById('iptv-favorites-grid');
+  const favoritesCount = document.getElementById('favorites-count');
+
+  // Éléments Filtres
+  const filtersListLive = document.getElementById('filters-list-live');
+  const filtersListVod = document.getElementById('filters-list-vod');
+  const filtersListSeries = document.getElementById('filters-list-series');
+  const btnFiltersUnhideAll = document.getElementById('btn-filters-unhide-all');
+  const btnFiltersSave = document.getElementById('btn-filters-save');
+
+  // Éléments Paramètres Shaders & MPV
+  const iptvSelectUpscale = document.getElementById('iptv-select-upscale');
+  const iptvToggleDeband = document.getElementById('iptv-toggle-deband');
+  const iptvToggleInterpolation = document.getElementById('iptv-toggle-interpolation');
+  const iptvSelectBuffer = document.getElementById('iptv-select-buffer');
+  const btnSaveIptvSettings = document.getElementById('btn-save-iptv-settings');
+  const iptvSettingsSavedFeedback = document.getElementById('iptv-settings-saved-feedback');
+
+  // Modal Détails Film / Série
+  const modalIptvDetails = document.getElementById('modal-iptv-details');
+  const btnCloseDetailsModal = document.getElementById('btn-close-details-modal');
+  const detailsPosterImg = document.getElementById('details-poster-img');
+  const detailsBackdrop = document.getElementById('details-backdrop');
+  const detailsTitle = document.getElementById('details-title');
+  const detailsRating = document.getElementById('details-rating');
+  const detailsYear = document.getElementById('details-year');
+  const detailsGenre = document.getElementById('details-genre');
+  const detailsDuration = document.getElementById('details-duration');
+  const detailsPlot = document.getElementById('details-plot');
+  const btnDetailsPlayMain = document.getElementById('btn-details-play-main');
+  const detailsPlayLabel = document.getElementById('details-play-label');
+  const btnDetailsToggleFav = document.getElementById('btn-details-toggle-fav');
+  const detailsFavStar = document.getElementById('details-fav-star');
+  const detailsFavText = document.getElementById('details-fav-text');
+  const detailsSeriesSection = document.getElementById('details-series-section');
+  const detailsSeasonsPills = document.getElementById('details-seasons-pills');
+  const detailsEpisodesList = document.getElementById('details-episodes-list');
+
+  // Variables d'état IPTV
+  let currentIptvProfileId = null;
+  let currentIptvTab = 'live';
+  let currentIptvCategory = null;
+  let currentLiveStream = null;
+  let currentDetailsItem = null;
+  let currentDetailsType = 'movie';
+  let iptvCatalogCache = {
+    live: null,
+    vod: null,
+    series: null,
+  };
+  let iptvFavorites = [];
+  let iptvHiddenCategories = new Set();
+
   let currentIndex = 0;
   let isModalOpen = false;
   let isUpdateModalOpen = false;
@@ -100,7 +189,7 @@
   let hdrEnabled = true;
 
   function isAnyModalOpen() {
-    return isModalOpen || isUpdateModalOpen || isIptvModalOpen;
+    return isModalOpen || isUpdateModalOpen || isIptvModalOpen || (modalIptvDetails && !modalIptvDetails.classList.contains('hidden'));
   }
 
   // 1. Synthétiseur Audio Web Audio API (Sons de navigation feutrés & discrets)
@@ -657,11 +746,17 @@
 
   function closeIptvModal() {
     if (isIptvSyncing) return;
+    if (modalIptvDetails && !modalIptvDetails.classList.contains('hidden')) {
+      closeIptvDetailsModal();
+      return;
+    }
     isIptvModalOpen = false;
     if (window.__TAURI__ && window.__TAURI__.core) {
       window.__TAURI__.core.invoke('hide_virtual_keyboard').catch(() => {});
     }
+    if (iptvContainer) iptvContainer.classList.remove('catalog-mode');
     if (modalIptv) modalIptv.classList.add('hidden');
+    if (modalIptvDetails) modalIptvDetails.classList.add('hidden');
   }
 
   async function loadIptvProfiles() {
@@ -684,9 +779,12 @@
   }
 
   function showIptvProfilesView() {
+    if (iptvContainer) iptvContainer.classList.remove('catalog-mode');
     if (iptvViewProfiles) iptvViewProfiles.classList.remove('hidden');
     if (iptvViewLogin) iptvViewLogin.classList.add('hidden');
     if (iptvViewSync) iptvViewSync.classList.add('hidden');
+    if (iptvViewMain) iptvViewMain.classList.add('hidden');
+    if (modalIptvDetails) modalIptvDetails.classList.add('hidden');
 
     if (iptvProfilesGrid) {
       iptvProfilesGrid.innerHTML = '';
@@ -717,14 +815,14 @@
 
         card.addEventListener('click', (e) => {
           if (e.target.closest('.btn-profile-delete')) return;
-          startIptvSync(p.id, null, false);
+          showIptvCatalogView(p.id);
         });
 
         card.addEventListener('keydown', (e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             if (e.target.closest('.btn-profile-delete')) return;
             e.preventDefault();
-            startIptvSync(p.id, null, false);
+            showIptvCatalogView(p.id);
           }
         });
 
@@ -828,6 +926,7 @@
           if (iptvSyncSuccessActions) iptvSyncSuccessActions.classList.remove('hidden');
 
           isIptvSyncing = false;
+          currentIptvProfileId = result.profile_id;
         }
       } catch (err) {
         console.error('Erreur synchronisation IPTV :', err);
@@ -858,7 +957,632 @@
         if (iptvSyncStats) iptvSyncStats.classList.remove('hidden');
         if (iptvSyncSuccessActions) iptvSyncSuccessActions.classList.remove('hidden');
         isIptvSyncing = false;
+        currentIptvProfileId = 'demo';
       }, 1500);
+    }
+  }
+
+  // =========================================================================
+  // MOTEUR DU CATALOGUE NOOS IPTV MPV PLAYER (CHAÎNES, EPG, VOD, SÉRIES)
+  // =========================================================================
+
+  async function showIptvCatalogView(profileId) {
+    currentIptvProfileId = profileId || (savedIptvProfiles[0] ? savedIptvProfiles[0].id : 'demo');
+    if (iptvContainer) iptvContainer.classList.add('catalog-mode');
+    if (iptvViewMain) iptvViewMain.classList.remove('hidden');
+    if (iptvViewProfiles) iptvViewProfiles.classList.add('hidden');
+    if (iptvViewLogin) iptvViewLogin.classList.add('hidden');
+    if (iptvViewSync) iptvViewSync.classList.add('hidden');
+
+    playConfirmSound();
+    switchIptvTab('live');
+  }
+
+  const IPTV_TABS = ['live', 'vod', 'series', 'favorites', 'filters', 'settings'];
+
+  function cycleIptvTab(direction) {
+    let idx = IPTV_TABS.indexOf(currentIptvTab);
+    if (idx === -1) idx = 0;
+    let nextIdx = (idx + direction + IPTV_TABS.length) % IPTV_TABS.length;
+    switchIptvTab(IPTV_TABS[nextIdx]);
+  }
+
+  async function switchIptvTab(tabName) {
+    currentIptvTab = tabName;
+    playNavSound();
+
+    // Mise à jour de l'état actif dans les onglets du bandeau
+    iptvTabButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
+    });
+
+    // Affichage de la sous-vue concernée
+    if (iptvSubviewLive) iptvSubviewLive.classList.toggle('hidden', tabName !== 'live');
+    if (iptvSubviewVod) iptvSubviewVod.classList.toggle('hidden', tabName !== 'vod');
+    if (iptvSubviewSeries) iptvSubviewSeries.classList.toggle('hidden', tabName !== 'series');
+    if (iptvSubviewFavorites) iptvSubviewFavorites.classList.toggle('hidden', tabName !== 'favorites');
+    if (iptvSubviewFilters) iptvSubviewFilters.classList.toggle('hidden', tabName !== 'filters');
+    if (iptvSubviewSettings) iptvSubviewSettings.classList.toggle('hidden', tabName !== 'settings');
+
+    // Pour les onglets Filtres et Paramètres, masquer la sidebar des catégories
+    const isFullWidthTab = tabName === 'filters' || tabName === 'settings';
+    const sidebar = document.getElementById('iptv-sidebar-categories');
+    if (sidebar) sidebar.style.display = isFullWidthTab ? 'none' : 'flex';
+
+    if (tabName === 'live') {
+      await loadIptvSectionData('live');
+    } else if (tabName === 'vod') {
+      await loadIptvSectionData('vod');
+    } else if (tabName === 'series') {
+      await loadIptvSectionData('series');
+    } else if (tabName === 'favorites') {
+      await loadFavoritesData();
+    } else if (tabName === 'filters') {
+      await loadFiltersData();
+    } else if (tabName === 'settings') {
+      await loadIptvSettingsData();
+    }
+  }
+
+  async function loadIptvSectionData(section) {
+    if (!window.__TAURI__ || !window.__TAURI__.core) {
+      return;
+    }
+
+    try {
+      const res = await window.__TAURI__.core.invoke('iptv_get_catalog', {
+        profileId: currentIptvProfileId || 'demo',
+        section,
+      });
+
+      iptvCatalogCache[section] = res;
+      iptvHiddenCategories = new Set(res.hidden_category_ids || []);
+
+      renderIptvCategories(res.categories || []);
+
+      // Sélection de la première catégorie visible
+      const visibleCats = (res.categories || []).filter(c => !iptvHiddenCategories.has(c.category_id));
+      if (visibleCats.length > 0) {
+        selectIptvCategory(visibleCats[0].category_id, visibleCats[0].category_name);
+      } else if (res.categories && res.categories.length > 0) {
+        selectIptvCategory(res.categories[0].category_id, res.categories[0].category_name);
+      }
+    } catch (err) {
+      console.error(`Erreur chargement section IPTV ${section}:`, err);
+    }
+  }
+
+  function renderIptvCategories(categories) {
+    if (!iptvCategoriesList) return;
+    iptvCategoriesList.innerHTML = '';
+
+    const visible = categories.filter(c => !iptvHiddenCategories.has(c.category_id));
+    if (iptvCatCount) iptvCatCount.textContent = visible.length;
+
+    visible.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'cat-item-btn';
+      btn.tabIndex = 0;
+      btn.setAttribute('data-cat-id', cat.category_id);
+      btn.innerHTML = `
+        <span class="cat-name">${escapeHtml(cat.category_name)}</span>
+        <span class="cat-bullet">›</span>
+      `;
+      btn.addEventListener('click', () => {
+        selectIptvCategory(cat.category_id, cat.category_name);
+      });
+      iptvCategoriesList.appendChild(btn);
+    });
+  }
+
+  function selectIptvCategory(catId, catName) {
+    currentIptvCategory = catId;
+    playNavSound();
+
+    if (iptvCategoriesList) {
+      iptvCategoriesList.querySelectorAll('.cat-item-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-cat-id') === catId);
+      });
+    }
+
+    const cache = iptvCatalogCache[currentIptvTab];
+    if (!cache) return;
+
+    if (currentIptvTab === 'live') {
+      const allStreams = cache.live_streams || [];
+      const filtered = allStreams.filter(s => s.category_id === catId || catId === 'all');
+      renderLiveChannels(filtered, catName);
+    } else if (currentIptvTab === 'vod') {
+      const allMovies = cache.vod_streams || [];
+      const filtered = allMovies.filter(m => m.category_id === catId || catId === 'all');
+      if (vodCatTitle) vodCatTitle.textContent = catName;
+      if (vodItemsCount) vodItemsCount.textContent = `${filtered.length} film${filtered.length > 1 ? 's' : ''}`;
+      renderPostersGrid(filtered, iptvVodGrid, 'movie');
+    } else if (currentIptvTab === 'series') {
+      const allSeries = cache.series_streams || [];
+      const filtered = allSeries.filter(s => s.category_id === catId || catId === 'all');
+      if (seriesCatTitle) seriesCatTitle.textContent = catName;
+      if (seriesItemsCount) seriesItemsCount.textContent = `${filtered.length} série${filtered.length > 1 ? 's' : ''}`;
+      renderPostersGrid(filtered, iptvSeriesGrid, 'series');
+    }
+  }
+
+  // Rendu de la liste des chaînes TV direct
+  function renderLiveChannels(channels, catName) {
+    if (iptvCurrentCatName) iptvCurrentCatName.textContent = catName || 'Chaînes Direct';
+    if (iptvChannelsCount) iptvChannelsCount.textContent = `${channels.length} chaîne${channels.length > 1 ? 's' : ''}`;
+    if (!iptvChannelsList) return;
+
+    iptvChannelsList.innerHTML = '';
+    if (channels.length === 0) {
+      iptvChannelsList.innerHTML = '<div style="color: #94a3b8; padding: 20px; font-size: 14px;">Aucune chaîne dans cette catégorie.</div>';
+      return;
+    }
+
+    channels.forEach((ch, idx) => {
+      const item = document.createElement('div');
+      item.className = 'channel-card-item';
+      item.tabIndex = 0;
+      item.setAttribute('data-stream-id', ch.stream_id);
+      
+      const logoSrc = ch.stream_icon && ch.stream_icon.trim().length > 0 ? ch.stream_icon : 'assets/logo.png';
+      item.innerHTML = `
+        <div class="ch-icon-wrap">
+          <img src="${logoSrc}" alt="${escapeHtml(ch.name)}" class="ch-logo-img" onerror="this.src='assets/logo.png'"/>
+        </div>
+        <div class="ch-meta-wrap">
+          <div class="ch-name">${escapeHtml(ch.name)}</div>
+          <div class="ch-now-playing">Chaîne #${ch.num || idx + 1} • Direct 4K HDR</div>
+        </div>
+      `;
+
+      item.addEventListener('click', () => {
+        selectLiveChannel(ch, item);
+      });
+
+      item.addEventListener('dblclick', () => {
+        playIptvStream('live', ch.stream_id, 'ts');
+      });
+
+      item.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          playIptvStream('live', ch.stream_id, 'ts');
+        }
+      });
+
+      iptvChannelsList.appendChild(item);
+    });
+
+    // Sélection de la première chaîne
+    if (channels.length > 0) {
+      selectLiveChannel(channels[0], iptvChannelsList.firstElementChild);
+    }
+  }
+
+  async function selectLiveChannel(ch, domElem) {
+    currentLiveStream = ch;
+    if (iptvChannelsList) {
+      iptvChannelsList.querySelectorAll('.channel-card-item').forEach(el => el.classList.remove('active'));
+    }
+    if (domElem) domElem.classList.add('active');
+
+    if (previewChannelName) previewChannelName.textContent = ch.name;
+    if (previewChannelCategory) previewChannelCategory.textContent = ch.category_id || 'Direct';
+    if (previewChannelLogo) {
+      previewChannelLogo.src = ch.stream_icon && ch.stream_icon.trim().length > 0 ? ch.stream_icon : 'assets/logo.png';
+    }
+
+    // Chargement du Guide TV (EPG)
+    if (epgNowTitle) epgNowTitle.textContent = `Chargement du programme de ${ch.name}...`;
+    if (epgNowDesc) epgNowDesc.textContent = 'Récupération de la grille horaire...';
+    if (iptvEpgUpcomingList) iptvEpgUpcomingList.innerHTML = '';
+
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        const epgItems = await window.__TAURI__.core.invoke('iptv_get_channel_epg', {
+          profileId: currentIptvProfileId || 'demo',
+          streamId: ch.stream_id,
+        });
+
+        if (epgItems && epgItems.length > 0) {
+          const currentProg = epgItems[0];
+          if (epgNowTime) epgNowTime.textContent = `${currentProg.start || 'En ce moment'} - ${currentProg.stop || ''}`;
+          if (epgNowTitle) epgNowTitle.textContent = currentProg.title || ch.name;
+          if (epgNowDesc) epgNowDesc.textContent = currentProg.description || 'Diffusion en cours en haute fidélité visuelle et audio.';
+
+          if (iptvEpgUpcomingList) {
+            iptvEpgUpcomingList.innerHTML = '';
+            for (let i = 1; i < epgItems.length; i++) {
+              const p = epgItems[i];
+              const upRow = document.createElement('div');
+              upRow.className = 'epg-upcoming-item';
+              upRow.innerHTML = `
+                <span class="epg-upcoming-time">${escapeHtml(p.start || '')}</span>
+                <span class="epg-upcoming-name">${escapeHtml(p.title || '')}</span>
+              `;
+              iptvEpgUpcomingList.appendChild(upRow);
+            }
+          }
+        } else {
+          if (epgNowTime) epgNowTime.textContent = 'En ce moment';
+          if (epgNowTitle) epgNowTitle.textContent = ch.name;
+          if (epgNowDesc) epgNowDesc.textContent = 'Diffusion continue en haute définition.';
+        }
+      } catch (err) {
+        console.warn('Erreur chargement EPG :', err);
+      }
+    }
+  }
+
+  // Rendu de la grille de jaquettes (Films & Séries)
+  function renderPostersGrid(items, gridElement, itemType) {
+    if (!gridElement) return;
+    gridElement.innerHTML = '';
+
+    if (items.length === 0) {
+      gridElement.innerHTML = '<div style="color: #94a3b8; padding: 24px; font-size: 15px;">Aucun élément disponible dans cette catégorie.</div>';
+      return;
+    }
+
+    items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'poster-card';
+      card.tabIndex = 0;
+      card.setAttribute('data-item-id', itemType === 'series' ? item.series_id : item.stream_id);
+
+      const coverSrc = (itemType === 'series' ? item.cover : item.stream_icon) || 'assets/logo.png';
+      const rating = item.rating ? `★ ${parseFloat(item.rating).toFixed(1)}` : '★ 8.2';
+      const year = item.year || (itemType === 'series' ? 'Série' : 'Film');
+
+      card.innerHTML = `
+        <div class="poster-img-wrap">
+          <img src="${coverSrc}" alt="${escapeHtml(item.name)}" class="poster-img" onerror="this.src='assets/logo.png'"/>
+          <span class="poster-badge-rating">${rating}</span>
+          <span class="poster-badge-year">${year}</span>
+        </div>
+        <div class="poster-info">
+          <div class="poster-title">${escapeHtml(item.name)}</div>
+          <div class="poster-sub">${itemType === 'series' ? 'Série TV' : 'Film 4K'}</div>
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        openIptvDetailsModal(item, itemType);
+      });
+
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          openIptvDetailsModal(item, itemType);
+        }
+      });
+
+      gridElement.appendChild(card);
+    });
+  }
+
+  // Fenêtre modale de détails Film / Série
+  async function openIptvDetailsModal(item, itemType) {
+    currentDetailsItem = item;
+    currentDetailsType = itemType;
+    playConfirmSound();
+
+    if (!modalIptvDetails) return;
+    modalIptvDetails.classList.remove('hidden');
+
+    const coverSrc = (itemType === 'series' ? item.cover : item.stream_icon) || 'assets/logo.png';
+    if (detailsPosterImg) detailsPosterImg.src = coverSrc;
+    if (detailsBackdrop) detailsBackdrop.style.backgroundImage = `url('${coverSrc}')`;
+    if (detailsTitle) detailsTitle.textContent = item.name;
+    if (detailsRating) detailsRating.textContent = item.rating ? `★ ${parseFloat(item.rating).toFixed(1)}` : '★ 8.5';
+    if (detailsYear) detailsYear.textContent = item.year || (itemType === 'series' ? '2024' : '2023');
+    if (detailsGenre) detailsGenre.textContent = itemType === 'series' ? 'Série TV • Drame • 4K' : 'Film • Cinéma • Ultra HD';
+    if (detailsDuration) detailsDuration.textContent = itemType === 'series' ? 'Épisodes multiples' : '2h 12m';
+    if (detailsPlot) detailsPlot.textContent = 'Chargement de la description officielle...';
+
+    // Mise à jour de l'icône de favori
+    checkIfFavorite(itemType === 'series' ? item.series_id : item.stream_id, itemType);
+
+    if (itemType === 'movie') {
+      if (detailsPlayLabel) detailsPlayLabel.textContent = 'Lancer le Film (A)';
+      if (detailsSeriesSection) detailsSeriesSection.classList.add('hidden');
+      if (detailsPlot) detailsPlot.textContent = 'Plongez dans cette œuvre cinématographique d\'exception, masterisée en 4K Ultra HD avec traitement sonore immersif.';
+    } else {
+      if (detailsPlayLabel) detailsPlayLabel.textContent = 'Lancer le 1er Épisode (A)';
+      if (detailsSeriesSection) detailsSeriesSection.classList.remove('hidden');
+
+      // Chargement des saisons et épisodes
+      if (window.__TAURI__ && window.__TAURI__.core) {
+        try {
+          const details = await window.__TAURI__.core.invoke('iptv_get_series_details', {
+            profileId: currentIptvProfileId || 'demo',
+            seriesId: item.series_id,
+          });
+
+          if (details) {
+            if (details.plot && detailsPlot) detailsPlot.textContent = details.plot;
+            if (details.genre && detailsGenre) detailsGenre.textContent = details.genre;
+            renderSeriesSeasons(details);
+          }
+        } catch (err) {
+          console.error('Erreur détails série :', err);
+        }
+      }
+    }
+
+    if (btnDetailsPlayMain) btnDetailsPlayMain.focus();
+  }
+
+  function renderSeriesSeasons(details) {
+    if (!detailsSeasonsPills || !detailsEpisodesList) return;
+    detailsSeasonsPills.innerHTML = '';
+    detailsEpisodesList.innerHTML = '';
+
+    const seasons = details.seasons || [1];
+    seasons.forEach((sNum, idx) => {
+      const pill = document.createElement('button');
+      pill.className = `season-pill-btn ${idx === 0 ? 'active' : ''}`;
+      pill.textContent = `Saison ${sNum}`;
+      pill.addEventListener('click', () => {
+        detailsSeasonsPills.querySelectorAll('.season-pill-btn').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        renderEpisodesList(details.episodes[String(sNum)] || []);
+      });
+      detailsSeasonsPills.appendChild(pill);
+    });
+
+    if (seasons.length > 0) {
+      const firstSeasonEps = details.episodes[String(seasons[0])] || [];
+      renderEpisodesList(firstSeasonEps);
+    }
+  }
+
+  function renderEpisodesList(episodes) {
+    if (!detailsEpisodesList) return;
+    detailsEpisodesList.innerHTML = '';
+
+    if (episodes.length === 0) {
+      detailsEpisodesList.innerHTML = '<div style="color: #94a3b8; padding: 14px;">Aucun épisode répertorié pour cette saison.</div>';
+      return;
+    }
+
+    episodes.forEach(ep => {
+      const epRow = document.createElement('div');
+      epRow.className = 'episode-card-item';
+      epRow.tabIndex = 0;
+      epRow.innerHTML = `
+        <div class="episode-meta-col">
+          <div class="episode-title-txt">Épisode ${ep.episode_num} • ${escapeHtml(ep.title)}</div>
+          <div class="episode-plot-txt">${escapeHtml(ep.plot || 'Épisode complet de haute qualité vidéo.')}</div>
+        </div>
+        <button class="episode-play-btn">▶ Lecture</button>
+      `;
+
+      epRow.addEventListener('click', () => {
+        playIptvStream('series', ep.id, ep.container_extension || 'mp4');
+      });
+
+      epRow.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          playIptvStream('series', ep.id, ep.container_extension || 'mp4');
+        }
+      });
+
+      detailsEpisodesList.appendChild(epRow);
+    });
+  }
+
+  function closeIptvDetailsModal() {
+    playCancelSound();
+    if (modalIptvDetails) modalIptvDetails.classList.add('hidden');
+  }
+
+  // Gestion des Favoris
+  async function loadFavoritesData() {
+    if (!window.__TAURI__ || !window.__TAURI__.core) return;
+    try {
+      iptvFavorites = await window.__TAURI__.core.invoke('iptv_get_favorites', {
+        profileId: currentIptvProfileId || 'demo',
+      }) || [];
+      renderFavorites();
+    } catch (err) {
+      console.error('Erreur chargement favoris :', err);
+    }
+  }
+
+  function renderFavorites() {
+    if (!iptvFavoritesGrid) return;
+    iptvFavoritesGrid.innerHTML = '';
+    if (favoritesCount) favoritesCount.textContent = `${iptvFavorites.length} favori${iptvFavorites.length > 1 ? 's' : ''}`;
+
+    if (iptvFavorites.length === 0) {
+      iptvFavoritesGrid.innerHTML = '<div style="color: #94a3b8; padding: 24px; font-size: 15px;">Vous n\'avez aucun favori pour le moment. Ajoutez des chaînes ou des films avec l\'étoile !</div>';
+      return;
+    }
+
+    iptvFavorites.forEach(fav => {
+      const card = document.createElement('div');
+      card.className = 'poster-card';
+      card.tabIndex = 0;
+      card.innerHTML = `
+        <div class="poster-img-wrap">
+          <img src="${fav.icon || 'assets/logo.png'}" alt="${escapeHtml(fav.name)}" class="poster-img" onerror="this.src='assets/logo.png'"/>
+          <span class="poster-badge-rating">★ Fav</span>
+          <span class="poster-badge-year">${fav.item_type.toUpperCase()}</span>
+        </div>
+        <div class="poster-info">
+          <div class="poster-title">${escapeHtml(fav.name)}</div>
+          <div class="poster-sub">${escapeHtml(fav.category_name || 'Favori')}</div>
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        if (fav.item_type === 'live') {
+          playIptvStream('live', fav.stream_id, 'ts');
+        } else {
+          openIptvDetailsModal({ stream_id: fav.stream_id, series_id: fav.stream_id, name: fav.name, stream_icon: fav.icon, cover: fav.icon }, fav.item_type);
+        }
+      });
+
+      iptvFavoritesGrid.appendChild(card);
+    });
+  }
+
+  function checkIfFavorite(streamId, itemType) {
+    const isFav = iptvFavorites.some(f => f.stream_id == streamId && f.item_type === itemType);
+    if (detailsFavStar) detailsFavStar.textContent = isFav ? '★' : '☆';
+    if (detailsFavText) detailsFavText.textContent = isFav ? 'Retirer des Favoris' : 'Ajouter aux Favoris';
+  }
+
+  async function toggleFavoriteCurrentDetails() {
+    if (!currentDetailsItem || !window.__TAURI__ || !window.__TAURI__.core) return;
+    const streamId = currentDetailsType === 'series' ? currentDetailsItem.series_id : currentDetailsItem.stream_id;
+    const icon = (currentDetailsType === 'series' ? currentDetailsItem.cover : currentDetailsItem.stream_icon) || '';
+
+    try {
+      const isNowFav = await window.__TAURI__.core.invoke('iptv_toggle_favorite', {
+        profileId: currentIptvProfileId || 'demo',
+        item: {
+          id: String(streamId),
+          item_type: currentDetailsType,
+          stream_id: streamId,
+          name: currentDetailsItem.name,
+          icon,
+          category_name: currentDetailsType.toUpperCase(),
+          extra: null,
+        },
+      });
+
+      playConfirmSound();
+      if (detailsFavStar) detailsFavStar.textContent = isNowFav ? '★' : '☆';
+      if (detailsFavText) detailsFavText.textContent = isNowFav ? 'Retirer des Favoris' : 'Ajouter aux Favoris';
+      await loadFavoritesData();
+    } catch (err) {
+      console.error('Erreur toggle favori :', err);
+    }
+  }
+
+  // Gestion des Filtres de Catégories
+  async function loadFiltersData() {
+    if (!window.__TAURI__ || !window.__TAURI__.core) return;
+    try {
+      const data = await window.__TAURI__.core.invoke('iptv_get_filters_data', {
+        profileId: currentIptvProfileId || 'demo',
+      });
+
+      iptvHiddenCategories = new Set(data.hidden_ids || []);
+      renderFiltersColumn(filtersListLive, data.live_categories || []);
+      renderFiltersColumn(filtersListVod, data.vod_categories || []);
+      renderFiltersColumn(filtersListSeries, data.series_categories || []);
+    } catch (err) {
+      console.error('Erreur chargement filtres :', err);
+    }
+  }
+
+  function renderFiltersColumn(container, categories) {
+    if (!container) return;
+    container.innerHTML = '';
+
+    categories.forEach(c => {
+      const row = document.createElement('label');
+      row.className = 'filter-checkbox-item';
+      const isHidden = iptvHiddenCategories.has(c.category_id);
+      row.innerHTML = `
+        <span class="filter-item-name">${escapeHtml(c.category_name)}</span>
+        <input type="checkbox" class="filter-toggle-box" data-cat-id="${c.category_id}" ${isHidden ? '' : 'checked'} />
+      `;
+
+      row.querySelector('input').addEventListener('change', (e) => {
+        if (e.target.checked) {
+          iptvHiddenCategories.delete(c.category_id);
+        } else {
+          iptvHiddenCategories.add(c.category_id);
+        }
+      });
+
+      container.appendChild(row);
+    });
+  }
+
+  async function saveFiltersData() {
+    playConfirmSound();
+    if (!window.__TAURI__ || !window.__TAURI__.core) return;
+    try {
+      await window.__TAURI__.core.invoke('iptv_save_hidden_categories', {
+        profileId: currentIptvProfileId || 'demo',
+        hiddenIds: Array.from(iptvHiddenCategories),
+      });
+      // Réinitialiser le cache pour rafraîchir les vues
+      iptvCatalogCache = { live: null, vod: null, series: null };
+      showNotification('Filtres enregistrés avec succès !');
+    } catch (err) {
+      console.error('Erreur sauvegarde filtres :', err);
+    }
+  }
+
+  function unhideAllFilters() {
+    playConfirmSound();
+    iptvHiddenCategories.clear();
+    document.querySelectorAll('.filter-toggle-box').forEach(box => {
+      box.checked = true;
+    });
+  }
+
+  // Gestion des Paramètres MPV (Shaders & Upscale)
+  async function loadIptvSettingsData() {
+    if (!window.__TAURI__ || !window.__TAURI__.core) return;
+    try {
+      const s = await window.__TAURI__.core.invoke('iptv_get_player_settings');
+      if (s) {
+        if (iptvSelectUpscale) iptvSelectUpscale.value = s.upscale_profile;
+        if (iptvToggleDeband) iptvToggleDeband.checked = s.deband;
+        if (iptvToggleInterpolation) iptvToggleInterpolation.checked = s.interpolation;
+        if (iptvSelectBuffer) iptvSelectBuffer.value = String(s.buffer_seconds);
+      }
+    } catch (err) {
+      console.error('Erreur chargement réglages IPTV :', err);
+    }
+  }
+
+  async function saveIptvSettingsData() {
+    playConfirmSound();
+    if (!window.__TAURI__ || !window.__TAURI__.core) return;
+    const settings = {
+      upscale_profile: iptvSelectUpscale ? iptvSelectUpscale.value : 'fsr-ultra',
+      deband: iptvToggleDeband ? iptvToggleDeband.checked : true,
+      interpolation: iptvToggleInterpolation ? iptvToggleInterpolation.checked : false,
+      buffer_seconds: iptvSelectBuffer ? parseInt(iptvSelectBuffer.value, 10) : 5,
+      audio_passthrough: true,
+    };
+
+    try {
+      await window.__TAURI__.core.invoke('iptv_save_player_settings', { settings });
+      if (iptvSettingsSavedFeedback) {
+        iptvSettingsSavedFeedback.classList.remove('hidden');
+        setTimeout(() => iptvSettingsSavedFeedback.classList.add('hidden'), 2500);
+      }
+    } catch (err) {
+      console.error('Erreur sauvegarde réglages IPTV :', err);
+    }
+  }
+
+  // Lancement du flux vidéo avec MPV
+  async function playIptvStream(itemType, streamId, extension = null) {
+    playConfirmSound();
+    if (!window.__TAURI__ || !window.__TAURI__.core) {
+      console.log(`[Mock Play] Type: ${itemType}, Stream: ${streamId}`);
+      return;
+    }
+
+    try {
+      const res = await window.__TAURI__.core.invoke('iptv_play_stream', {
+        profileId: currentIptvProfileId || 'demo',
+        itemType,
+        streamId,
+        extension,
+      });
+      console.log('MPV Player started :', res);
+    } catch (err) {
+      console.error('Erreur lancement flux MPV :', err);
     }
   }
 
@@ -1016,9 +1740,40 @@
   }
   if (btnIptvOpenCatalog) {
     btnIptvOpenCatalog.addEventListener('click', () => {
-      closeIptvModal();
+      showIptvCatalogView(currentIptvProfileId);
     });
   }
+
+  if (btnIptvMainBack) btnIptvMainBack.addEventListener('click', showIptvProfilesView);
+  if (btnCloseDetailsModal) btnCloseDetailsModal.addEventListener('click', closeIptvDetailsModal);
+  if (btnDetailsPlayMain) {
+    btnDetailsPlayMain.addEventListener('click', () => {
+      if (currentDetailsItem) {
+        if (currentDetailsType === 'movie') {
+          playIptvStream('movie', currentDetailsItem.stream_id, currentDetailsItem.container_extension || 'mkv');
+        } else if (currentDetailsType === 'series') {
+          playIptvStream('series', currentDetailsItem.series_id, 'mp4');
+        }
+      }
+    });
+  }
+  if (btnDetailsToggleFav) btnDetailsToggleFav.addEventListener('click', toggleFavoriteCurrentDetails);
+  if (btnIptvPlayFullscreen) {
+    btnIptvPlayFullscreen.addEventListener('click', () => {
+      if (currentLiveStream) {
+        playIptvStream('live', currentLiveStream.stream_id, 'ts');
+      }
+    });
+  }
+  if (btnFiltersUnhideAll) btnFiltersUnhideAll.addEventListener('click', unhideAllFilters);
+  if (btnFiltersSave) btnFiltersSave.addEventListener('click', saveFiltersData);
+  if (btnSaveIptvSettings) btnSaveIptvSettings.addEventListener('click', saveIptvSettingsData);
+
+  iptvTabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchIptvTab(btn.getAttribute('data-tab'));
+    });
+  });
 
   if (btnChannelStable) btnChannelStable.addEventListener('click', () => setChannel('stable'));
   if (btnChannelTesting) btnChannelTesting.addEventListener('click', () => setChannel('testing'));
@@ -1072,10 +1827,19 @@
       return;
     }
 
+    if (modalIptvDetails && !modalIptvDetails.classList.contains('hidden')) {
+      if (e.key === 'Escape' || e.key === 'Backspace') {
+        closeIptvDetailsModal();
+        return;
+      }
+    }
+
     if (isIptvModalOpen) {
       if (e.key === 'Escape' || e.key === 'Backspace') {
         if (!isIptvSyncing) {
-          if (iptvViewLogin && !iptvViewLogin.classList.contains('hidden') && savedIptvProfiles.length > 0) {
+          if (iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
+            showIptvProfilesView();
+          } else if (iptvViewLogin && !iptvViewLogin.classList.contains('hidden') && savedIptvProfiles.length > 0) {
             showIptvProfilesView();
           } else {
             closeIptvModal();
@@ -1182,10 +1946,18 @@
 
       // Bumpers LB / RB pour navigation entre onglets
       if (btnLB && !prevButtonsState['LB']) {
-        if (!isAnyModalOpen()) cycleCategory(-1);
+        if (!isAnyModalOpen()) {
+          cycleCategory(-1);
+        } else if (isIptvModalOpen && iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
+          cycleIptvTab(-1);
+        }
       }
       if (btnRB && !prevButtonsState['RB']) {
-        if (!isAnyModalOpen()) cycleCategory(1);
+        if (!isAnyModalOpen()) {
+          cycleCategory(1);
+        } else if (isIptvModalOpen && iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
+          cycleIptvTab(1);
+        }
       }
 
       // Action HOME (Retour direct au lanceur / Accueil TV)
@@ -1220,9 +1992,13 @@
 
       // Action B (Retour / Fermer modal)
       if (btnB && !prevButtonsState['B']) {
-        if (isIptvModalOpen) {
+        if (modalIptvDetails && !modalIptvDetails.classList.contains('hidden')) {
+          closeIptvDetailsModal();
+        } else if (isIptvModalOpen) {
           if (!isIptvSyncing) {
-            if (iptvViewLogin && !iptvViewLogin.classList.contains('hidden') && savedIptvProfiles.length > 0) {
+            if (iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
+              showIptvProfilesView();
+            } else if (iptvViewLogin && !iptvViewLogin.classList.contains('hidden') && savedIptvProfiles.length > 0) {
               showIptvProfilesView();
             } else {
               closeIptvModal();

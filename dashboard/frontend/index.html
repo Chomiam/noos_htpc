@@ -593,6 +593,323 @@
         </div>
       </div>
 
+      <!-- Vue 4 : Interface Principale Noos IPTV MPV Player (Bandeau + Catégories + Grille / Chaînes & EPG) -->
+      <div id="iptv-view-main" class="iptv-view hidden">
+        <!-- Bandeau supérieur sobre & glassy -->
+        <header class="iptv-main-navbar">
+          <div class="iptv-nav-brand">
+            <img src="assets/logo.png" alt="Noos" class="iptv-nav-logo" />
+            <span class="iptv-nav-title">IPTV <span class="accent">MPV Player</span></span>
+          </div>
+
+          <!-- Onglets de navigation principaux -->
+          <nav class="iptv-nav-tabs" role="tablist">
+            <span class="btn-bumper-hint">LB</span>
+            <button class="iptv-tab-btn active" data-tab="live" role="tab">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+              <span>Chaînes TV</span>
+            </button>
+            <button class="iptv-tab-btn" data-tab="vod" role="tab">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+              <span>Films</span>
+            </button>
+            <button class="iptv-tab-btn" data-tab="series" role="tab">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+              <span>Séries</span>
+            </button>
+            <button class="iptv-tab-btn" data-tab="favorites" role="tab">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              <span>Favoris</span>
+            </button>
+            <button class="iptv-tab-btn" data-tab="filters" role="tab">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+              <span>Filtres</span>
+            </button>
+            <button class="iptv-tab-btn" data-tab="settings" role="tab">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              <span>Paramètres</span>
+            </button>
+            <span class="btn-bumper-hint">RB</span>
+          </nav>
+
+          <div class="iptv-nav-actions">
+            <button id="btn-iptv-main-back" class="btn-action-secondary">
+              <span class="btn-key-hint">B</span> Profils
+            </button>
+          </div>
+        </header>
+
+        <!-- Corps principal (Split : Sidebar gauche + Zone d'affichage droite) -->
+        <div class="iptv-main-layout">
+          <!-- Sidebar gauche : Liste des catégories -->
+          <aside class="iptv-sidebar-categories" id="iptv-sidebar-categories">
+            <div class="sidebar-heading">
+              <span class="sidebar-title">Catégories</span>
+              <span id="iptv-cat-count" class="sidebar-badge">0</span>
+            </div>
+            <div id="iptv-categories-list" class="categories-scroll-list">
+              <!-- Injecté dynamiquement -->
+            </div>
+          </aside>
+
+          <!-- Zone d'affichage droite -->
+          <main class="iptv-content-area" id="iptv-content-area">
+            <!-- Sous-vue 1 : Chaînes TV (Liste chaînes + Preview droite + EPG dessous) -->
+            <div id="iptv-subview-live" class="iptv-subview">
+              <div class="iptv-live-split">
+                <!-- Colonne liste des chaînes de la catégorie -->
+                <div class="live-channels-col">
+                  <div class="channels-header">
+                    <span id="iptv-current-cat-name" class="channel-group-title">Chaînes Direct</span>
+                    <span id="iptv-channels-count" class="badge-count">0 chaîne</span>
+                  </div>
+                  <div id="iptv-channels-list" class="channels-scroll-list">
+                    <!-- Injecté dynamiquement -->
+                  </div>
+                </div>
+
+                <!-- Colonne droite : Preview vidéo + Guide TV (EPG) -->
+                <div class="live-details-col">
+                  <!-- Zone preview vidéo live -->
+                  <div class="live-preview-card" id="live-preview-card">
+                    <div class="preview-video-container">
+                      <div class="preview-overlay-badge">
+                        <span class="live-dot-pulse"></span> DIRECT LIVE • 4K HDR
+                      </div>
+                      <div class="preview-poster-fallback" id="preview-poster-fallback">
+                        <img id="preview-channel-logo" src="assets/logo.png" alt="Logo chaîne" class="preview-logo-img" />
+                        <div class="preview-play-hint">
+                          <button id="btn-iptv-play-fullscreen" class="btn-preview-play">
+                            <span class="play-icon">▶</span> Regarder en Plein Écran (A)
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="preview-channel-meta">
+                      <h3 id="preview-channel-name" class="preview-ch-title">Sélectionnez une chaîne</h3>
+                      <span id="preview-channel-category" class="preview-ch-cat">Catégorie</span>
+                    </div>
+                  </div>
+
+                  <!-- Guide TV (EPG) dessous la preview -->
+                  <div class="live-epg-card" id="live-epg-card">
+                    <div class="epg-card-header">
+                      <div class="epg-title-wrap">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        <span class="epg-title">Guide des Programmes (EPG)</span>
+                      </div>
+                      <span class="epg-live-indicator">Programme en cours & à venir</span>
+                    </div>
+
+                    <div id="iptv-epg-now" class="epg-current-program">
+                      <div class="epg-time-range" id="epg-now-time">En ce moment</div>
+                      <div class="epg-prog-title" id="epg-now-title">Chargement du guide TV...</div>
+                      <div class="epg-prog-desc" id="epg-now-desc">Les informations de programmation s'affichent automatiquement.</div>
+                    </div>
+
+                    <div class="epg-upcoming-title">À suivre :</div>
+                    <div id="iptv-epg-upcoming-list" class="epg-upcoming-list">
+                      <!-- Injecté dynamiquement -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sous-vue 2 : Films (Grille de jaquettes) -->
+            <div id="iptv-subview-vod" class="iptv-subview hidden">
+              <div class="posters-grid-header">
+                <span id="vod-cat-title" class="section-title">Catalogue Films</span>
+                <span id="vod-items-count" class="badge-count">0 film</span>
+              </div>
+              <div id="iptv-vod-grid" class="iptv-posters-grid">
+                <!-- Injecté dynamiquement -->
+              </div>
+            </div>
+
+            <!-- Sous-vue 3 : Séries (Grille de jaquettes) -->
+            <div id="iptv-subview-series" class="iptv-subview hidden">
+              <div class="posters-grid-header">
+                <span id="series-cat-title" class="section-title">Catalogue Séries</span>
+                <span id="series-items-count" class="badge-count">0 série</span>
+              </div>
+              <div id="iptv-series-grid" class="iptv-posters-grid">
+                <!-- Injecté dynamiquement -->
+              </div>
+            </div>
+
+            <!-- Sous-vue 4 : Favoris -->
+            <div id="iptv-subview-favorites" class="iptv-subview hidden">
+              <div class="posters-grid-header">
+                <span class="section-title">Vos Favoris</span>
+                <span id="favorites-count" class="badge-count">0 favori</span>
+              </div>
+              <div id="iptv-favorites-grid" class="iptv-favorites-grid">
+                <!-- Injecté dynamiquement -->
+              </div>
+            </div>
+
+            <!-- Sous-vue 5 : Filtres des catégories -->
+            <div id="iptv-subview-filters" class="iptv-subview hidden">
+              <div class="filters-header">
+                <div>
+                  <h3 class="filters-title">Personnalisation & Masquage des Catégories</h3>
+                  <p class="filters-subtitle">Cochez ou décochez les catégories pour les masquer de l'interface IPTV.</p>
+                </div>
+                <div class="filters-actions-top">
+                  <button id="btn-filters-unhide-all" class="btn-action-secondary">Tout afficher</button>
+                  <button id="btn-filters-save" class="btn-action-primary">
+                    <span class="btn-key-hint">A</span> Enregistrer les Filtres
+                  </button>
+                </div>
+              </div>
+
+              <div class="filters-columns">
+                <!-- Catégories Chaînes -->
+                <div class="filters-group-col">
+                  <div class="filter-col-header">Chaînes TV en Direct</div>
+                  <div id="filters-list-live" class="filters-checkbox-list"></div>
+                </div>
+                <!-- Catégories Films -->
+                <div class="filters-group-col">
+                  <div class="filter-col-header">Catalogue Films</div>
+                  <div id="filters-list-vod" class="filters-checkbox-list"></div>
+                </div>
+                <!-- Catégories Séries -->
+                <div class="filters-group-col">
+                  <div class="filter-col-header">Catalogue Séries</div>
+                  <div id="filters-list-series" class="filters-checkbox-list"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sous-vue 6 : Paramètres Shaders & Upscale MPV -->
+            <div id="iptv-subview-settings" class="iptv-subview hidden">
+              <div class="iptv-settings-card">
+                <div class="settings-section-head">
+                  <h3 class="settings-title">Moteur Vidéo & Upscale MPV Player</h3>
+                  <p class="settings-sub">Optimisez le rendu visuel selon votre téléviseur et GPU.</p>
+                </div>
+
+                <div class="iptv-setting-row">
+                  <div class="setting-info">
+                    <div class="setting-name">Profil d'Upscale & Shaders GPU</div>
+                    <div class="setting-desc">Applique les algorithmes de suréchantillonnage haute résolution (FSR, CAS, DLSS, XeSS).</div>
+                  </div>
+                  <select id="iptv-select-upscale" class="iptv-select">
+                    <option value="fsr-ultra">AMD FSR 1.0 Ultra Haute Qualité (Shaders FSR)</option>
+                    <option value="cas-sharp">FidelityFX CAS Netteté Adaptative (Faible latence)</option>
+                    <option value="dlss-quality">NVIDIA Équivalent DLSS Qualité Maximale</option>
+                    <option value="xess-balanced">Intel XeSS Équilibré</option>
+                    <option value="default">Rendu Natif Direct (Standard)</option>
+                  </select>
+                </div>
+
+                <div class="iptv-setting-row">
+                  <div class="setting-info">
+                    <div class="setting-name">Réduction du Banding (Deband)</div>
+                    <div class="setting-desc">Élimine les dégradés disgracieux et les artefacts de compression sur les flux IPTV.</div>
+                  </div>
+                  <label class="switch-container">
+                    <input type="checkbox" id="iptv-toggle-deband" checked />
+                    <span class="switch-slider"></span>
+                  </label>
+                </div>
+
+                <div class="iptv-setting-row">
+                  <div class="setting-info">
+                    <div class="setting-name">Interpolation de Mouvement Fluide 60 FPS</div>
+                    <div class="setting-desc">Synchronise les flux 24/25/50 FPS à la fréquence 60Hz de l'écran avec motion smoothing.</div>
+                  </div>
+                  <label class="switch-container">
+                    <input type="checkbox" id="iptv-toggle-interpolation" />
+                    <span class="switch-slider"></span>
+                  </label>
+                </div>
+
+                <div class="iptv-setting-row">
+                  <div class="setting-info">
+                    <div class="setting-name">Tampon Réseau de Streaming (Buffer)</div>
+                    <div class="setting-desc">Durée du préchargement mémoire pour éviter tout buffering ou coupure.</div>
+                  </div>
+                  <select id="iptv-select-buffer" class="iptv-select">
+                    <option value="3">3 secondes (Faible latence • Rapide)</option>
+                    <option value="5" selected>5 secondes (Recommandé • Stable)</option>
+                    <option value="10">10 secondes (Connexion instable • Sécurité max)</option>
+                  </select>
+                </div>
+
+                <div class="iptv-settings-actions">
+                  <button id="btn-save-iptv-settings" class="btn-action-primary">
+                    <span class="btn-key-hint">A</span> Enregistrer les Paramètres MPV
+                  </button>
+                  <span id="iptv-settings-saved-feedback" class="settings-feedback-text hidden">✓ Paramètres MPV appliqués !</span>
+                </div>
+              </div>
+            </div>
+
+          </main>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal Détails Film / Série (Grand Poster, Synopsis, Play, Épisodes si série) -->
+  <div id="modal-iptv-details" class="modal-overlay iptv-details-overlay hidden" role="dialog" aria-modal="true">
+    <div class="iptv-details-container">
+      <div class="details-backdrop" id="details-backdrop"></div>
+      <div class="details-content-wrap">
+        <!-- Colonne gauche : Grande Jaquette -->
+        <div class="details-poster-wrap">
+          <img id="details-poster-img" src="assets/logo.png" alt="Affiche" class="details-large-poster" />
+          <div class="details-poster-badge" id="details-poster-badge">4K HDR</div>
+        </div>
+
+        <!-- Colonne droite : Métadonnées, Synopsis, Play & Épisodes -->
+        <div class="details-info-wrap">
+          <div class="details-header-row">
+            <h2 id="details-title" class="details-title">Titre du Film</h2>
+            <button id="btn-close-details-modal" class="btn-action-secondary" aria-label="Fermer">
+              <span class="btn-key-hint">B</span> Fermer
+            </button>
+          </div>
+
+          <div class="details-meta-pills">
+            <span class="meta-pill-rating" id="details-rating">★ 8.5</span>
+            <span class="meta-pill" id="details-year">2024</span>
+            <span class="meta-pill" id="details-genre">Action • Science-Fiction</span>
+            <span class="meta-pill" id="details-duration">2h 15m</span>
+          </div>
+
+          <p class="details-plot" id="details-plot">
+            Synopsis du film ou de la série...
+          </p>
+
+          <div class="details-actions-bar">
+            <button id="btn-details-play-main" class="btn-action-primary btn-large-play">
+              <span class="play-icon">▶</span> <span id="details-play-label">Lancer le Film (A)</span>
+            </button>
+            <button id="btn-details-toggle-fav" class="btn-action-secondary">
+              <span id="details-fav-star">☆</span> <span id="details-fav-text">Ajouter aux Favoris</span>
+            </button>
+          </div>
+
+          <!-- Section Épisodes (uniquement affichée pour les Séries) -->
+          <div id="details-series-section" class="details-series-section hidden">
+            <div class="series-section-header">
+              <h4 class="series-heading">Saisons & Épisodes</h4>
+              <div id="details-seasons-pills" class="seasons-pills-row">
+                <!-- Injecté dynamiquement (S01, S02...) -->
+              </div>
+            </div>
+
+            <div id="details-episodes-list" class="episodes-scroll-list">
+              <!-- Injecté dynamiquement -->
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
