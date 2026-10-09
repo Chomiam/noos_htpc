@@ -253,6 +253,10 @@
       }
     });
 
+    let lastLogText = "";
+    let lastLogElement = null;
+    let logRepeatCount = 1;
+
     // Fonction centralisée de rafraîchissement UI d'installation
     function updateInstallUI(payload) {
       if (!payload) return;
@@ -294,36 +298,62 @@
       if (progressText && payload.percent !== undefined) progressText.textContent = `${payload.percent}%`;
 
       if (logs && payload.log_line) {
-        const line = document.createElement("div");
-        const lower = payload.log_line.toLowerCase();
-        let typeClass = "normal";
+        const trimmed = payload.log_line.trim();
+        if (trimmed) {
+          if (trimmed === lastLogText && lastLogElement) {
+            logRepeatCount++;
+            let badge = lastLogElement.querySelector(".log-repeat-badge");
+            if (!badge) {
+              badge = document.createElement("span");
+              badge.className = "log-repeat-badge";
+              const msgSpan = lastLogElement.querySelector(".log-msg");
+              if (msgSpan) msgSpan.appendChild(badge);
+            }
+            badge.textContent = `×${logRepeatCount}`;
 
-        if (lower.includes("error:") || lower.includes("échec") || lower.includes("failed") || (payload.step_name && payload.step_name.toLowerCase().includes("erreur"))) {
-          typeClass = "error";
-        } else if (lower.includes("contrôle") || lower.includes("vérification") || lower.includes("certifié") || lower.includes("[check]")) {
-          typeClass = "check";
-        } else if (lower.includes("copying path") || lower.includes("fetching path") || lower.includes("fetching") || lower.includes("téléchargement")) {
-          typeClass = "fetch";
-        } else if (lower.includes("building") || lower.includes("compilation")) {
-          typeClass = "build";
-        } else if (lower.includes("terminé") || lower.includes("succès") || lower.includes("validé") || lower.includes("[ok]")) {
-          typeClass = "success";
-        } else if (lower.includes("étape") || lower.includes("attention") || lower.includes("avertissement") || lower.includes("préparation") || lower.includes("partitionnement") || lower.includes("formatage")) {
-          typeClass = "notice";
+            const timeSpan = lastLogElement.querySelector(".log-time");
+            if (timeSpan) {
+              const timeStr = new Date().toLocaleTimeString("fr-FR", { hour12: false });
+              timeSpan.textContent = `[${timeStr}]`;
+            }
+            logs.scrollTop = logs.scrollHeight;
+          } else {
+            lastLogText = trimmed;
+            logRepeatCount = 1;
+
+            const line = document.createElement("div");
+            const lower = trimmed.toLowerCase();
+            let typeClass = "normal";
+
+            if (lower.includes("error:") || lower.includes("échec") || lower.includes("failed") || (payload.step_name && payload.step_name.toLowerCase().includes("erreur"))) {
+              typeClass = "error";
+            } else if (lower.includes("contrôle") || lower.includes("vérification") || lower.includes("certifié") || lower.includes("[check]")) {
+              typeClass = "check";
+            } else if (lower.includes("copying path") || lower.includes("fetching path") || lower.includes("fetching") || lower.includes("téléchargement")) {
+              typeClass = "fetch";
+            } else if (lower.includes("building") || lower.includes("compilation")) {
+              typeClass = "build";
+            } else if (lower.includes("terminé") || lower.includes("succès") || lower.includes("validé") || lower.includes("[ok]")) {
+              typeClass = "success";
+            } else if (lower.includes("étape") || lower.includes("attention") || lower.includes("avertissement") || lower.includes("préparation") || lower.includes("partitionnement") || lower.includes("formatage")) {
+              typeClass = "notice";
+            }
+
+            line.className = `log-line ${typeClass}`;
+            const timeStr = new Date().toLocaleTimeString("fr-FR", { hour12: false });
+            line.innerHTML = `<span class="log-time">[${timeStr}]</span> <span class="log-tag">[${payload.step}/${payload.total_steps}]</span> <span class="log-msg">${escapeHtml(trimmed)}</span>`;
+            logs.appendChild(line);
+            lastLogElement = line;
+
+            // Limite pour préserver les performances WebKit
+            if (logs.childNodes.length > 500) {
+              logs.removeChild(logs.firstChild);
+            }
+
+            // Défilement automatique fluide vers le bas
+            logs.scrollTop = logs.scrollHeight;
+          }
         }
-
-        line.className = `log-line ${typeClass}`;
-        const timeStr = new Date().toLocaleTimeString("fr-FR", { hour12: false });
-        line.innerHTML = `<span class="log-time">[${timeStr}]</span> <span class="log-tag">[${payload.step}/${payload.total_steps}]</span> <span class="log-msg">${escapeHtml(payload.log_line)}</span>`;
-        logs.appendChild(line);
-
-        // Limite pour préserver les performances WebKit
-        if (logs.childNodes.length > 500) {
-          logs.removeChild(logs.firstChild);
-        }
-
-        // Défilement automatique fluide vers le bas
-        logs.scrollTop = logs.scrollHeight;
       }
 
       if (payload.percent >= 100) {

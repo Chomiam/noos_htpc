@@ -412,7 +412,7 @@ pub async fn start_installation(app: AppHandle, req: InstallRequest) -> Result<b
         emit_step(6, "Installation du Système NixOS", 72, "Lancement de nixos-install (téléchargement et compilation)...", 0, 0);
 
         let mut child = match Command::new("nixos-install")
-            .args(["--impure", "--flake", "/mnt/etc/nixos#htpc", "--no-root-passwd"])
+            .args(["--no-channel-copy", "--impure", "--flake", "/mnt/etc/nixos#htpc", "--no-root-passwd"])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
@@ -451,6 +451,9 @@ pub async fn start_installation(app: AppHandle, req: InstallRequest) -> Result<b
         drop(tx);
 
         let mut last_error_line = String::new();
+        let mut last_logged_line = String::new();
+        let mut duplicate_count: u32 = 0;
+
         while let Some(line) = rx.recv().await {
             let trimmed = line.trim();
             if trimmed.is_empty() {
@@ -495,6 +498,18 @@ pub async fn start_installation(app: AppHandle, req: InstallRequest) -> Result<b
             } else {
                 trimmed.to_string()
             };
+
+            // Éviter de saturer l'interface avec des messages consécutifs rigoureusement identiques
+            if trimmed == last_logged_line {
+                duplicate_count += 1;
+                // Si la ligne se répète, ne la renvoyer que par paliers de 20 pour rafraîchir le compteur de paquets
+                if duplicate_count % 20 != 0 {
+                    continue;
+                }
+            } else {
+                last_logged_line = trimmed.to_string();
+                duplicate_count = 1;
+            }
 
             emit_step(6, "Installation de Noos HTPC en cours...", current_percent, &display_msg, packages_done, packages_total);
         }
