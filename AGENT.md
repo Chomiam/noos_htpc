@@ -17,25 +17,28 @@
 
 ---
 
-## 🏷️ Règle n°2 : Montée de Version & Mise à Jour Obligatoire de `flake.lock`
+## 🏷️ Règle n°2 : Montée de Version (v.X.Y+1) & Mise à Jour Obligatoire de `flake.lock`
 
-1. **Incrémentation stricte de version (SemVer) :**
-   * Chaque nouvelle release officielle fait **obligatoirement** l'objet d'une montée en version (`vX.Y.Z`).
-   * La version doit être synchronisée de façon cohérente dans l'ensemble des fichiers du projet :
+1. **Incrémentation stricte de version (`v.X.Y+1`) :**
+   * Chaque nouvelle release fait **obligatoirement** l'objet d'une montée en version incrémentale selon la formule `v.X.Y+1` (ex: `v0.1.0` ➔ `v0.2.0`, etc.).
+   * La version doit être synchronisée de façon rigoureuse dans l'ensemble des fichiers du projet :
+     * `dashboard/Cargo.toml` (`version = "X.Y.Z"`)
+     * `dashboard/tauri.conf.json` (`"version": "X.Y.Z"`)
      * `installer/Cargo.toml` (`version = "X.Y.Z"`)
      * `installer/tauri.conf.json` (`"version": "X.Y.Z"`)
      * `flake.nix` (métadonnées et descriptions de paquets)
-2. **Mise à jour impérative du fichier `flake.lock` :**
-   * Dans le workflow de release, il est **impératif et obligatoire** que le fichier `flake.lock` soit mis à jour et validé.
-   * La mise à jour garantit que l'image ISO et la distribution ciblent les révisions exactes des paquets, évitant tout décalage d'arborescence ou dépendance fantôme :
+
+2. **Mise à jour impérative du fichier `flake.lock` dans le workflow de release :**
+   * Le workflow de mise à jour comprend **obligatoirement** l'actualisation et la synchronisation du fichier `flake.lock` :
      ```bash
      nix flake update
-     # ou ciblé :
-     nix flake lock --update-input nixpkgs
      ```
-   * Le fichier `flake.lock` mis à jour doit être tracé et commité dans le même commit de release que la montée de version.
-3. **Création du tag Git :**
-   * Le tag Git correspondant (`git tag vX.Y.Z`) est créé uniquement lors de la release officielle validée par l'utilisateur.
+   * Cette actualisation garantit que la configuration NixOS, les modules TV, le dashboard et les dépendances (nixpkgs, nix-flatpak) ciblent les révisions les plus récentes et sécurisées.
+   * Le fichier `flake.lock` mis à jour doit être tracé et validé dans le commit de montée de version.
+
+3. **Création du tag Git & Déploiement :**
+   * Le tag Git correspondant (`git tag v.X.Y+1`) est créé lors de la release officielle.
+   * Le système de mise à jour intégré au Dashboard TV permet à l'utilisateur de choisir entre le canal `stable` et le canal `testing`, de prévisualiser les commits/modifications et d'appliquer la mise à jour sans mot de passe sudo.
 
 ---
 
