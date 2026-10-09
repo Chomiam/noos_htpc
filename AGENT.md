@@ -83,3 +83,17 @@
    * Tout stockage local d'identifiants (profils de connexion rapide, mots de passe Xtream) doit être **obligatoirement et systématiquement chiffré** avant persistance sur disque (clé dérivée de manière sécurisée à partir de l'empreinte locale du système / machine-id avec sel).
    * Les données sensibles ne doivent jamais être journalisées (pas de logs de mots de passe) ni sauvegardées en clair.
 
+---
+
+## ⚡ Règle n°7 : Alimentation Systématique du Cache Binaire Cachix (`noos.cachix.org`)
+
+1. **Alimentation obligatoire du cache binaire lors de chaque mise à jour :**
+   * À chaque mise à jour du Dashboard TV (`dashboard/`) ou de toute application/paquet compilé Rust, il est **impératif et obligatoire** de compiler et pousser le paquet binaire dans le cache Cachix officiel du projet :
+     ```bash
+     cachix push noos <chemin-du-paquet-nix-store>
+     ```
+   * **Objectif** : Éviter absolument toute compilation lourde sur les mini PC ou consoles de salon des utilisateurs finaux lors de l'exécution de `noos-update` ou de l'installation, en leur permettant de télécharger instantanément les binaires précompilés depuis `https://noos.cachix.org`.
+2. **Confidentialité stricte du Token Cachix :**
+   * Le jeton d'authentification Cachix (`CACHIX_AUTH_TOKEN`) ne doit **JAMAIS** être versionné, commité ou consigné dans les fichiers du dépôt Git.
+   * Il doit demeurer exclusivement dans la configuration locale sécurisée de l'environnement de build (`~/.config/cachix/cachix.dhall`).
+

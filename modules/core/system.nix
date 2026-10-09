@@ -105,11 +105,19 @@ in
   hardware.cpu.intel.updateMicrocode = lib.mkDefault true;
   hardware.cpu.amd.updateMicrocode = lib.mkDefault true;
 
-  # 5. Activation de Flakes et optimisation du store Nix
+  # 5. Activation de Flakes, optimisation du store Nix & Cache binaire Cachix Noos
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
     auto-optimise-store = true;
     warn-dirty = false;
+    substituters = [
+      "https://cache.nixos.org"
+      "https://noos.cachix.org"
+    ];
+    trusted-public-keys = [
+      "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+      "noos.cachix.org-1:oA+kmOj0Yvzq6XWXVDFlTq5wGdY2gpr0cpzB0P9ndKI="
+    ];
   };
 
   # 5. Paquets système essentiels et utilitaires Noos

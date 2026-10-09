@@ -9,6 +9,17 @@
     nix-flatpak.url = "github:gmodena/nix-flatpak";
   };
 
+  nixConfig = {
+    extra-substituters = [
+      "https://cache.nixos.org"
+      "https://noos.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+      "noos.cachix.org-1:oA+kmOj0Yvzq6XWXVDFlTq5wGdY2gpr0cpzB0P9ndKI="
+    ];
+  };
+
   outputs = { self, nixpkgs, nix-flatpak, ... }@inputs:
     let
       system = "x86_64-linux";
