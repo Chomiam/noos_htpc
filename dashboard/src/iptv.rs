@@ -1719,6 +1719,16 @@ mod tests {
         println!("Parsed live streams: {:?}", live_streams);
         assert_eq!(live_streams.len(), 1);
     }
+
+    #[tokio::test]
+    async fn test_iptv_get_catalog_func() {
+        let res = iptv_get_catalog("demo".to_string(), "live".to_string()).await;
+        println!("Result: {:?}", res);
+        assert!(res.is_ok());
+        let cat = res.unwrap();
+        assert_eq!(cat.categories.len(), 5);
+        assert!(cat.live_streams.is_some());
+    }
 }
 
 

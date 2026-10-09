@@ -1104,7 +1104,6 @@
         const pid = currentIptvProfileId || 'demo';
         res = await window.__TAURI__.core.invoke('iptv_get_catalog', {
           profileId: pid,
-          profile_id: pid,
           section,
         });
       } catch (err) {
@@ -1265,9 +1264,7 @@
         const pid = currentIptvProfileId || 'demo';
         const epgItems = await window.__TAURI__.core.invoke('iptv_get_channel_epg', {
           profileId: pid,
-          profile_id: pid,
           streamId: ch.stream_id,
-          stream_id: ch.stream_id,
         });
 
         if (epgItems && epgItems.length > 0) {
@@ -1393,9 +1390,7 @@
           const pid = currentIptvProfileId || 'demo';
           const details = await window.__TAURI__.core.invoke('iptv_get_series_details', {
             profileId: pid,
-            profile_id: pid,
             seriesId: item.series_id,
-            series_id: item.series_id,
           });
 
           if (details && details.seasons && details.seasons.length > 0) {
@@ -1504,7 +1499,6 @@
         const pid = currentIptvProfileId || 'demo';
         favs = await window.__TAURI__.core.invoke('iptv_get_favorites', {
           profileId: pid,
-          profile_id: pid,
         });
       } catch (err) {
         console.error('Erreur chargement favoris :', err);
@@ -1578,7 +1572,6 @@
         const pid = currentIptvProfileId || 'demo';
         const isNowFav = await window.__TAURI__.core.invoke('iptv_toggle_favorite', {
           profileId: pid,
-          profile_id: pid,
           item: {
             id: String(streamId),
             item_type: currentDetailsType,
@@ -1631,7 +1624,6 @@
         const pid = currentIptvProfileId || 'demo';
         data = await window.__TAURI__.core.invoke('iptv_get_filters_data', {
           profileId: pid,
-          profile_id: pid,
         });
       } catch (err) {
         console.error('Erreur chargement filtres :', err);
@@ -1685,9 +1677,7 @@
         const pid = currentIptvProfileId || 'demo';
         await window.__TAURI__.core.invoke('iptv_save_hidden_categories', {
           profileId: pid,
-          profile_id: pid,
           hiddenIds: Array.from(iptvHiddenCategories),
-          hidden_ids: Array.from(iptvHiddenCategories),
         });
       } catch (err) {
         console.error('Erreur sauvegarde filtres :', err);
