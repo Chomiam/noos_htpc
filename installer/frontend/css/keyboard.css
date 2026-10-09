@@ -1,0 +1,135 @@
+/* ==============================================================================
+   Noos HTPC - On-Screen Virtual Keyboard (OSK)
+   Clavier virtuel TV manette grand format avec saisie fluide
+   ============================================================================== */
+
+.virtual-keyboard-overlay {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 1000;
+  padding-bottom: 30px;
+}
+
+.virtual-keyboard-overlay.visible {
+  display: flex;
+  animation: slideUp 0.25s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.keyboard-dock {
+  background: var(--ctp-mantle);
+  border: 2px solid var(--ctp-surface1);
+  border-radius: 20px;
+  padding: 24px;
+  width: 90%;
+  max-width: 1200px;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Barre de prévisualisation du texte saisi */
+.osk-input-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--ctp-crust);
+  border: 2px solid var(--ctp-surface0);
+  border-radius: 12px;
+  padding: 12px 20px;
+}
+
+.preview-label {
+  font-size: 18px;
+  color: var(--ctp-subtext);
+}
+
+.preview-value {
+  font-size: 26px;
+  font-weight: bold;
+  color: var(--ctp-mauve);
+  letter-spacing: 2px;
+  flex: 1;
+  margin-left: 16px;
+}
+
+.osk-toggle-mask {
+  background: var(--ctp-surface0);
+  color: var(--ctp-text);
+  border: 1px solid var(--ctp-surface1);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Grille des touches */
+.keyboard-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.keyboard-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.osk-key {
+  min-width: 60px;
+  height: 60px;
+  background: var(--ctp-surface0);
+  color: var(--ctp-text);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font-size: 24px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.osk-key.wide {
+  min-width: 90px;
+}
+
+.osk-key.active {
+  background: var(--ctp-surface2);
+}
+
+/* Touches d'actions spéciales (Espace, Effacer, Valider) */
+.osk-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.osk-key.action {
+  padding: 12px 28px;
+  font-size: 20px;
+  min-width: 140px;
+  height: 56px;
+}
+
+.osk-key.action.primary {
+  background: var(--ctp-blue);
+  color: var(--ctp-crust);
+}

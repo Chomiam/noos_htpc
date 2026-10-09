@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Installation Noos HTPC</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/gamepad.css">
+  <link rel="stylesheet" href="css/keyboard.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- En-tête TV -->
+    <header class="tv-header">
+      <div class="brand">
+        <img src="../icons/icon.png" alt="Noos HTPC" class="logo">
+        <span class="version-tag">Edition Salon / TV</span>
+      </div>
+      <div class="steps-indicator">
+        <div class="step-pill active" id="pill-step-1">1. Matériel</div>
+        <div class="step-pill" id="pill-step-2">2. Réseau</div>
+        <div class="step-pill" id="pill-step-3">3. Disque</div>
+        <div class="step-pill" id="pill-step-4">4. Options</div>
+        <div class="step-pill" id="pill-step-5">5. Installation</div>
+      </div>
+      <div class="gamepad-status" id="gamepad-badge">
+        <span class="status-dot disconnected"></span>
+        <span id="gamepad-name">En attente d'une manette...</span>
+      </div>
+    </header>
+
+    <!-- Conteneur principal des étapes (Wizard) -->
+    <main class="wizard-content">
+
+      <!-- Étape 1 : Bienvenue & Détection Matériel -->
+      <section class="wizard-step active" id="step-1">
+        <h1 class="step-title">Bienvenue sur l'installateur Noos HTPC</h1>
+        <p class="step-subtitle">Configuration optimisée pour TV grand écran. Utilisez votre manette pour naviguer.</p>
+
+        <div class="hardware-card-grid">
+          <div class="info-card">
+            <h3>🎮 Statut Manette</h3>
+            <div id="controller-info">Appuyez sur n'importe quel bouton de votre manette (Xbox, PlayStation, 8BitDo).</div>
+            <div class="controller-visual" id="controller-visual">
+              <span class="btn-indicator" id="ind-a">A</span>
+              <span class="btn-indicator" id="ind-b">B</span>
+              <span class="btn-indicator" id="ind-x">X</span>
+              <span class="btn-indicator" id="ind-y">Y</span>
+              <span class="btn-indicator" id="ind-dpad">D-Pad</span>
+            </div>
+          </div>
+
+          <div class="info-card">
+            <h3>⚡ Détection Carte Graphique (GPU)</h3>
+            <div id="gpu-info-text">Analyse du matériel en cours...</div>
+            <div class="badge-recommendation" id="gpu-badge">Profil recommandé : Auto</div>
+          </div>
+        </div>
+
+        <div class="action-footer">
+          <button class="tv-btn primary" data-focusable id="btn-goto-step-2">Continuer vers le Réseau (A)</button>
+        </div>
+      </section>
+
+      <!-- Étape 2 : Connexion Réseau (Wi-Fi / Ethernet) -->
+      <section class="wizard-step" id="step-2">
+        <h1 class="step-title">Connexion Réseau</h1>
+        <p class="step-subtitle">Une connexion Internet est nécessaire pour télécharger les derniers paquets NixOS.</p>
+
+        <div class="network-layout">
+          <div class="network-status-box" id="net-status-box">
+            <span>Statut : </span><strong id="current-net-status">Vérification...</strong>
+          </div>
+
+          <div class="wifi-list-container">
+            <h3>Réseaux Wi-Fi disponibles :</h3>
+            <div class="wifi-grid" id="wifi-grid">
+              <div class="loading-spinner">Recherche des réseaux Wi-Fi...</div>
+            </div>
+          </div>
+
+          <div class="wifi-connect-box" id="wifi-password-box" style="display: none;">
+            <label for="wifi-password-input">Mot de passe pour <span id="selected-ssid-name"></span> :</label>
+            <div class="input-with-button">
+              <input type="password" id="wifi-password-input" class="tv-input" data-focusable placeholder="Sélectionnez pour ouvrir le clavier virtuel">
+              <button class="tv-btn secondary" data-focusable id="btn-open-osk">Clavier (X)</button>
+              <button class="tv-btn primary" data-focusable id="btn-submit-wifi">Connecter (A)</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-footer">
+          <button class="tv-btn secondary" data-focusable id="btn-back-step-1">Retour (B)</button>
+          <button class="tv-btn primary" data-focusable id="btn-goto-step-3">Continuer vers le Disque (A)</button>
+        </div>
+      </section>
+
+      <!-- Étape 3 : Sélection du Disque Cible -->
+      <section class="wizard-step" id="step-3">
+        <h1 class="step-title">Sélection du Disque de Destination</h1>
+        <p class="step-subtitle alert-text">⚠️ ATTENTION : Le disque sélectionné sera entièrement formaté pour Noos HTPC.</p>
+
+        <div class="disks-grid" id="disks-grid">
+          <div class="loading-spinner">Détection des disques de stockage...</div>
+        </div>
+
+        <div class="action-footer">
+          <button class="tv-btn secondary" data-focusable id="btn-back-step-2">Retour (B)</button>
+          <button class="tv-btn primary" data-focusable id="btn-goto-step-4" disabled>Confirmer le Disque (A)</button>
+        </div>
+      </section>
+
+      <!-- Étape 4 : Options & Profil HTPC -->
+      <section class="wizard-step" id="step-4">
+        <h1 class="step-title">Profil Graphique & Options TV</h1>
+        <p class="step-subtitle">Ajustez le profil matériel optimal pour votre téléviseur.</p>
+
+        <div class="options-container">
+          <div class="option-group">
+            <label>Profil GPU :</label>
+            <div class="gpu-selector-grid">
+              <div class="gpu-card" data-focusable data-profile="amd">
+                <h4>AMD Radeon / Ryzen</h4>
+                <p>Driver amdgpu, Vulkan RADV, HDR Wayland & FreeSync</p>
+              </div>
+              <div class="gpu-card" data-focusable data-profile="intel">
+                <h4>Intel NUC / Iris Xe</h4>
+                <p>QuickSync VA-API moderne (iHD), basse consommation</p>
+              </div>
+              <div class="gpu-card" data-focusable data-profile="nvidia">
+                <h4>NVIDIA Moderne</h4>
+                <p>Pilotes propriétaires récents (GTX 1650+ / RTX), NVDEC</p>
+              </div>
+              <div class="gpu-card" data-focusable data-profile="nvidia-legacy">
+                <h4>NVIDIA Legacy</h4>
+                <p>Pilotes propriétaires 470xx (anciennes GeForce séries 6/7/8)</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="option-row">
+            <label class="switch-label">Activer le support HDR (High Dynamic Range) :</label>
+            <button class="tv-btn toggle active" data-focusable id="btn-toggle-hdr">HDR : Activé</button>
+          </div>
+
+          <div class="option-row">
+            <label>Nom de la machine :</label>
+            <input type="text" id="input-hostname" class="tv-input" data-focusable value="noos-htpc">
+          </div>
+        </div>
+
+        <div class="action-footer">
+          <button class="tv-btn secondary" data-focusable id="btn-back-step-3">Retour (B)</button>
+          <button class="tv-btn danger" data-focusable id="btn-start-install">LANCER L'INSTALLATION (START)</button>
+        </div>
+      </section>
+
+      <!-- Étape 5 : Installation en Cours (Logs & Progression) -->
+      <section class="wizard-step" id="step-5">
+        <h1 class="step-title">Installation de Noos HTPC...</h1>
+        <p class="step-subtitle" id="install-current-step">Initialisation du système...</p>
+
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" id="progress-fill" style="width: 10%;"></div>
+        </div>
+        <div class="progress-percentage" id="progress-text">10%</div>
+
+        <div class="terminal-log-box" id="terminal-logs">
+          <div class="log-line">[Noos HTPC] Démarrage du processus d'installation...</div>
+        </div>
+      </section>
+
+      <!-- Étape 6 : Succès & Redémarrage -->
+      <section class="wizard-step" id="step-6">
+        <div class="success-banner">
+          <h1>🎉 Installation Terminée avec Succès !</h1>
+          <p>Noos HTPC a été déployé sur votre disque. Retirez la clé USB d'installation et redémarrez votre mini PC.</p>
+          <button class="tv-btn success large" data-focusable id="btn-reboot-now">Redémarrer Noos HTPC (A)</button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Clavier Virtuel TV (OSK) -->
+    <div class="virtual-keyboard-overlay" id="osk-overlay">
+      <div class="keyboard-dock">
+        <div class="osk-input-preview">
+          <span class="preview-label">Texte saisi :</span>
+          <span class="preview-value" id="osk-preview"></span>
+          <button class="osk-toggle-mask" data-focusable id="osk-mask-btn">👁️ Afficher</button>
+        </div>
+        <div class="keyboard-grid" id="osk-grid">
+          <!-- Les touches sont générées dynamiquement par keyboard.js -->
+        </div>
+        <div class="osk-actions">
+          <button class="osk-key action" data-action="space" data-focusable>ESPACE (Y)</button>
+          <button class="osk-key action" data-action="backspace" data-focusable>EFFACER (X)</button>
+          <button class="osk-key action primary" data-action="enter" data-focusable>VALIDER (START)</button>
+          <button class="osk-key action" data-action="close" data-focusable>FERMER (B)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Légende permanente des touches de manette en bas de l'écran -->
+    <footer class="gamepad-legend">
+      <div class="legend-item"><span class="btn-badge a">A</span> Valider / Cliquer</div>
+      <div class="legend-item"><span class="btn-badge b">B</span> Retour / Fermer</div>
+      <div class="legend-item"><span class="btn-badge x">X</span> Clavier Virtuel / Effacer</div>
+      <div class="legend-item"><span class="btn-badge y">Y</span> Espace</div>
+      <div class="legend-item"><span class="btn-badge dpad">D-Pad / Stick</span> Naviguer</div>
+      <div class="legend-item"><span class="btn-badge start">Start</span> Confirmer</div>
+    </footer>
+  </div>
+
+  <script src="js/keyboard.js"></script>
+  <script src="js/gamepad.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

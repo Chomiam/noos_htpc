@@ -32,12 +32,35 @@
         htpc = mkHtpcSystem "noos-htpc";
         noos-htpc = self.nixosConfigurations.htpc;
         default = self.nixosConfigurations.htpc;
+
+        # Image ISO d'installation autonome bootable sur TV
+        iso = nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = { inherit inputs self; };
+          modules = [
+            "${nixpkgs}/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"
+            ./iso/installer-iso.nix
+          ];
+        };
       };
 
       # Module exportable pour inclusion dans d'autres dépôts Noos
       nixosModules = {
         default = ./modules;
         htpc = ./modules;
+      };
+
+      # Application d'installation graphique Rust + Tauri
+      packages.${system} = rec {
+        noos-htpc-installer = pkgs.callPackage ./installer/default.nix { };
+        default = noos-htpc-installer;
+      };
+
+      apps.${system} = {
+        default = {
+          type = "app";
+          program = "${self.packages.${system}.default}/bin/noos-htpc-installer";
+        };
       };
 
       # Shell de développement léger

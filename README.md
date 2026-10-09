@@ -115,3 +115,20 @@ En cas de problème après une mise à jour :
 noos-rollback
 # Ou sélectionnez directement la version précédente dans le menu de démarrage UEFI
 ```
+
+---
+
+## 🚀 Installateur Graphique TV (Rust + Tauri v2)
+
+L'installation de **Noos HTPC** est conçue pour s'effectuer intégralement depuis le canapé, **à la manette**, sans clavier ni souris physiques :
+
+* **Moteur :** Application native en **Rust** propulsée par **Tauri v2**, avec détection matérielle directe des disques (`lsblk`), des puces graphiques (`lspci`), et des réseaux Wi-Fi (`nmcli`).
+* **Navigation Manette :** Moteur de navigation spatiale 60 FPS supportant les manettes Xbox, PlayStation (DualShock / DualSense), 8BitDo et Switch Pro.
+* **Clavier Virtuel Intégré (OSK) :** Saisie des mots de passe Wi-Fi et noms d'hôte via un dock virtuel pilotable au D-Pad avec raccourcis directs :
+  * **(A)** : Valider / Écrire la touche sélectionnée
+  * **(B)** : Fermer le clavier virtuel / Étape précédente
+  * **(X)** : Ouvrir le clavier virtuel / Touche Effacer (Backspace)
+  * **(Y)** : Touche Espace
+  * **(Start)** : Confirmer et passer à l'étape suivante
+* **Image ISO Bootable :** Démarrage direct sur clé USB en plein écran avec micro-compositeur Gamescope pour une expérience zéro tearing dès le premier boot.
+
