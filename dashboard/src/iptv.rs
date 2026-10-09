@@ -756,25 +756,38 @@ pub async fn iptv_login_and_sync(
         // Helper pour télécharger ou générer les données de streaming
         let download_json = |action: &str, target_path: &Path| -> Result<usize, String> {
             if is_demo {
-                std::thread::sleep(std::time::Duration::from_millis(400));
+                std::thread::sleep(std::time::Duration::from_millis(300));
                 let (count, demo_json) = match action {
-                    "get_live_categories" | "get_vod_categories" | "get_series_categories" => {
-                        (3, r#"[{"category_id":"1","category_name":"Généraliste"},{"category_id":"2","category_name":"Sport & Cinéma"},{"category_id":"3","category_name":"Documentaires"}]"#)
+                    "get_live_categories" => {
+                        let c = get_demo_catalog("live").categories;
+                        (c.len(), serde_json::to_string(&c).unwrap_or_default())
                     }
                     "get_live_streams" => {
-                        (1250, r#"[{"num":1,"name":"Noos Cinema 4K","stream_type":"live","stream_id":101,"stream_icon":"","epg_channel_id":"","category_id":"2"}]"#)
+                        let s = get_demo_catalog("live").live_streams.unwrap_or_default();
+                        (s.len(), serde_json::to_string(&s).unwrap_or_default())
+                    }
+                    "get_vod_categories" => {
+                        let c = get_demo_catalog("vod").categories;
+                        (c.len(), serde_json::to_string(&c).unwrap_or_default())
                     }
                     "get_vod_streams" => {
-                        (3800, r#"[{"num":1,"name":"Film Démo 4K HDR","stream_type":"movie","stream_id":201,"stream_icon":"","rating":"8.5","category_id":"2"}]"#)
+                        let s = get_demo_catalog("vod").vod_streams.unwrap_or_default();
+                        (s.len(), serde_json::to_string(&s).unwrap_or_default())
+                    }
+                    "get_series_categories" => {
+                        let c = get_demo_catalog("series").categories;
+                        (c.len(), serde_json::to_string(&c).unwrap_or_default())
                     }
                     "get_series" => {
-                        (420, r#"[{"num":1,"name":"Série Démo S01","series_id":301,"cover":"","rating":"9.1","category_id":"1"}]"#)
+                        let s = get_demo_catalog("series").series_streams.unwrap_or_default();
+                        (s.len(), serde_json::to_string(&s).unwrap_or_default())
                     }
-                    _ => (0, "[]"),
+                    _ => (0, "[]".to_string()),
                 };
-                let _ = fs::write(target_path, demo_json);
+                let _ = fs::write(target_path, &demo_json);
                 return Ok(count);
             }
+
 
             let url = format!(
                 "{}/player_api.php?username={}&password={}&action={}",
@@ -1086,6 +1099,13 @@ pub async fn iptv_get_catalog(profile_id: String, section: String) -> Result<Ipt
                 Some(IptvCategory { category_id: cat_id, category_name: cat_name })
             })
             .collect();
+
+        if categories.is_empty() {
+            let mut demo = get_demo_catalog(&section);
+            demo.hidden_category_ids = hidden;
+            return Ok(demo);
+        }
+
 
         match section.as_str() {
             "live" => {
@@ -1649,4 +1669,56 @@ mod tests {
         let decrypted = decrypt_profiles_payload(&encrypted).expect("Déchiffrement OK");
         assert_eq!(plaintext.as_slice(), decrypted.as_slice());
     }
+
+    #[tokio::test]
+    async fn test_iptv_get_catalog_demo() {
+        let res = iptv_get_catalog("demo".to_string(), "live".to_string()).await.unwrap();
+        println!("Categories: {:?}", res.categories);
+        println!("Live streams count: {:?}", res.live_streams.as_ref().map(|s| s.len()));
+        assert!(!res.categories.is_empty());
+    }
+
+    #[test]
+    fn test_parse_vm_cache() {
+        let raw_cat = r#"[{"category_id":"1","category_name":"Généraliste"},{"category_id":"2","category_name":"Sport & Cinéma"},{"category_id":"3","category_name":"Documentaires"}]"#;
+        let raw_streams = r#"[{"num":1,"name":"Noos Cinema 4K","stream_type":"live","stream_id":101,"stream_icon":"","epg_channel_id":"","category_id":"2"}]"#;
+
+        let cat_values = serde_json::from_str::<Vec<serde_json::Value>>(raw_cat).unwrap();
+        let categories: Vec<IptvCategory> = cat_values
+            .into_iter()
+            .filter_map(|v| {
+                let cat_id = get_field_as_string(&v, "category_id")?;
+                let cat_name = get_field_as_string(&v, "category_name").unwrap_or_else(|| "Général".into());
+                Some(IptvCategory { category_id: cat_id, category_name: cat_name })
+            })
+            .collect();
+        println!("Parsed categories: {:?}", categories);
+        assert_eq!(categories.len(), 3);
+
+        let st_values = serde_json::from_str::<Vec<serde_json::Value>>(raw_streams).unwrap();
+        let live_streams: Vec<IptvLiveStream> = st_values
+            .into_iter()
+            .filter_map(|v| {
+                let stream_id = get_field_as_u64(&v, "stream_id")?;
+                let name = get_field_as_string(&v, "name").unwrap_or_else(|| "Chaîne Direct".into());
+                let category_id = get_field_as_string(&v, "category_id").unwrap_or_else(|| "1".into());
+                let stream_icon = get_field_as_string(&v, "stream_icon");
+                let epg_channel_id = get_field_as_string(&v, "epg_channel_id");
+                let num = get_field_as_u64(&v, "num").map(|n| n as u32);
+                Some(IptvLiveStream {
+                    num,
+                    name,
+                    stream_type: Some("live".into()),
+                    stream_id,
+                    stream_icon,
+                    epg_channel_id,
+                    category_id,
+                })
+            })
+            .collect();
+        println!("Parsed live streams: {:?}", live_streams);
+        assert_eq!(live_streams.len(), 1);
+    }
 }
+
+

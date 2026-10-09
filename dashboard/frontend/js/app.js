@@ -927,6 +927,9 @@
 
           isIptvSyncing = false;
           currentIptvProfileId = result.profile_id;
+          setTimeout(() => {
+            if (btnIptvOpenCatalog) btnIptvOpenCatalog.focus();
+          }, 100);
         }
       } catch (err) {
         console.error('Erreur synchronisation IPTV :', err);
@@ -958,6 +961,9 @@
         if (iptvSyncSuccessActions) iptvSyncSuccessActions.classList.remove('hidden');
         isIptvSyncing = false;
         currentIptvProfileId = 'demo';
+        setTimeout(() => {
+          if (btnIptvOpenCatalog) btnIptvOpenCatalog.focus();
+        }, 100);
       }, 1500);
     }
   }
@@ -1845,7 +1851,49 @@
             closeIptvModal();
           }
         }
+        return;
       }
+
+      // Bumpers clavier (Q / E / PageUp / PageDown) pour cycler les onglets IPTV
+      if (e.key === 'PageUp' || e.key === 'q' || e.key === 'Q') {
+        if (iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
+          cycleIptvTab(-1);
+          return;
+        }
+      }
+      if (e.key === 'PageDown' || e.key === 'e' || e.key === 'E') {
+        if (iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
+          cycleIptvTab(1);
+          return;
+        }
+      }
+
+      // Touche Entrée / Espace
+      if (e.key === 'Enter' || e.key === ' ') {
+        if (iptvViewSync && !iptvViewSync.classList.contains('hidden') && !isIptvSyncing) {
+          showIptvCatalogView(currentIptvProfileId);
+          return;
+        }
+        const active = document.activeElement;
+        if (active && active.tagName !== 'INPUT' && active.click) {
+          active.click();
+          return;
+        }
+      }
+
+      // Navigation flèches dans la modale IPTV
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        if (iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
+          navigateModalFocus(modalIptv, 1);
+          return;
+        }
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        if (iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
+          navigateModalFocus(modalIptv, -1);
+          return;
+        }
+      }
+
       return;
     }
 
