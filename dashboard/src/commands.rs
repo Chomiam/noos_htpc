@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use tauri::{AppHandle, Emitter};
 
 static APP_RUNNING: AtomicBool = AtomicBool::new(false);
+static CURRENT_CHILD_PID: Mutex<Option<u32>> = Mutex::new(None);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SystemInfo {
@@ -201,11 +203,25 @@ pub async fn play_disc(app: AppHandle, device: Option<String>) -> Result<bool, S
         cmd.args(["--fs", "--profile=auto-upscale"]);
 
         tracing::info!("Lancement de la lecture du disque : {:?}", cmd);
-        let status = cmd.status();
+        match cmd.spawn() {
+            Ok(mut child) => {
+                let pid = child.id();
+                if let Ok(mut lock) = CURRENT_CHILD_PID.lock() {
+                    *lock = Some(pid);
+                }
+                let status = child.wait();
+                if let Ok(mut lock) = CURRENT_CHILD_PID.lock() {
+                    *lock = None;
+                }
+                tracing::info!("Fin de la lecture disque : {:?}", status);
+            }
+            Err(e) => {
+                tracing::error!("Erreur au lancement du lecteur disque : {:?}", e);
+            }
+        }
         APP_RUNNING.store(false, Ordering::SeqCst);
         let _ = app_handle.emit("app_state_changed", false);
         let _ = app_handle.emit("app_closed", "disc_player");
-        tracing::info!("Fin de la lecture disque : {:?}", status);
     });
 
     Ok(true)
@@ -281,14 +297,61 @@ pub async fn launch_app(app: AppHandle, app_id: String) -> Result<bool, String> 
             cmd.env("WAYLAND_DISPLAY", "wayland-0");
         }
 
-        let status = cmd.status();
+        match cmd.spawn() {
+            Ok(mut child) => {
+                let pid = child.id();
+                if let Ok(mut lock) = CURRENT_CHILD_PID.lock() {
+                    *lock = Some(pid);
+                }
+                let status = child.wait();
+                if let Ok(mut lock) = CURRENT_CHILD_PID.lock() {
+                    *lock = None;
+                }
+                tracing::info!("Application terminée avec statut : {:?}", status);
+            }
+            Err(e) => {
+                tracing::error!("Erreur au lancement de l'application : {:?}", e);
+            }
+        }
+
         APP_RUNNING.store(false, Ordering::SeqCst);
         let _ = app_handle.emit("app_state_changed", false);
         let _ = app_handle.emit("app_closed", app_id_clone);
-        tracing::info!("Application terminée avec statut : {:?}", status);
     });
 
     Ok(true)
+}
+
+/// Action universelle déclenchée par le bouton HOME de la manette ou télécommande
+pub fn trigger_home_action(app: &AppHandle) {
+    let running = APP_RUNNING.load(Ordering::SeqCst);
+    let child_pid = if let Ok(mut lock) = CURRENT_CHILD_PID.lock() {
+        lock.take()
+    } else {
+        None
+    };
+
+    if running || child_pid.is_some() {
+        tracing::info!("Bouton HOME pressé : interruption de l'application active pour retour au lanceur...");
+
+        if let Some(pid) = child_pid {
+            let _ = Command::new("kill").args(["-TERM", &pid.to_string()]).status();
+        }
+
+        // Fermeture des processus multimédias / jeux éventuels
+        let _ = Command::new("pkill").args(["-TERM", "-f", "rocks.shy.VacuumTube"]).status();
+        let _ = Command::new("pkill").args(["-TERM", "-f", "vacuumtube"]).status();
+        let _ = Command::new("pkill").args(["-TERM", "-f", "mpv"]).status();
+        let _ = Command::new("pkill").args(["-TERM", "-f", "retroarch"]).status();
+        let _ = Command::new("pkill").args(["-TERM", "-f", "es-de"]).status();
+
+        APP_RUNNING.store(false, Ordering::SeqCst);
+        let _ = app.emit("app_state_changed", false);
+        let _ = app.emit("app_closed", "home_pressed");
+    }
+
+    // Notifier le frontend pour fermer les dialogues et recentrer le focus sur l'accueil
+    let _ = app.emit("home_pressed", ());
 }
 
 #[tauri::command]

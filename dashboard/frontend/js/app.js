@@ -313,6 +313,12 @@
 
   // Clavier physique
   window.addEventListener('keydown', (e) => {
+    if (e.key === 'Home') {
+      if (isModalOpen) closeSettings();
+      selectCard(0);
+      return;
+    }
+
     if (isModalOpen) {
       if (e.key === 'Escape' || e.key === 'Backspace') {
         closeSettings();
@@ -351,6 +357,7 @@
       const btnB = gp.buttons[1]?.pressed;       // Rond / B (Retour)
       const btnX = gp.buttons[2]?.pressed;       // Carré / X (Options)
       const btnY = gp.buttons[3]?.pressed;       // Triangle / Y (Alimentation)
+      const btnHome = gp.buttons[16]?.pressed;   // Guide / Xbox / PS / Home (Bouton HOME)
       const dpadUp = gp.buttons[12]?.pressed;
       const dpadDown = gp.buttons[13]?.pressed;
       const dpadLeft = gp.buttons[14]?.pressed;
@@ -376,6 +383,13 @@
             lastNavTime = now;
           }
         }
+      }
+
+      // Action HOME (Retour direct au lanceur / Accueil TV)
+      if (btnHome && !prevButtonsState['Home']) {
+        playConfirmSound();
+        if (isModalOpen) closeSettings();
+        selectCard(0);
       }
 
       // Action A (Ouvrir) - Déclenchement sur front montant
@@ -417,6 +431,7 @@
       prevButtonsState['B'] = btnB;
       prevButtonsState['X'] = btnX;
       prevButtonsState['Y'] = btnY;
+      prevButtonsState['Home'] = btnHome;
     }
 
     requestAnimationFrame(pollGamepad);
@@ -427,6 +442,16 @@
     selectCard(0, false);
     refreshSystemInfo();
     requestAnimationFrame(pollGamepad);
+
+    // Écoute de l'événement système global Tauri lorsque le bouton HOME est pressé
+    if (window.__TAURI__ && window.__TAURI__.event) {
+      window.__TAURI__.event.listen('home_pressed', () => {
+        console.log('[Noos TV] Interruption globale reçue : retour au lanceur');
+        playConfirmSound();
+        if (isModalOpen) closeSettings();
+        selectCard(0);
+      });
+    }
   });
 
 })();
