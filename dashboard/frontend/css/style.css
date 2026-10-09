@@ -181,12 +181,23 @@ body.tv-mode {
   color: #34d399;
 }
 
+.sdr-active {
+  background: rgba(56, 189, 248, 0.08);
+  border-color: rgba(56, 189, 248, 0.25);
+  color: #38bdf8;
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background-color: #34d399;
   box-shadow: 0 0 10px #34d399;
+}
+
+.status-dot.sdr {
+  background-color: #38bdf8;
+  box-shadow: 0 0 10px #38bdf8;
 }
 
 .status-icon {

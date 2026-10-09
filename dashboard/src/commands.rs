@@ -15,6 +15,7 @@ pub struct SystemInfo {
     pub wifi_connected: bool,
     pub wifi_ssid: String,
     pub hdr_enabled: bool,
+    pub hdr_capable: bool,
     pub app_is_active: bool,
 }
 
@@ -110,10 +111,14 @@ pub async fn get_system_info() -> Result<SystemInfo, String> {
     }
 
     let mut hdr_enabled = false;
+    let mut hdr_capable = false;
     if let Ok(output) = Command::new("kscreen-doctor").arg("-j").output() {
         if let Ok(text) = String::from_utf8(output.stdout) {
             if text.contains("\"hdr\":true") || text.contains("\"hdr\": true") {
                 hdr_enabled = true;
+            }
+            if text.contains("\"hdrCapable\":true") || text.contains("\"hdrCapable\": true") || text.contains("\"hdr\":") {
+                hdr_capable = true;
             }
         }
     }
@@ -127,6 +132,7 @@ pub async fn get_system_info() -> Result<SystemInfo, String> {
         wifi_connected,
         wifi_ssid,
         hdr_enabled,
+        hdr_capable,
         app_is_active: APP_RUNNING.load(Ordering::SeqCst),
     })
 }

@@ -160,9 +160,7 @@
   // 7. Bascule HDR
   async function toggleHdr() {
     hdrEnabled = !hdrEnabled;
-    toggleHdrBtn.classList.toggle('active', hdrEnabled);
-    toggleHdrBtn.textContent = hdrEnabled ? 'Activé' : 'Désactivé';
-    hdrPill.classList.toggle('hdr-active', hdrEnabled);
+    applyHdrState(hdrEnabled);
 
     if (window.__TAURI__ && window.__TAURI__.core) {
       try {
@@ -170,6 +168,20 @@
       } catch (err) {
         console.error('Erreur toggle HDR :', err);
       }
+    }
+  }
+
+  function applyHdrState(enabled) {
+    toggleHdrBtn.classList.toggle('active', enabled);
+    toggleHdrBtn.textContent = enabled ? 'Activé (Rec.2020)' : 'Désactivé (SDR)';
+    if (enabled) {
+      hdrPill.classList.add('hdr-active');
+      hdrPill.classList.remove('sdr-active');
+      hdrPill.innerHTML = '<span class="status-dot"></span><span>4K HDR</span>';
+    } else {
+      hdrPill.classList.remove('hdr-active');
+      hdrPill.classList.add('sdr-active');
+      hdrPill.innerHTML = '<span class="status-dot sdr"></span><span>SDR • Tonemap Auto</span>';
     }
   }
 
@@ -200,9 +212,7 @@
             settingsStorageStatus.textContent = `${info.storage_free_gb} Go libres sur ${info.storage_total_gb} Go`;
           }
           hdrEnabled = info.hdr_enabled;
-          toggleHdrBtn.classList.toggle('active', hdrEnabled);
-          toggleHdrBtn.textContent = hdrEnabled ? 'Activé' : 'Désactivé';
-          hdrPill.classList.toggle('hdr-active', hdrEnabled);
+          applyHdrState(hdrEnabled);
         }
       } catch (err) {
         console.warn('Impossible de charger les infos système :', err);

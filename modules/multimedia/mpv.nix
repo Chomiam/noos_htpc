@@ -16,6 +16,10 @@ let
     hwdec=auto-safe
     reset-on-clear=yes
 
+    # 1.1 Passthrough HDR dynamique & Tonemapping intelligent
+    target-colorspace-hint=auto
+    gamut-mapping-mode=auto
+
     # 2. Fluidité et élimination du judder (24Hz sur écran 60Hz/120Hz)
     video-sync=display-resample
     interpolation=yes
@@ -47,8 +51,20 @@ let
     osd-duration=2000
 
     # ==============================================================================
-    # PROFILS D'UPSCALING ET D'AFFICHAGE
+    # PROFILS D'UPSCALING, TONE-MAPPING & AFFICHAGE
     # ==============================================================================
+
+    # Profil 0 : Repli Tonemapping Automatique HDR vers SDR (libplacebo)
+    # Activé automatiquement dès qu'un flux HDR (BT.2020 / PQ / HLG) est détecté sur écran SDR
+    [hdr-to-sdr-fallback]
+    profile-cond=p["video-params/primaries"] == "bt.2020" or p["video-params/gamma"] == "pq" or p["video-params/gamma"] == "hlg"
+    profile-restore=copy
+    tone-mapping=spline
+    tone-mapping-mode=auto
+    hdr-compute-peak=yes
+    hdr-contrast-recovery=0.5
+    gamut-mapping-mode=perceptual
+    target-peak=100
 
     # Profil 1 : Upscaling léger pour iGPU (Intel NUC, Beelink, AMD APU Vega/RDNA)
     [iGPU-light-upscale]
@@ -76,9 +92,6 @@ let
     deband-threshold=48
     deband-range=24
     deband-grain=16
-    tone-mapping=auto
-    target-colorspace-hint=yes
-    hdr-compute-peak=yes
 
     # Profil 3 : Contenu 4K Natif (Désactive les filtres inutiles pour économiser le GPU)
     [4k-native]

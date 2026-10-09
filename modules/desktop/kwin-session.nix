@@ -34,16 +34,26 @@ let
     # 2. Vérification et création des dossiers multimédias et rétro
     mkdir -p /home/noos/Retro/ROMS /home/noos/Retro/BIOS /home/noos/IPTV /home/noos/.config
 
-    # 3. Activation en tâche de fond du HDR et de la gestion des couleurs dès que KWin est actif
+    # 3. Détection intelligente de l'écran : HDR natif ou Fallback SDR avec tonemapping
     ${lib.optionalString gpuCfg.enableHDR ''
     (
-      for i in $(seq 1 10); do
+      for i in $(seq 1 12); do
         sleep 1
         if ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor -j >/dev/null 2>&1; then
-          echo "[Noos HTPC] Activation du profil colorimétrique HDR10 (Rec.2020)..."
-          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.1.hdr.enable || true
-          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.HDMI-A-1.hdr.enable || true
-          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.DP-1.hdr.enable || true
+          KSCREEN_JSON=$(${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor -j 2>/dev/null || true)
+          HDR_SUPPORTED=$(echo "$KSCREEN_JSON" | grep -iE '"hdrCapable"\s*:\s*true|"hdr"\s*:\s*true' || true)
+
+          if [ -n "$HDR_SUPPORTED" ]; then
+            echo "[Noos HTPC] Écran compatible HDR détecté : activation de l'espace colorimétrique Rec.2020 / HDR10..."
+            ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.1.hdr.enable || true
+            ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.HDMI-A-1.hdr.enable || true
+            ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.DP-1.hdr.enable || true
+          else
+            echo "[Noos HTPC] Écran ou matériel SDR détecté : maintien du mode SDR sRGB avec tonemapping automatique activé pour MPV."
+            ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.1.hdr.disable || true
+            ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.HDMI-A-1.hdr.disable || true
+            ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.DP-1.hdr.disable || true
+          fi
           break
         fi
       done
