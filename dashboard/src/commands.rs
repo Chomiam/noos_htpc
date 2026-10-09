@@ -387,6 +387,9 @@ pub fn trigger_home_action(app: &AppHandle) {
         let _ = Command::new("pkill").args(["-TERM", "-f", "mpv"]).status();
         let _ = Command::new("pkill").args(["-TERM", "-f", "retroarch"]).status();
         let _ = Command::new("pkill").args(["-TERM", "-f", "es-de"]).status();
+        let _ = Command::new("pkill").args(["-TERM", "-x", "sober"]).status();
+        let _ = Command::new("pkill").args(["-TERM", "-x", "sober_services"]).status();
+        let _ = Command::new("pkill").args(["-TERM", "-f", "org.vinegarhq.Sober"]).status();
 
         APP_RUNNING.store(false, Ordering::SeqCst);
         let _ = app.emit("app_state_changed", false);
