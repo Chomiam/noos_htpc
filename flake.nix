@@ -60,7 +60,8 @@
       apps.${system} = {
         default = {
           type = "app";
-          program = "${self.packages.${system}.default}/bin/noos-htpc-installer";
+          program = "${self.packages.${system}.noos-htpc-installer}/bin/noos-htpc-installer";
+          meta.description = "Installateur graphique TV Noos HTPC";
         };
       };
 
