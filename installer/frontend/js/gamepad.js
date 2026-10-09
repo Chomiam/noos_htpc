@@ -211,10 +211,44 @@
     refreshFocus: () => {
       const elems = getFocusableElements();
       if (elems.length > 0 && (!currentFocusElem || !elems.includes(currentFocusElem))) {
-        setFocus(elems[0]);
+        // Privilégier le bouton primaire ou la première carte au lieu du bouton Retour
+        const primary = elems.find(el => el.classList.contains("primary") || el.classList.contains("disk-card") || el.classList.contains("gpu-card"));
+        setFocus(primary || elems[0]);
       }
     }
   };
+
+  // Navigation au clavier physique (idéal pour VM ou clavier d'appoint)
+  window.addEventListener("keydown", (e) => {
+    const isTyping = document.activeElement && document.activeElement.tagName === "INPUT" && !window.OSK?.isOpen();
+    if (isTyping && e.key !== "ArrowUp" && e.key !== "ArrowDown" && e.key !== "Escape" && e.key !== "Enter") {
+      return;
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      navigate("up");
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      navigate("down");
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      navigate("left");
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      navigate("right");
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleButtonPress(0);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      handleButtonPress(1);
+    } else if (e.key === "Tab") {
+      e.preventDefault();
+      if (e.shiftKey) navigate("left");
+      else navigate("right");
+    }
+  });
 
   window.addEventListener("gamepadconnected", (e) => {
     console.log("Manette connectée :", e.gamepad.id);

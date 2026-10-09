@@ -9,14 +9,16 @@ let
     export GDK_BACKEND=wayland,x11
     export WEBKIT_DISABLE_COMPOSITING_MODE=1
 
-    echo "[Noos ISO] Lancement de l'installateur TV avec Gamepad..."
+    echo "[Noos ISO] Lancement de l'installateur TV..."
     
-    # Lancement via Gamescope pour contrôle sans tearing sur TV
-    if command -v gamescope >/dev/null 2>&1; then
-      exec gamescope -W 1920 -H 1080 -r 60 --fullscreen -- ${installerPkg}/bin/noos-htpc-installer
-    else
-      exec ${pkgs.cage}/bin/cage -- ${installerPkg}/bin/noos-htpc-installer
+    # 1. Tentative avec Gamescope (TV physique avec Vulkan matériel)
+    # 2. Si échec (ex: Machine Virtuelle KVM/QEMU), bascule immédiate sur Cage
+    if gamescope -W 1920 -H 1080 -r 60 --fullscreen -- ${installerPkg}/bin/noos-htpc-installer; then
+      exit 0
     fi
+
+    echo "[Noos ISO] Gamescope non supporté sur ce matériel, bascule sur Cage..."
+    exec ${pkgs.cage}/bin/cage -s -- ${installerPkg}/bin/noos-htpc-installer
   '';
 in
 {
@@ -57,7 +59,19 @@ in
   # Recommandation ZFS pour éviter les avertissements d'importation
   boot.zfs.forceImportRoot = false;
 
-  # 6. Outils d'installation et dépendances dans l'environnement Live
+  # 6. Accès SSH root automatique pour le contrôle et débogage distant
+  services.openssh = {
+    enable = true;
+    settings.PermitRootLogin = "yes";
+  };
+  users.users.root = {
+    initialHashedPassword = "";
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAKTtcn0Ok3EGfiP0+00oknZI9SwGw7ael41PfizSeit chomiam@pop-os"
+    ];
+  };
+
+  # 7. Outils d'installation et dépendances dans l'environnement Live
   environment.systemPackages = with pkgs; [
     installerPkg
     installerSession
