@@ -10,6 +10,16 @@
   let enableHDR = true;
   let selectedWifiSsid = null;
 
+  function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   // Accès sécurisé à l'API Tauri v2 avec fallback de test
   const tauriInvoke = window.__TAURI__ && window.__TAURI__.core
     ? window.__TAURI__.core.invoke
@@ -288,21 +298,23 @@
         const lower = payload.log_line.toLowerCase();
         let typeClass = "normal";
 
-        if (lower.includes("error:") || lower.includes("failed") || (payload.step_name && payload.step_name.toLowerCase().includes("erreur"))) {
+        if (lower.includes("error:") || lower.includes("échec") || lower.includes("failed") || (payload.step_name && payload.step_name.toLowerCase().includes("erreur"))) {
           typeClass = "error";
-        } else if (lower.includes("copying path") || lower.includes("fetching path") || lower.includes("fetching")) {
+        } else if (lower.includes("contrôle") || lower.includes("vérification") || lower.includes("certifié") || lower.includes("[check]")) {
+          typeClass = "check";
+        } else if (lower.includes("copying path") || lower.includes("fetching path") || lower.includes("fetching") || lower.includes("téléchargement")) {
           typeClass = "fetch";
         } else if (lower.includes("building") || lower.includes("compilation")) {
           typeClass = "build";
-        } else if (lower.includes("terminé") || lower.includes("succès")) {
+        } else if (lower.includes("terminé") || lower.includes("succès") || lower.includes("validé") || lower.includes("[ok]")) {
           typeClass = "success";
-        } else if (lower.includes("étape") || lower.includes("préparation") || lower.includes("partitionnement") || lower.includes("formatage")) {
+        } else if (lower.includes("étape") || lower.includes("attention") || lower.includes("avertissement") || lower.includes("préparation") || lower.includes("partitionnement") || lower.includes("formatage")) {
           typeClass = "notice";
         }
 
         line.className = `log-line ${typeClass}`;
         const timeStr = new Date().toLocaleTimeString("fr-FR", { hour12: false });
-        line.innerHTML = `<span class="log-time">[${timeStr}]</span> <span class="log-tag">[${payload.step}/${payload.total_steps}]</span> <span class="log-msg">${payload.log_line}</span>`;
+        line.innerHTML = `<span class="log-time">[${timeStr}]</span> <span class="log-tag">[${payload.step}/${payload.total_steps}]</span> <span class="log-msg">${escapeHtml(payload.log_line)}</span>`;
         logs.appendChild(line);
 
         // Limite pour préserver les performances WebKit

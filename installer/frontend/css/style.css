@@ -579,6 +579,15 @@ body {
   font-weight: 600;
 }
 
+.log-line.check .log-msg {
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.log-line.check .log-tag {
+  color: #38bdf8;
+}
+
 .log-line.success .log-msg {
   color: var(--ctp-green);
   font-weight: 700;
