@@ -127,6 +127,7 @@ in
     gamescope
     cage
     wlr-randr
+    pciutils
   ];
 
   # 8. Activation de Flakes

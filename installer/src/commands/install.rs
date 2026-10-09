@@ -222,18 +222,34 @@ pub async fn start_installation(app: AppHandle, req: InstallRequest) -> Result<b
 
         emit_step(5, "Déploiement de Noos HTPC", 58, &format!("Source détectée : {}", config_src.display()), 0, 0);
 
+        // Résolution du chemin réel (déréférencement des symlinks comme /etc/noos-htpc-source -> /nix/store/...)
+        let real_source = std::fs::canonicalize(&config_src).unwrap_or_else(|_| config_src.clone());
+        let src_pattern = format!("{}/.", real_source.display());
+
         let cp_res = Command::new("cp")
-            .args(["-rT", config_src.to_str().unwrap(), "/mnt/etc/nixos"])
-            .status();
-        if cp_res.is_err() || !cp_res.unwrap().success() {
-            emit_step(5, "Erreur Copie", 58, "Échec de la copie des fichiers de configuration", 0, 0);
-            return;
+            .args(["-aL", &src_pattern, "/mnt/etc/nixos/"])
+            .output();
+
+        match cp_res {
+            Ok(output) if output.status.success() => {
+                // Copie réussie
+            }
+            Ok(output) => {
+                let err_msg = String::from_utf8_lossy(&output.stderr);
+                emit_step(5, "Erreur Copie", 58, &format!("Échec de la copie des fichiers : {}", err_msg.trim()), 0, 0);
+                return;
+            }
+            Err(e) => {
+                emit_step(5, "Erreur Copie", 58, &format!("Impossible d'exécuter la commande cp : {}", e), 0, 0);
+                return;
+            }
         }
 
         // Rendre les fichiers modifiables (sortie du nix store readonly)
         let _ = Command::new("chmod").args(["-R", "u+w", "/mnt/etc/nixos"]).status();
+        let _ = Command::new("chmod").args(["-R", "a+rX", "/mnt/etc/nixos"]).status();
         // Nettoyage des fichiers temporaires ou .git pour éviter les blocages de flake
-        let _ = Command::new("rm").args(["-rf", "/mnt/etc/nixos/.git", "/mnt/etc/nixos/installer/target"]).status();
+        let _ = Command::new("rm").args(["-rf", "/mnt/etc/nixos/.git", "/mnt/etc/nixos/installer/target", "/mnt/etc/nixos/dashboard/target"]).status();
 
         // Génération automatique du hardware-configuration spécifique au matériel
         emit_step(5, "Configuration Matérielle", 62, "Détection du matériel cible via nixos-generate-config...", 0, 0);
@@ -260,7 +276,7 @@ pub async fn start_installation(app: AppHandle, req: InstallRequest) -> Result<b
         emit_step(6, "Installation du système NixOS", 70, "Lancement de nixos-install (téléchargement et compilation)...", 0, 0);
 
         let mut child = match Command::new("nixos-install")
-            .args(["--flake", "/mnt/etc/nixos#htpc", "--no-root-passwd"])
+            .args(["--impure", "--flake", "/mnt/etc/nixos#htpc", "--no-root-passwd"])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
