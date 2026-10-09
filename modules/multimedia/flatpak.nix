@@ -5,14 +5,26 @@ let
   vacuumTubeLauncher = pkgs.writeShellScriptBin "vacuumtube" ''
     set -euo pipefail
 
-    echo "[Noos Flatpak] Lancement de VacuumTube (YouTube TV)..."
-    if flatpak list --app 2>/dev/null | grep -q "rocks.shy.VacuumTube"; then
-      exec flatpak run rocks.shy.VacuumTube "$@"
-    else
+    echo "[Noos Flatpak] Lancement de VacuumTube (YouTube TV) sous Wayland..."
+
+    # Définition des variables de session utilisateur Wayland et D-Bus
+    export XDG_RUNTIME_DIR="''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+    export DBUS_SESSION_BUS_ADDRESS="''${DBUS_SESSION_BUS_ADDRESS:-unix:path=''${XDG_RUNTIME_DIR}/bus}"
+    export WAYLAND_DISPLAY="''${WAYLAND_DISPLAY:-wayland-0}"
+
+    if ! flatpak list --app 2>/dev/null | grep -q "rocks.shy.VacuumTube"; then
       echo "[Noos Flatpak] Installation de VacuumTube depuis Flathub..."
       flatpak install -y flathub rocks.shy.VacuumTube
-      exec flatpak run rocks.shy.VacuumTube "$@"
     fi
+
+    exec ${pkgs.flatpak}/bin/flatpak run \
+      --nosocket=x11 \
+      --socket=wayland \
+      rocks.shy.VacuumTube \
+      --ozone-platform-hint=auto \
+      --ozone-platform=wayland \
+      --enable-features=WaylandWindowDecorations \
+      "$@"
   '';
 in
 {

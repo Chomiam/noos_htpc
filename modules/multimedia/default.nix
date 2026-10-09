@@ -10,7 +10,6 @@
 
   # Applications et bibliothèques multimédias Noos HTPC
   environment.systemPackages = with pkgs; [
-    pear-desktop      # Client YouTube Music avec bloqueur de pubs et extensions audio
 
     # Décodage, déchiffrement et contrôle pour disques DVD & Blu-ray (SATA et USB)
     libdvdcss         # Déchiffrement CSS indispensable pour DVD-Vidéo du commerce

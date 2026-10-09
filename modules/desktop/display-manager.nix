@@ -14,8 +14,9 @@ in
         user = "noos";
       };
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --user-menu --cmd 'noos-tv-session'";
-        user = "greeter";
+        # Relance continue du dashboard TV pour une expérience 100% Smart TV
+        command = "${pkgs.bash}/bin/bash -l -c 'noos-tv-session'";
+        user = "noos";
       };
     };
   };

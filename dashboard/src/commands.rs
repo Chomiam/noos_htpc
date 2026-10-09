@@ -239,10 +239,20 @@ pub async fn launch_app(app: AppHandle, app_id: String) -> Result<bool, String> 
             if Command::new("which").arg("vacuumtube").output().map(|o| o.status.success()).unwrap_or(false) {
                 ("vacuumtube".to_string(), vec![])
             } else {
-                ("flatpak".to_string(), vec!["run".to_string(), "rocks.shy.VacuumTube".to_string()])
+                (
+                    "flatpak".to_string(),
+                    vec![
+                        "run".to_string(),
+                        "--nosocket=x11".to_string(),
+                        "--socket=wayland".to_string(),
+                        "rocks.shy.VacuumTube".to_string(),
+                        "--ozone-platform-hint=auto".to_string(),
+                        "--ozone-platform=wayland".to_string(),
+                        "--enable-features=WaylandWindowDecorations".to_string(),
+                    ],
+                )
             }
         }
-        "pear-desktop" => ("pear-desktop".to_string(), vec![]),
         "noos-iptv" => ("noos-iptv".to_string(), vec![]),
         "retroarch" => ("retroarch".to_string(), vec![]),
         "es-de" => ("es-de".to_string(), vec![]),
@@ -258,7 +268,20 @@ pub async fn launch_app(app: AppHandle, app_id: String) -> Result<bool, String> 
 
     tokio::task::spawn_blocking(move || {
         tracing::info!("Lancement de l'application : {} {:?}", program, args);
-        let status = Command::new(&program).args(&args).status();
+        let mut cmd = Command::new(&program);
+        cmd.args(&args);
+
+        // Garantir les variables de session Wayland et DBus
+        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/run/user/1000".to_string());
+        cmd.env("XDG_RUNTIME_DIR", &runtime_dir);
+        if std::env::var("DBUS_SESSION_BUS_ADDRESS").is_err() {
+            cmd.env("DBUS_SESSION_BUS_ADDRESS", format!("unix:path={}/bus", runtime_dir));
+        }
+        if std::env::var("WAYLAND_DISPLAY").is_err() {
+            cmd.env("WAYLAND_DISPLAY", "wayland-0");
+        }
+
+        let status = cmd.status();
         APP_RUNNING.store(false, Ordering::SeqCst);
         let _ = app_handle.emit("app_state_changed", false);
         let _ = app_handle.emit("app_closed", app_id_clone);

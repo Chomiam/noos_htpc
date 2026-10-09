@@ -47,7 +47,7 @@ Distribution NixOS personnalisée, légère, hautement optimisée et 100% reprod
 │   ├── multimedia/                          # Lecteurs multimédias
 │   │   ├── mpv.nix                          # MPV 4K, shaders upscaling iGPU vs dGPU, passthrough
 │   │   ├── iptv.nix                         # Hypnotix, script noos-iptv
-│   │   ├── flatpak.nix                      # nix-flatpak, VacuumTube (YouTube TV), Pear Desktop
+│   │   ├── flatpak.nix                      # nix-flatpak, VacuumTube (YouTube TV) Flatpak déclaratif
 │   │   └── storage-network.nix              # Samba (partage /home), SFTP/SSHFS, UDisks2, Thunar
 │   └── gaming/                              # Émulation
 │       ├── emulationstation.nix             # ES-DE préconfiguré pour la TV
