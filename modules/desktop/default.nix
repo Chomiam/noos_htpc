@@ -2,7 +2,7 @@
 
 {
   imports = [
-    ./gamescope-session.nix
+    ./kwin-session.nix
     ./display-manager.nix
   ];
 }

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Noos TV</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="tv-mode">
+  <!-- Toile d'ambiance dynamique (lumière diffuse synchronisée avec l'app active) -->
+  <div id="ambient-glow" class="ambient-glow"></div>
+  <div class="vignette-overlay"></div>
+
+  <!-- Conteneur principal 10-foot -->
+  <div class="tv-container">
+    
+    <!-- En-tête supérieur minimaliste -->
+    <header class="tv-header">
+      <div class="brand-group">
+        <div class="brand-logo">NOOS<span class="brand-accent">TV</span></div>
+        <div class="brand-badge">EDITION HTPC</div>
+      </div>
+
+      <nav class="tv-nav">
+        <button class="nav-item active" data-category="home">Accueil</button>
+        <button class="nav-item" data-category="media">Multimédia</button>
+        <button class="nav-item" data-category="games">Jeux</button>
+        <button class="nav-item" data-category="settings">Système</button>
+      </nav>
+
+      <div class="status-group">
+        <div id="hdr-pill" class="status-pill hdr-active">
+          <span class="status-dot"></span>
+          <span>4K HDR</span>
+        </div>
+        <div id="wifi-pill" class="status-pill">
+          <svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+            <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+            <line x1="12" y1="20" x2="12.01" y2="20"></line>
+          </svg>
+          <span id="wifi-name">Connecté</span>
+        </div>
+        <div id="clock-display" class="clock-display">--:--</div>
+        <button id="btn-power" class="power-btn" title="Extinction / Veille">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+            <line x1="12" y1="2" x2="12" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Zone Vitrine / Hero de l'application sélectionnée -->
+    <section class="hero-showcase">
+      <div class="hero-content">
+        <div id="hero-badge" class="hero-badge">YOUTUBE TV • 4K</div>
+        <h1 id="hero-title" class="hero-title">VacuumTube</h1>
+        <p id="hero-description" class="hero-description">
+          Expérience YouTube grand écran optimisée sans interruption publicitaire, avec navigation fluide à la télécommande ou manette de jeu.
+        </p>
+        <div class="hero-actions">
+          <button id="btn-launch-hero" class="btn-primary-action">
+            <span class="btn-pad-icon">A</span>
+            <span class="btn-text">Lancer l'application</span>
+          </button>
+          <div id="hero-meta" class="hero-meta-tag">60 FPS • Mode Cinéma</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rangée principale des applications (Carrousel de tuiles) -->
+    <main class="apps-section">
+      <div class="section-title">Mes Applications</div>
+      <div class="apps-grid" id="apps-container">
+        
+        <!-- Tuile 1 : VacuumTube -->
+        <div class="app-card focused" data-id="vacuumtube" tabindex="0"
+             data-title="VacuumTube" 
+             data-badge="YOUTUBE TV • 4K HDR" 
+             data-meta="60 FPS • Mode Cinéma"
+             data-desc="Expérience YouTube grand écran sans publicité avec navigation fluide à la télécommande et prise en charge complète du 4K."
+             data-color="#e50914">
+          <div class="card-inner">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap icon-red">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+            </div>
+            <div class="card-text">
+              <div class="card-badge">Streaming</div>
+              <div class="card-title">VacuumTube</div>
+              <div class="card-subtitle">YouTube TV sans pub</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tuile 2 : Pear Desktop -->
+        <div class="app-card" data-id="pear-desktop" tabindex="0"
+             data-title="Pear Desktop" 
+             data-badge="YOUTUBE MUSIC • AUDIO HI-FI" 
+             data-meta="Égaliseur • Paroles Directes"
+             data-desc="Client audio haute fidélité pour YouTube Music avec bloqueur de pubs intégré, gestion de playlists et égaliseur visuel."
+             data-color="#8b5cf6">
+          <div class="card-inner">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap icon-purple">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18V5l12-2v13"></path>
+                <circle cx="6" cy="18" r="3"></circle>
+                <circle cx="18" cy="16" r="3"></circle>
+              </svg>
+            </div>
+            <div class="card-text">
+              <div class="card-badge">Musique</div>
+              <div class="card-title">Pear Desktop</div>
+              <div class="card-subtitle">YouTube Music Hi-Fi</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tuile 3 : Noos IPTV -->
+        <div class="app-card" data-id="noos-iptv" tabindex="0"
+             data-title="Noos IPTV" 
+             data-badge="TÉLÉVISION EN DIRECT • MPV" 
+             data-meta="Décodage Matériel • Shaders 4K"
+             data-desc="Lecteur TV universel pour flux en direct et playlists M3U avec moteur vidéo MPV optimisé et accélération matérielle."
+             data-color="#00d2ff">
+          <div class="card-inner">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap icon-cyan">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+                <polyline points="17 2 12 7 7 2"></polyline>
+              </svg>
+            </div>
+            <div class="card-text">
+              <div class="card-badge">Direct</div>
+              <div class="card-title">Noos IPTV</div>
+              <div class="card-subtitle">Chaînes TV & Direct</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tuile 4 : Rétro-Gaming -->
+        <div class="app-card" data-id="es-de" tabindex="0"
+             data-title="Jeux & Émulation" 
+             data-badge="RÉTRO-GAMING • SHADERS CRT" 
+             data-meta="RetroArch • Pegasus TV"
+             data-desc="Plongez dans l'univers de l'émulation console avec interface plein écran, filtres CRT soignés et gestion multi-manettes."
+             data-color="#10b981">
+          <div class="card-inner">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap icon-green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                <line x1="6" y1="12" x2="10" y2="12"></line>
+                <line x1="8" y1="10" x2="8" y2="14"></line>
+                <circle cx="15" cy="12" r="1"></circle>
+                <circle cx="18" cy="12" r="1"></circle>
+              </svg>
+            </div>
+            <div class="card-text">
+              <div class="card-badge">Jeux</div>
+              <div class="card-title">Rétro-Gaming</div>
+              <div class="card-subtitle">Consoles & Arcades</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tuile 5 : Fichiers & Stockage -->
+        <div class="app-card" data-id="thunar" tabindex="0"
+             data-title="Fichiers & Réseau" 
+             data-badge="STOCKAGE • SAMBA / SFTP" 
+             data-meta="Clés USB • Partage /home"
+             data-desc="Accédez aux disques durs locaux, clés USB automontées et dossiers partagés sur le réseau local en haute vitesse."
+             data-color="#f59e0b">
+          <div class="card-inner">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap icon-amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <div class="card-text">
+              <div class="card-badge">Fichiers</div>
+              <div class="card-title">Fichiers & NAS</div>
+              <div class="card-subtitle">Stockage & Réseau</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tuile 6 : Paramètres Système -->
+        <div class="app-card" data-id="settings-modal" tabindex="0"
+             data-title="Paramètres Système" 
+             data-badge="CONFIGURATION HTPC" 
+             data-meta="HDR • Audio • Wi-Fi"
+             data-desc="Personnalisez la sortie vidéo HDR, le son surround passthrough, les connexions Wi-Fi et les options de veille."
+             data-color="#64748b">
+          <div class="card-inner">
+            <div class="card-glow"></div>
+            <div class="card-icon-wrap icon-slate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </div>
+            <div class="card-text">
+              <div class="card-badge">Réglages</div>
+              <div class="card-title">Paramètres</div>
+              <div class="card-subtitle">Affichage & Réseau</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Pied de page : Légende Manette 10-foot -->
+    <footer class="tv-footer">
+      <div class="gamepad-hints">
+        <div class="hint-item"><span class="btn-bubble btn-a">A</span> Ouvrir</div>
+        <div class="hint-item"><span class="btn-bubble btn-b">B</span> Retour</div>
+        <div class="hint-item"><span class="btn-bubble btn-x">X</span> Paramètres</div>
+        <div class="hint-item"><span class="btn-bubble btn-y">Y</span> Alimentation</div>
+        <div class="hint-item"><span class="btn-bubble btn-dpad">✛</span> Naviguer</div>
+      </div>
+      <div class="footer-os-info">Noos HTPC • Linux Wayland (KWin)</div>
+    </footer>
+
+  </div>
+
+  <!-- Modal Paramètres & Alimentation -->
+  <div id="modal-settings" class="modal-overlay hidden">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div class="modal-title">Paramètres du Système</div>
+        <button id="modal-close" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">Affichage HDR (Rec.2020)</div>
+            <div class="setting-desc">Activer le passthrough haute dynamique pour les flux vidéos compatibles</div>
+          </div>
+          <button id="toggle-hdr-btn" class="toggle-btn active">Activé</button>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">Réseau & Wi-Fi</div>
+            <div id="settings-wifi-status" class="setting-desc">Connecté au réseau local</div>
+          </div>
+          <div class="badge-pill">Connecté</div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">Stockage Système</div>
+            <div id="settings-storage-status" class="setting-desc">-- Go libres</div>
+          </div>
+          <div id="storage-pill" class="badge-pill">Sain</div>
+        </div>
+
+        <div class="power-actions-grid">
+          <button class="power-action-btn" data-action="suspend">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            <span>Mettre en Veille</span>
+          </button>
+          <button class="power-action-btn" data-action="reboot">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <span>Redémarrer</span>
+          </button>
+          <button class="power-action-btn btn-danger" data-action="poweroff">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+            <span>Éteindre la TV</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

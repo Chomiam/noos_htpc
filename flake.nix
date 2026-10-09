@@ -59,9 +59,10 @@
         htpc = self.nixosModules.default;
       };
 
-      # Application d'installation graphique Rust + Tauri & Cible ISO
+      # Applications graphiques Rust + Tauri & Cible ISO
       packages.${system} = rec {
         noos-htpc-installer = pkgs.callPackage ./installer/default.nix { };
+        noos-tv-dashboard = pkgs.callPackage ./dashboard/default.nix { };
         iso = self.nixosConfigurations.iso.config.system.build.isoImage;
         default = iso;
       };
