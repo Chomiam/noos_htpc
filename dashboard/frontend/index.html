@@ -476,10 +476,10 @@
     </div>
   </div>
 
-  <!-- Modal Noos IPTV (Connexion Xtream Codes & Synchronisation) -->
-  <div id="modal-iptv" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-panel iptv-panel">
-      <!-- En-tête avec Logo Noos IPTV -->
+  <!-- Page Plein Écran Noos IPTV (Connexion Xtream Codes & Synchronisation TV) -->
+  <div id="modal-iptv" class="modal-overlay iptv-fullscreen-overlay hidden" role="dialog" aria-modal="true">
+    <div class="iptv-fullscreen-container">
+      <!-- En-tête avec Logo Noos IPTV et Bouton Retour Télécommande -->
       <div class="iptv-header">
         <div class="iptv-brand-wrap">
           <img src="assets/logo.png" alt="Noos IPTV" class="iptv-logo" />
@@ -488,7 +488,9 @@
             <p class="iptv-subtitle">Télévision en direct, Films & Séries Xtream Codes</p>
           </div>
         </div>
-        <button id="btn-close-iptv-modal" class="modal-close-btn" aria-label="Fermer">✕</button>
+        <button id="btn-close-iptv-modal" class="btn-action-secondary" aria-label="Retour au lanceur">
+          <span class="btn-key-hint">B</span> Retour
+        </button>
       </div>
 
       <!-- Vue 1 : Profils & Connexions Rapides -->

@@ -905,6 +905,46 @@ pub async fn set_keyboard_config(config: KeyboardConfig) -> Result<bool, String>
 }
 
 #[tauri::command]
+pub async fn show_virtual_keyboard() -> Result<bool, String> {
+    tokio::task::spawn_blocking(|| {
+        use std::io::Write;
+        use std::os::unix::net::UnixStream;
+
+        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/run/user/1000".to_string());
+        let sock_path = format!("{}/noos-osk.sock", runtime_dir);
+
+        if let Ok(mut stream) = UnixStream::connect(&sock_path) {
+            let _ = stream.write_all(b"SHOW");
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn hide_virtual_keyboard() -> Result<bool, String> {
+    tokio::task::spawn_blocking(|| {
+        use std::io::Write;
+        use std::os::unix::net::UnixStream;
+
+        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/run/user/1000".to_string());
+        let sock_path = format!("{}/noos-osk.sock", runtime_dir);
+
+        if let Ok(mut stream) = UnixStream::connect(&sock_path) {
+            let _ = stream.write_all(b"HIDE");
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 pub async fn restart_dashboard(app: AppHandle) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
         let _ = Command::new("sudo").args(["systemctl", "restart", "greetd"]).status();

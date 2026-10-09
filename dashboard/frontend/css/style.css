@@ -1358,87 +1358,114 @@ body.tv-mode {
 }
 
 /* ==============================================================================
-   13. NOOS IPTV (MODAL, PROFILS RAPIDES, LOGIN XTREAM & CACHE SYNC)
+   13. NOOS IPTV - EXPÉRIENCE IMMERSIVE PLEIN ÉCRAN POUR TV DE SALON
    ============================================================================== */
-.iptv-panel {
-  width: 860px;
-  max-width: 95vw;
-  background: linear-gradient(145deg, #0d0f17 0%, #151824 100%);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.8), 0 0 40px rgba(6, 182, 212, 0.15);
-  border-radius: var(--radius-lg);
-  padding: 32px;
+#modal-iptv.modal-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1000;
+  background: radial-gradient(circle at 50% 12%, #141b2d 0%, #0a0d14 65%, #050608 100%);
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+  margin: 0;
+  opacity: 1;
+  pointer-events: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: opacity 0.25s ease-in-out;
+}
+
+#modal-iptv.modal-overlay.hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.iptv-fullscreen-container {
+  width: 100%;
+  max-width: 1360px;
+  min-height: 100vh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding: 36px 60px 290px 60px; /* Espace réservé de 290px en bas pour le clavier virtuel */
+  box-sizing: border-box;
 }
 
 .iptv-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 20px;
-  margin-bottom: 24px;
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 24px;
+  margin-bottom: 32px;
+  width: 100%;
 }
 
 .iptv-brand-wrap {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 22px;
 }
 
 .iptv-logo {
-  height: 52px;
+  height: 62px;
   width: auto;
-  filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.5));
+  filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.65));
 }
 
 .iptv-title {
-  font-size: 26px;
+  font-size: 34px;
   font-weight: 900;
   letter-spacing: 0.5px;
   color: #ffffff;
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .iptv-title span {
-  color: #06b6d4;
-  background: linear-gradient(135deg, #06b6d4, #3b82f6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #38bdf8;
+  text-shadow: 0 0 25px rgba(56, 189, 248, 0.6);
 }
 
 .iptv-subtitle {
-  font-size: 13px;
-  color: var(--text-dim);
+  font-size: 16px;
+  color: #94a3b8;
   margin: 4px 0 0 0;
+  font-weight: 500;
 }
 
 .iptv-section-heading {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 20px;
+  gap: 6px;
+  margin-bottom: 24px;
 }
 
 .heading-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #e2e8f0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #f8fafc;
+  letter-spacing: 0.3px;
 }
 
 .heading-meta {
-  font-size: 12px;
-  color: var(--text-dim);
+  font-size: 15px;
+  color: #38bdf8;
 }
 
 /* Grille des profils rapides */
 .iptv-profiles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 28px;
 }
 
 .iptv-profile-card {
@@ -1554,22 +1581,34 @@ body.tv-mode {
   justify-content: flex-end;
 }
 
-/* Formulaire Xtream Codes */
+/* Formulaire Xtream Codes TV */
+.iptv-view {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
 .iptv-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+  background: rgba(18, 23, 37, 0.75);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 32px 40px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(16px);
 }
 
 .iptv-form-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .iptv-form-row {
   display: flex;
-  gap: 16px;
+  gap: 20px;
 }
 
 .flex-1 {
@@ -1577,17 +1616,20 @@ body.tv-mode {
 }
 
 .iptv-form-group label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #cbd5e1;
+  font-size: 16px;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: 0.3px;
 }
 
 .iptv-input {
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-sm);
-  padding: 12px 16px;
-  font-size: 14px;
+  height: 54px;
+  background: rgba(10, 14, 24, 0.9);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 0 20px;
+  font-size: 19px;
+  font-weight: 500;
   color: #ffffff;
   outline: none;
   transition: all var(--anim-fast);
@@ -1595,9 +1637,9 @@ body.tv-mode {
 }
 
 .iptv-input:focus {
-  border-color: #06b6d4;
-  box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
-  background: rgba(0, 0, 0, 0.65);
+  border-color: #38bdf8;
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.45);
+  background: rgba(15, 23, 42, 0.95);
 }
 
 .iptv-checkbox-group {
@@ -1607,30 +1649,32 @@ body.tv-mode {
 .iptv-checkbox-label {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   cursor: pointer;
   user-select: none;
 }
 
 .iptv-checkbox-label input {
-  width: 18px;
-  height: 18px;
-  accent-color: #06b6d4;
+  width: 22px;
+  height: 22px;
+  accent-color: #0ea5e9;
   cursor: pointer;
 }
 
 .checkbox-text {
-  font-size: 12px;
-  color: var(--text-dim);
+  font-size: 15px;
+  color: #cbd5e1;
+  font-weight: 500;
 }
 
 .iptv-error-msg {
-  padding: 12px 16px;
+  padding: 14px 20px;
   border-radius: var(--radius-sm);
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.18);
+  border: 1.5px solid rgba(239, 68, 68, 0.45);
   color: #fca5a5;
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .iptv-form-actions {

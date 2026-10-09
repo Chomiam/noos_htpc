@@ -331,8 +331,9 @@ static void create_keyboard_ui(void) {
         gtk_layer_init_for_window(GTK_WINDOW(window));
         gtk_layer_set_layer(GTK_WINDOW(window), GTK_LAYER_SHELL_LAYER_OVERLAY);
         gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_BOTTOM, TRUE);
-        gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_LEFT, TRUE);
-        gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, TRUE);
+        gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_LEFT, FALSE);
+        gtk_layer_set_anchor(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, FALSE);
+        gtk_layer_set_margin(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_BOTTOM, 18);
         gtk_layer_set_keyboard_mode(GTK_WINDOW(window), GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
         gtk_layer_set_exclusive_zone(GTK_WINDOW(window), 0);
     } else {
@@ -348,6 +349,7 @@ static void create_keyboard_ui(void) {
 
     GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
     gtk_widget_set_valign(main_box, GTK_ALIGN_END);
+    gtk_widget_set_halign(main_box, GTK_ALIGN_CENTER);
     gtk_style_context_add_class(gtk_widget_get_style_context(main_box), "osk-container");
     gtk_container_add(GTK_CONTAINER(window), main_box);
 
@@ -395,20 +397,20 @@ static void create_keyboard_ui(void) {
         gtk_box_pack_start(GTK_BOX(main_box), row_box, FALSE, FALSE, 0);
     }
 
-    /* CSS Styling élégant Glassmorphism */
+    /* CSS Styling élégant Glassmorphism - Clavier compact centré pour TV */
     GtkCssProvider *provider = gtk_css_provider_new();
     const char *css =
         "window { background-color: transparent; }\n"
-        ".osk-container { background: rgba(8, 12, 20, 0.94); padding: 12px 24px 18px 24px; border-top: 2px solid #38bdf8; }\n"
-        ".osk-topbar { padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px; }\n"
-        ".osk-brand { font-size: 13px; font-weight: 700; color: #38bdf8; letter-spacing: 1px; }\n"
-        ".osk-hints { font-size: 12px; color: #94a3b8; font-weight: 500; }\n"
-        ".osk-key { min-width: 54px; min-height: 48px; border-radius: 8px; background: rgba(30, 41, 59, 0.85); color: #f8fafc; font-size: 18px; font-weight: 600; border: 1px solid rgba(255,255,255,0.08); }\n"
-        ".osk-key:hover { background: rgba(51, 65, 85, 0.95); border-color: rgba(255,255,255,0.2); }\n"
-        ".key-wide { min-width: 90px; font-size: 14px; }\n"
+        ".osk-container { background: rgba(10, 14, 23, 0.96); padding: 10px 18px 14px 18px; border: 1.5px solid rgba(56, 189, 248, 0.35); border-radius: 18px; box-shadow: 0 16px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(56, 189, 248, 0.2); max-width: 840px; }\n"
+        ".osk-topbar { padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 6px; }\n"
+        ".osk-brand { font-size: 11px; font-weight: 700; color: #38bdf8; letter-spacing: 1px; }\n"
+        ".osk-hints { font-size: 11px; color: #94a3b8; font-weight: 500; }\n"
+        ".osk-key { min-width: 46px; min-height: 42px; border-radius: 8px; background: rgba(30, 41, 59, 0.9); color: #f8fafc; font-size: 16px; font-weight: 600; border: 1px solid rgba(255,255,255,0.08); margin: 2px; }\n"
+        ".osk-key:hover { background: rgba(51, 65, 85, 0.95); border-color: rgba(255,255,255,0.25); }\n"
+        ".key-wide { min-width: 74px; font-size: 13px; }\n"
         ".key-collapse { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #fca5a5; }\n"
         ".key-enter { background: rgba(16, 185, 129, 0.25); border-color: rgba(16, 185, 129, 0.5); color: #6ee7b7; }\n"
-        ".key-focused { background: #38bdf8; color: #020617; border-color: #ffffff; font-weight: 800; }\n";
+        ".key-focused { background: #38bdf8; color: #020617; border-color: #ffffff; font-weight: 800; box-shadow: 0 0 12px rgba(56, 189, 248, 0.8); }\n";
 
     gtk_css_provider_load_from_data(provider, css, -1, NULL);
     gtk_style_context_add_provider_for_screen(gdk_screen_get_default(), GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);

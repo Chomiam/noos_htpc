@@ -658,6 +658,9 @@
   function closeIptvModal() {
     if (isIptvSyncing) return;
     isIptvModalOpen = false;
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      window.__TAURI__.core.invoke('hide_virtual_keyboard').catch(() => {});
+    }
     if (modalIptv) modalIptv.classList.add('hidden');
   }
 
@@ -789,6 +792,9 @@
     if (isIptvSyncing) return;
     isIptvSyncing = true;
     playConfirmSound();
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      window.__TAURI__.core.invoke('hide_virtual_keyboard').catch(() => {});
+    }
 
     if (iptvViewSync) iptvViewSync.classList.remove('hidden');
     if (iptvViewProfiles) iptvViewProfiles.classList.add('hidden');
@@ -1030,6 +1036,29 @@
     btn.addEventListener('click', () => {
       handlePowerAction(btn.getAttribute('data-action'));
     });
+  });
+
+  // Détection automatique universelle des champs de saisie pour afficher le clavier virtuel
+  document.addEventListener('focusin', (e) => {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+      if (window.__TAURI__ && window.__TAURI__.core) {
+        window.__TAURI__.core.invoke('show_virtual_keyboard').catch(() => {});
+      }
+      e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+
+  document.addEventListener('focusout', (e) => {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+      setTimeout(() => {
+        const active = document.activeElement;
+        if (!active || (active.tagName !== 'INPUT' && active.tagName !== 'TEXTAREA')) {
+          if (window.__TAURI__ && window.__TAURI__.core) {
+            window.__TAURI__.core.invoke('hide_virtual_keyboard').catch(() => {});
+          }
+        }
+      }, 150);
+    }
   });
 
   // Clavier physique
