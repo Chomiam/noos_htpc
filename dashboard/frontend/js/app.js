@@ -139,6 +139,7 @@
   const iptvSelectUpscale = document.getElementById('iptv-select-upscale');
   const iptvToggleDeband = document.getElementById('iptv-toggle-deband');
   const iptvToggleInterpolation = document.getElementById('iptv-toggle-interpolation');
+  const iptvTogglePassthrough = document.getElementById('iptv-toggle-passthrough');
   const iptvSelectBuffer = document.getElementById('iptv-select-buffer');
   const btnSaveIptvSettings = document.getElementById('btn-save-iptv-settings');
   const iptvSettingsSavedFeedback = document.getElementById('iptv-settings-saved-feedback');
@@ -1777,6 +1778,7 @@
     if (iptvSelectUpscale) iptvSelectUpscale.value = s.upscale_profile || 'fsr-ultra';
     if (iptvToggleDeband) iptvToggleDeband.checked = s.deband !== false;
     if (iptvToggleInterpolation) iptvToggleInterpolation.checked = !!s.interpolation;
+    if (iptvTogglePassthrough) iptvTogglePassthrough.checked = s.audio_passthrough !== false;
     if (iptvSelectBuffer) iptvSelectBuffer.value = String(s.buffer_seconds || 5);
   }
 
@@ -1788,7 +1790,7 @@
       deband: iptvToggleDeband ? iptvToggleDeband.checked : true,
       interpolation: iptvToggleInterpolation ? iptvToggleInterpolation.checked : false,
       buffer_seconds: iptvSelectBuffer ? parseInt(iptvSelectBuffer.value, 10) : 5,
-      audio_passthrough: true,
+      audio_passthrough: iptvTogglePassthrough ? iptvTogglePassthrough.checked : true,
     };
 
     try {

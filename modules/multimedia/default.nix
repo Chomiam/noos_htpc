@@ -7,6 +7,7 @@
     ./flatpak.nix
     ./jellyfin.nix
     ./storage-network.nix
+    ./ambilight.nix
   ];
 
   # Applications et bibliothèques multimédias Noos HTPC

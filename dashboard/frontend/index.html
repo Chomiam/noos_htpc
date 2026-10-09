@@ -388,6 +388,22 @@
 
         <div class="setting-row">
           <div>
+            <div class="setting-name">Audio Bitperfect (HDMI Passthrough)</div>
+            <div class="setting-desc">Flux brut numérique Dolby Atmos, TrueHD & DTS sans conversion</div>
+          </div>
+          <div class="badge-pill" style="background: rgba(166, 227, 161, 0.2); color: var(--ctp-green); border: 1px solid var(--ctp-green);">Actif</div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-name">Ambilight TV (HyperHDR)</div>
+            <div class="setting-desc">Synchronisation LED continue (Vidéos & Menus • Interface : port 8090)</div>
+          </div>
+          <div class="badge-pill" style="background: rgba(137, 180, 250, 0.2); color: var(--ctp-blue); border: 1px solid var(--ctp-blue);">Actif</div>
+        </div>
+
+        <div class="setting-row">
+          <div>
             <div class="setting-name">Stockage Système</div>
             <div id="settings-storage-status" class="setting-desc">-- Go libres</div>
           </div>
@@ -837,6 +853,27 @@
                     <option value="5" selected>5 secondes (Recommandé • Stable)</option>
                     <option value="10">10 secondes (Connexion instable • Sécurité max)</option>
                   </select>
+                </div>
+
+                <div class="iptv-setting-row">
+                  <div class="setting-info">
+                    <div class="setting-name">Audio Bitperfect Passthrough (HDMI / eARC)</div>
+                    <div class="setting-desc">Transmet les flux bruts Dolby Digital, Dolby Atmos, DTS-HD MA directement à l'amplificateur.</div>
+                  </div>
+                  <label class="switch-container">
+                    <input type="checkbox" id="iptv-toggle-passthrough" checked />
+                    <span class="switch-slider"></span>
+                  </label>
+                </div>
+
+                <div class="iptv-setting-row">
+                  <div class="setting-info">
+                    <div class="setting-name">Ambilight TV Dynamique (HyperHDR)</div>
+                    <div class="setting-desc">Éclairage LED synchronisé en temps réel sur l'écran (Vidéos, IPTV & Menus TV • Port 8090).</div>
+                  </div>
+                  <div class="badge-pill" style="background: rgba(137, 180, 250, 0.2); color: var(--ctp-blue); border: 1px solid var(--ctp-blue);">
+                    Prêt • 60 FPS
+                  </div>
                 </div>
 
                 <div class="iptv-settings-actions">

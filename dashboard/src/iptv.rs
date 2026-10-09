@@ -1606,6 +1606,17 @@ pub async fn iptv_play_stream(
         if settings.interpolation {
             mpv_cmd.args(["--interpolation=yes", "--video-sync=display-resample"]);
         }
+        if settings.audio_passthrough {
+            mpv_cmd.args([
+                "--ao=pipewire,alsa,pulse",
+                "--audio-spdif=ac3,dts,dts-hd,eac3,truehd",
+                "--audio-channels=auto",
+                "--audio-pitch-correction=no",
+            ]);
+            if !settings.interpolation {
+                mpv_cmd.arg("--video-sync=audio");
+            }
+        }
 
         let child = mpv_cmd.spawn()
             .map_err(|e| format!("Erreur lors du lancement de MPV : {}", e))?;

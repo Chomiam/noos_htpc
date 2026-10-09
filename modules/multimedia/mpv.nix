@@ -25,12 +25,12 @@ let
     interpolation=yes
     tscale=oversample
 
-    # 3. Audio Passthrough haute fidélité (barres de son et amplis home-cinéma)
-    ao=pipewire,pulse,alsa
+    # 3. Audio Bitperfect Passthrough (Amplicateurs & Barres de son Home-Cinéma)
+    ao=pipewire,alsa,pulse
     audio-spdif=ac3,dts,eac3,truehd,dts-hd
     audio-channels=auto
-    audio-pitch-correction=yes
-    volume-max=150
+    audio-pitch-correction=no
+    volume-max=100
 
     # 4. Sous-titres adaptés pour grand écran TV
     sub-auto=fuzzy
@@ -51,8 +51,18 @@ let
     osd-duration=2000
 
     # ==============================================================================
-    # PROFILS D'UPSCALING, TONE-MAPPING & AFFICHAGE
+    # PROFILS D'UPSCALING, TONE-MAPPING & AUDIO BITPERFECT
     # ==============================================================================
+
+    # Profil Bitperfect Passthrough : activé dès qu'un flux surround Dolby/DTS est détecté
+    # Désactive le rééchantillonnage de l'horloge vidéo pour préserver le flux binaire pur
+    # Permet aux amplificateurs HDMI / eARC d'afficher DOLBY AUDIO, DOLBY ATMOS, DTS-HD MA
+    [audio-bitperfect-passthrough]
+    profile-cond=p["audio-codec-name"] == "ac3" or p["audio-codec-name"] == "eac3" or p["audio-codec-name"] == "truehd" or p["audio-codec-name"] == "dts" or p["audio-codec-name"] == "dts-hd" or p["audio-codec-name"] == "dca"
+    profile-restore=copy
+    video-sync=audio
+    interpolation=no
+    audio-pitch-correction=no
 
     # Profil 0 : Repli Tonemapping Automatique HDR vers SDR (libplacebo)
     # Activé automatiquement dès qu'un flux HDR (BT.2020 / PQ / HLG) est détecté sur écran SDR
