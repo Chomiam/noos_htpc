@@ -239,6 +239,56 @@
     } catch (_) {}
   }
 
+  function playNavSound() {
+    playTickSound();
+  }
+
+  function playCancelSound() {
+    try {
+      const ctx = getAudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(330, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.08);
+    } catch (_) {}
+  }
+
+  function showNotification(msg) {
+    let toast = document.getElementById('noos-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'noos-toast';
+      toast.style.position = 'fixed';
+      toast.style.bottom = '32px';
+      toast.style.right = '32px';
+      toast.style.backgroundColor = 'rgba(15, 23, 42, 0.95)';
+      toast.style.color = '#38bdf8';
+      toast.style.border = '1px solid rgba(56, 189, 248, 0.4)';
+      toast.style.padding = '14px 24px';
+      toast.style.borderRadius = '12px';
+      toast.style.fontWeight = '600';
+      toast.style.fontSize = '15px';
+      toast.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.5)';
+      toast.style.zIndex = '99999';
+      toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(10px)';
+    }, 2500);
+  }
+
   // 2. Horloge temps réel
   function updateClock() {
     const now = new Date();

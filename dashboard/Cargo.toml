@@ -1,6 +1,6 @@
 [package]
 name = "noos-tv-dashboard"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 authors = ["Chomiam <chomiam@users.noreply.github.com>"]
 description = "Tableau de bord TV Wayland immersif pour Noos HTPC contrôlable à la manette"
