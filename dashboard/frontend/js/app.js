@@ -893,7 +893,11 @@
       });
 
       const firstCard = iptvProfilesGrid.querySelector('.iptv-profile-card');
-      if (firstCard) firstCard.focus();
+      if (firstCard) {
+        firstCard.focus();
+      } else if (btnIptvNewAccount) {
+        btnIptvNewAccount.focus();
+      }
     }
   }
 
