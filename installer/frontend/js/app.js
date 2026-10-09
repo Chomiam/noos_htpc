@@ -224,6 +224,36 @@
       }
     });
 
+    // Écoute des événements de progression en direct
+    tauriListen("install_progress", (event) => {
+      const payload = event.payload;
+      const stepTitle = document.getElementById("install-current-step");
+      const progressFill = document.getElementById("progress-fill");
+      const progressText = document.getElementById("progress-text");
+      const logs = document.getElementById("terminal-logs");
+
+      if (stepTitle) stepTitle.textContent = payload.step_name;
+      if (progressFill) {
+        progressFill.style.width = `${payload.percent}%`;
+        if (payload.step_name.toLowerCase().includes("erreur")) {
+          progressFill.style.background = "var(--ctp-red)";
+        }
+      }
+      if (progressText) progressText.textContent = `${payload.percent}%`;
+
+      if (logs && payload.log_line) {
+        const line = document.createElement("div");
+        line.className = "log-line" + (payload.step_name.toLowerCase().includes("erreur") ? " error" : "");
+        line.textContent = `[${payload.step}/${payload.total_steps}] ${payload.log_line}`;
+        logs.appendChild(line);
+        logs.scrollTop = logs.scrollHeight;
+      }
+
+      if (payload.percent >= 100) {
+        setTimeout(() => setStep(6), 1500);
+      }
+    });
+
     // Lancement de l'Installation
     document.getElementById("btn-start-install").addEventListener("click", async () => {
       if (!selectedDisk) {
@@ -233,26 +263,7 @@
       }
 
       setStep(5);
-      const hostname = document.getElementById("input-hostname").value || "noos-htpc";
-
-      // Écoute des événements de progression en direct
-      tauriListen("install_progress", (event) => {
-        const payload = event.payload;
-        document.getElementById("install-current-step").textContent = payload.step_name;
-        document.getElementById("progress-fill").style.width = `${payload.percent}%`;
-        document.getElementById("progress-text").textContent = `${payload.percent}%`;
-
-        const logs = document.getElementById("terminal-logs");
-        const line = document.createElement("div");
-        line.className = "log-line";
-        line.textContent = `[${payload.step}/${payload.total_steps}] ${payload.log_line}`;
-        logs.appendChild(line);
-        logs.scrollTop = logs.scrollHeight;
-
-        if (payload.percent >= 100) {
-          setTimeout(() => setStep(6), 1500);
-        }
-      });
+      const hostname = "noos-htpc"; // Forcé et déclaratif
 
       try {
         await tauriInvoke("start_installation", {
@@ -264,7 +275,13 @@
           }
         });
       } catch (err) {
-        alert(`Erreur d'installation : ${err}`);
+        const logs = document.getElementById("terminal-logs");
+        if (logs) {
+          const line = document.createElement("div");
+          line.className = "log-line error";
+          line.textContent = `[ERREUR CRITIQUE] ${err}`;
+          logs.appendChild(line);
+        }
       }
     });
 

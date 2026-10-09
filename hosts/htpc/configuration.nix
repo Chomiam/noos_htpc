@@ -14,9 +14,9 @@
     networkmanager.enable = true;
     firewall = {
       enable = true;
-      # Ports ouverts par défaut : SSH (22), Samba (139, 445), Avahi/mDNS (5353)
-      allowedTCPPorts = [ 22 139 445 ];
-      allowedUDPPorts = [ 137 138 5353 ];
+      # Ports ouverts par défaut : SSH (22), Samba (139, 445), WSDD (5357/3702), Avahi/mDNS (5353)
+      allowedTCPPorts = [ 22 139 445 5357 ];
+      allowedUDPPorts = [ 137 138 3702 5353 ];
     };
   };
 

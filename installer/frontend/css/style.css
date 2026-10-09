@@ -31,19 +31,27 @@ body {
   background-color: var(--ctp-crust);
   color: var(--ctp-text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1.4;
   overflow: hidden;
   height: 100vh;
+  max-height: 100vh;
   width: 100vw;
+  max-width: 100vw;
+  box-sizing: border-box;
 }
 
 .app-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  max-height: 100vh;
+  width: 100vw;
+  max-width: 100vw;
   justify-content: space-between;
-  padding: 24px 48px;
+  padding: 2.5vh 3.5vw; /* TV Safe-area margin - évite le rognage d'overscan 2-5% */
+  box-sizing: border-box;
+  overflow: hidden;
   background: radial-gradient(circle at 50% 10%, #2a2b3d 0%, var(--ctp-crust) 75%);
 }
 
@@ -235,12 +243,55 @@ body {
   font-size: 24px;
   padding: 16px 24px;
   border-radius: 12px;
+.options-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.option-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.option-group label, .option-row label {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ctp-text);
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   background: var(--ctp-surface0);
-  border: 2px solid var(--ctp-surface1);
-  color: #fff;
-  outline: none;
-  width: 100%;
-  max-width: 500px;
+  padding: 16px 24px;
+  border-radius: 14px;
+  border: 1px solid var(--ctp-surface1);
+}
+
+.static-badge {
+  background: var(--ctp-mantle);
+  color: var(--ctp-sapphire);
+  padding: 8px 20px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-family: monospace;
+  font-size: 22px;
+  border: 1px solid var(--ctp-blue);
+  box-shadow: 0 0 10px rgba(116, 199, 236, 0.2);
+}
+
+.tv-btn.toggle {
+  background: var(--ctp-surface1);
+  color: var(--ctp-subtext);
+}
+
+.tv-btn.toggle.active {
+  background: var(--ctp-mauve);
+  color: var(--ctp-crust);
+  box-shadow: 0 0 15px rgba(203, 166, 247, 0.4);
 }
 
 .action-footer {
