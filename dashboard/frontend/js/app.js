@@ -131,6 +131,18 @@
       return;
     }
 
+    if (appId === 'disc_player') {
+      console.log('[Noos TV] Lancement de la lecture DVD / Blu-ray');
+      if (window.__TAURI__ && window.__TAURI__.core) {
+        try {
+          await window.__TAURI__.core.invoke('play_disc', { device: null });
+        } catch (err) {
+          console.error('Erreur lecture disque :', err);
+        }
+      }
+      return;
+    }
+
     console.log(`[Noos TV] Lancement de l'application : ${appId}`);
 
     if (window.__TAURI__ && window.__TAURI__.core) {
@@ -219,6 +231,60 @@
       }
     }
   }
+
+  // 10. Surveillance et détection en direct des lecteurs DVD/Blu-ray (USB & SATA)
+  let currentOpticalDrive = null;
+  const cardDiscPlayer = document.getElementById('card-disc-player');
+  const discCardBadge = document.getElementById('disc-card-badge');
+  const discCardTitle = document.getElementById('disc-card-title');
+  const discCardSubtitle = document.getElementById('disc-card-subtitle');
+
+  async function checkOpticalDrive() {
+    if (window.__TAURI__ && window.__TAURI__.core && cardDiscPlayer) {
+      try {
+        const drive = await window.__TAURI__.core.invoke('get_optical_drive');
+        currentOpticalDrive = drive;
+
+        if (!drive) {
+          cardDiscPlayer.classList.remove('has-disc');
+          if (discCardBadge) discCardBadge.textContent = 'OPTIQUE';
+          if (discCardTitle) discCardTitle.textContent = 'Lecteur Disque';
+          if (discCardSubtitle) discCardSubtitle.textContent = 'Aucun lecteur connecté';
+          cardDiscPlayer.setAttribute('data-title', 'Lecteur DVD / Blu-ray');
+          cardDiscPlayer.setAttribute('data-badge', 'DVD • BLU-RAY (NON DÉTECTÉ)');
+          cardDiscPlayer.setAttribute('data-desc', 'Connectez un lecteur DVD ou Blu-ray en USB ou SATA pour lire vos disques physiques en direct.');
+          cardDiscPlayer.setAttribute('data-meta', 'Détection USB & SATA');
+        } else if (!drive.disc_inserted) {
+          cardDiscPlayer.classList.remove('has-disc');
+          if (discCardBadge) discCardBadge.textContent = `${drive.transport} • PRÊT`;
+          if (discCardTitle) discCardTitle.textContent = 'Lecteur ' + drive.transport;
+          if (discCardSubtitle) discCardSubtitle.textContent = 'Tiroir vide • Insérez un disque';
+          cardDiscPlayer.setAttribute('data-title', `Lecteur ${drive.transport} (${drive.name})`);
+          cardDiscPlayer.setAttribute('data-badge', `LECTEUR ${drive.transport} CONNECTÉ`);
+          cardDiscPlayer.setAttribute('data-desc', `Lecteur optique ${drive.name} détecté en ${drive.transport}. Insérez un film DVD ou Blu-ray pour démarrer.`);
+          cardDiscPlayer.setAttribute('data-meta', `Interface ${drive.transport} • Tiroir Vide`);
+        } else {
+          cardDiscPlayer.classList.add('has-disc');
+          if (discCardBadge) discCardBadge.textContent = `${drive.disc_type.toUpperCase()} (${drive.transport})`;
+          if (discCardTitle) discCardTitle.textContent = drive.disc_label || drive.disc_type;
+          if (discCardSubtitle) discCardSubtitle.textContent = 'Film prêt • Appuyez sur [A]';
+          cardDiscPlayer.setAttribute('data-title', drive.disc_label || "Film " + drive.disc_type);
+          cardDiscPlayer.setAttribute('data-badge', `${drive.disc_type.toUpperCase()} • ${drive.transport}`);
+          cardDiscPlayer.setAttribute('data-desc', `Disque ${drive.disc_type} « ${drive.disc_label} » prêt dans le lecteur ${drive.transport}. Lecture cinéma directe avec décodage matériel.`);
+          cardDiscPlayer.setAttribute('data-meta', `Lecteur ${drive.transport} • Menu & Chapitres`);
+        }
+
+        if (cards[currentIndex] === cardDiscPlayer) {
+          updateHero(cardDiscPlayer);
+        }
+      } catch (err) {
+        console.warn('Erreur vérification lecteur optique :', err);
+      }
+    }
+  }
+
+  setInterval(checkOpticalDrive, 2500);
+  checkOpticalDrive();
 
   // 10. Événements DOM (Souris / Clavier)
   cards.forEach((card, index) => {
@@ -334,9 +400,16 @@
         if (!isModalOpen) openSettings(); else closeSettings();
       }
 
-      // Action Y (Alimentation rapide)
+      // Action Y (Éjection si sur le lecteur disque, sinon alimentation)
       if (btnY && !prevButtonsState['Y']) {
-        openSettings();
+        if (!isModalOpen && cards[currentIndex] === cardDiscPlayer) {
+          playConfirmSound();
+          if (window.__TAURI__ && window.__TAURI__.core) {
+            window.__TAURI__.core.invoke('eject_disc', { device: null });
+          }
+        } else {
+          openSettings();
+        }
       }
 
       // Mémorisation de l'état

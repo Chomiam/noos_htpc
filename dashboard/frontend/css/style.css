@@ -350,15 +350,23 @@ body.tv-mode {
 }
 
 .apps-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  display: flex;
   gap: 20px;
-  padding: 12px 4px;
+  padding: 14px 4px 24px 4px;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+}
+
+.apps-grid::-webkit-scrollbar {
+  display: none;
 }
 
 /* Carte Application */
 .app-card {
   position: relative;
+  flex: 0 0 230px;
+  min-width: 230px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-card);
@@ -369,6 +377,20 @@ body.tv-mode {
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
   overflow: hidden;
+}
+
+.app-card.has-disc {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.05);
+}
+
+.app-card.has-disc .card-icon-wrap {
+  animation: pulse-disc 2.5s infinite ease-in-out;
+}
+
+@keyframes pulse-disc {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 rgba(56, 189, 248, 0); }
+  50% { transform: scale(1.06); box-shadow: 0 0 20px rgba(56, 189, 248, 0.45); }
 }
 
 .card-inner {

@@ -19,10 +19,219 @@ pub struct SystemInfo {
     pub app_is_active: bool,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DiscDriveInfo {
+    pub device: String,
+    pub name: String,
+    pub transport: String,
+    pub disc_inserted: bool,
+    pub disc_type: String,
+    pub disc_label: String,
+}
+
+pub fn detect_optical_drives() -> Option<DiscDriveInfo> {
+    let sys_block = std::path::Path::new("/sys/block");
+    if !sys_block.exists() {
+        return None;
+    }
+
+    if let Ok(entries) = std::fs::read_dir(sys_block) {
+        for entry in entries.flatten() {
+            let file_name = entry.file_name().to_string_lossy().to_string();
+            if file_name.starts_with("sr") {
+                let dev_name = file_name;
+                let dev_path = format!("/dev/{}", dev_name);
+                let sys_dev = entry.path().join("device");
+
+                // 1. Détection du type d'interface physique (USB vs SATA)
+                let canonical = sys_dev.canonicalize().unwrap_or_else(|_| sys_dev.clone());
+                let canonical_str = canonical.to_string_lossy().to_lowercase();
+                let transport = if canonical_str.contains("/usb") || canonical_str.contains("usb") {
+                    "USB".to_string()
+                } else {
+                    "SATA".to_string()
+                };
+
+                // 2. Modèle et marque du lecteur
+                let vendor = std::fs::read_to_string(sys_dev.join("vendor"))
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string();
+                let model = std::fs::read_to_string(sys_dev.join("model"))
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string();
+                let drive_name = if !model.is_empty() {
+                    format!("{} {}", vendor, model).trim().to_string()
+                } else {
+                    format!("Lecteur Optique {}", transport)
+                };
+
+                // 3. Détection de la présence d'un disque physique et de son type
+                let (disc_inserted, disc_type, disc_label) = inspect_disc_media(&dev_path);
+
+                return Some(DiscDriveInfo {
+                    device: dev_path,
+                    name: drive_name,
+                    transport,
+                    disc_inserted,
+                    disc_type,
+                    disc_label,
+                });
+            }
+        }
+    }
+
+    None
+}
+
+fn inspect_disc_media(dev_path: &str) -> (bool, String, String) {
+    // 1. Détection avancée via udevadm
+    if let Ok(output) = Command::new("udevadm")
+        .args(["info", "-q", "property", "-n", dev_path])
+        .output()
+    {
+        if let Ok(text) = String::from_utf8(output.stdout) {
+            let mut has_media = false;
+            let mut is_bd = false;
+            let mut is_dvd = false;
+            let mut is_cd = false;
+            let mut label = String::new();
+            let mut fs_type = String::new();
+
+            for line in text.lines() {
+                if line == "ID_CDROM_MEDIA=1" {
+                    has_media = true;
+                } else if line == "ID_CDROM_MEDIA_BD=1" {
+                    is_bd = true;
+                } else if line == "ID_CDROM_MEDIA_DVD=1" {
+                    is_dvd = true;
+                } else if line == "ID_CDROM_MEDIA_CD=1" {
+                    is_cd = true;
+                } else if line.starts_with("ID_FS_LABEL=") {
+                    label = line.trim_start_matches("ID_FS_LABEL=").to_string();
+                } else if line.starts_with("ID_FS_TYPE=") {
+                    fs_type = line.trim_start_matches("ID_FS_TYPE=").to_string();
+                }
+            }
+
+            if has_media {
+                let disc_type = if is_bd {
+                    "Blu-ray".to_string()
+                } else if is_dvd {
+                    "DVD-Vidéo".to_string()
+                } else if is_cd && (fs_type.is_empty() || fs_type == "audio") {
+                    "CD Audio".to_string()
+                } else if !fs_type.is_empty() {
+                    format!("Disque ({})", fs_type.to_uppercase())
+                } else {
+                    "Disque Média".to_string()
+                };
+
+                let clean_label = if !label.is_empty() {
+                    label.replace('_', " ")
+                } else {
+                    disc_type.clone()
+                };
+
+                return (true, disc_type, clean_label);
+            }
+        }
+    }
+
+    // 2. Repli rapide via blkid
+    if let Ok(output) = Command::new("blkid").arg(dev_path).output() {
+        if output.status.success() {
+            if let Ok(text) = String::from_utf8(output.stdout) {
+                if !text.trim().is_empty() {
+                    let mut label = "Film / Disque".to_string();
+                    if let Some(start) = text.find("LABEL=\"") {
+                        let rest = &text[start + 7..];
+                        if let Some(end) = rest.find('\"') {
+                            label = rest[..end].replace('_', " ");
+                        }
+                    }
+                    let disc_type = if text.contains("udf") {
+                        "DVD / Blu-ray".to_string()
+                    } else {
+                        "Disque".to_string()
+                    };
+                    return (true, disc_type, label);
+                }
+            }
+        }
+    }
+
+    (false, "Aucun disque".to_string(), String::new())
+}
+
+#[tauri::command]
+pub async fn get_optical_drive() -> Result<Option<DiscDriveInfo>, String> {
+    Ok(detect_optical_drives())
+}
+
+#[tauri::command]
+pub async fn play_disc(app: AppHandle, device: Option<String>) -> Result<bool, String> {
+    let drive_info = detect_optical_drives()
+        .ok_or_else(|| "Aucun lecteur optique détecté".to_string())?;
+
+    let dev_path = device.unwrap_or(drive_info.device);
+    let disc_type = drive_info.disc_type.to_lowercase();
+
+    let (target, extra_args): (String, Vec<String>) = if disc_type.contains("blu-ray") || disc_type.contains("bd") {
+        ("bd://".to_string(), vec![format!("--bluray-device={}", dev_path)])
+    } else if disc_type.contains("dvd") {
+        ("dvd://".to_string(), vec![format!("--dvd-device={}", dev_path)])
+    } else if disc_type.contains("cd") {
+        ("cdda://".to_string(), vec![format!("--cdrom-device={}", dev_path)])
+    } else {
+        ("dvd://".to_string(), vec![format!("--dvd-device={}", dev_path)])
+    };
+
+    APP_RUNNING.store(true, Ordering::SeqCst);
+    let _ = app.emit("app_state_changed", true);
+
+    let app_handle = app.clone();
+    tokio::task::spawn_blocking(move || {
+        let mut cmd = Command::new("mpv");
+        cmd.arg(&target);
+        for arg in extra_args {
+            cmd.arg(arg);
+        }
+        cmd.args(["--fs", "--profile=auto-upscale"]);
+
+        tracing::info!("Lancement de la lecture du disque : {:?}", cmd);
+        let status = cmd.status();
+        APP_RUNNING.store(false, Ordering::SeqCst);
+        let _ = app_handle.emit("app_state_changed", false);
+        let _ = app_handle.emit("app_closed", "disc_player");
+        tracing::info!("Fin de la lecture disque : {:?}", status);
+    });
+
+    Ok(true)
+}
+
+#[tauri::command]
+pub async fn eject_disc(device: Option<String>) -> Result<bool, String> {
+    let dev = device.unwrap_or_else(|| {
+        detect_optical_drives()
+            .map(|d| d.device)
+            .unwrap_or_else(|| "/dev/sr0".to_string())
+    });
+    tokio::task::spawn_blocking(move || {
+        let _ = Command::new("eject").arg(&dev).status();
+    });
+    Ok(true)
+}
+
 #[tauri::command]
 pub async fn launch_app(app: AppHandle, app_id: String) -> Result<bool, String> {
     if APP_RUNNING.load(Ordering::SeqCst) {
         return Err("Une application est déjà en cours d'exécution".to_string());
+    }
+
+    if app_id == "disc_player" {
+        return play_disc(app, None).await;
     }
 
     let (program, args): (String, Vec<String>) = match app_id.as_str() {

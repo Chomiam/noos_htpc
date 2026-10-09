@@ -17,6 +17,7 @@
       "storage"        # Disques et stockage externe
       "gamemode"       # Priorité temps réel GameMode
       "disk"           # Accès stockage
+      "cdrom"          # Accès direct aux lecteurs optiques DVD/Blu-ray (SATA & USB)
     ];
     home = "/home/noos";
     createHome = true;

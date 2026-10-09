@@ -8,8 +8,15 @@
     ./storage-network.nix
   ];
 
-  # Applications multimédia supplémentaires Noos HTPC
+  # Applications et bibliothèques multimédias Noos HTPC
   environment.systemPackages = with pkgs; [
     pear-desktop      # Client YouTube Music avec bloqueur de pubs et extensions audio
+
+    # Décodage, déchiffrement et contrôle pour disques DVD & Blu-ray (SATA et USB)
+    libdvdcss         # Déchiffrement CSS indispensable pour DVD-Vidéo du commerce
+    libdvdread        # Lecture des blocs et structures IFO/VOB DVD
+    libdvdnav         # Menus interactifs et navigation DVD
+    libbluray         # Décodage et structure BDMV pour disques Blu-ray
+    eject             # Commande d'ouverture / éjection du tiroir optique
   ];
 }
