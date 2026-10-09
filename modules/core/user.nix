@@ -20,6 +20,16 @@
     ];
     home = "/home/noos";
     createHome = true;
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAKTtcn0Ok3EGfiP0+00oknZI9SwGw7ael41PfizSeit chomiam@pop-os"
+    ];
+  };
+
+  users.users.root = {
+    initialHashedPassword = lib.mkDefault "$6$B.lDUIXORsmlRbqu$dVZv8gC6LJM5rgi5S4xl5CR9XNnQqrBbXMuQL0uEduSyFg7kijZxYLVtG.fxYBqEOI/6i8dsAGMy7UeYurJvH0";
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAKTtcn0Ok3EGfiP0+00oknZI9SwGw7ael41PfizSeit chomiam@pop-os"
+    ];
   };
 
   # 2. Droits sudo sans mot de passe pour l'utilisateur noos (usage TV / Console)

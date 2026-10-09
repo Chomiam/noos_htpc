@@ -74,14 +74,16 @@ body {
 .brand {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
 }
 
 .logo {
-  height: 52px;
+  height: 84px;
+  max-height: 90px;
   width: auto;
   object-fit: contain;
-  filter: drop-shadow(0 4px 16px rgba(116, 199, 236, 0.25));
+  filter: drop-shadow(0 4px 18px rgba(255, 255, 255, 0.22)) drop-shadow(0 0 16px rgba(116, 199, 236, 0.35));
+  transition: transform 0.2s ease;
 }
 
 .version-tag {
