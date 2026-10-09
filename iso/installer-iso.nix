@@ -29,7 +29,7 @@ let
 
     # 1. Tentative avec Gamescope (TV physique avec Vulkan matériel)
     # 2. Si échec (ex: Machine Virtuelle KVM/QEMU), bascule immédiate sur Cage
-    if gamescope -W 1920 -H 1080 -r 60 --fullscreen -- ${installerPkg}/bin/noos-htpc-installer; then
+    if ${pkgs.gamescope}/bin/gamescope -W 1920 -H 1080 -r 60 --fullscreen -- ${installerPkg}/bin/noos-htpc-installer; then
       exit 0
     fi
 
@@ -40,15 +40,27 @@ in
 {
   # 1. Image ISO Live bootable
   image.fileName = lib.mkForce "noos-htpc-installer.iso";
+  isoImage.isoName = lib.mkForce "noos-htpc-installer.iso";
   isoImage.volumeID = lib.mkForce "NOOS_HTPC";
   isoImage.makeEfiBootable = true;
   isoImage.makeUsbBootable = true;
+
+  # Clavier AZERTY par défaut dans l'environnement Live
+  services.xserver.xkb = {
+    layout = "fr";
+    variant = "";
+  };
+  console.keyMap = "fr";
+  environment.sessionVariables = {
+    XKB_DEFAULT_LAYOUT = "fr";
+    XKB_DEFAULT_MODEL = "pc105";
+  };
 
   # 2. Démarrage silencieux et résolution vidéo par défaut 1080p
   boot.kernelParams = [ "video=1920x1080@60" "consoleblank=0" "quiet" "splash" ];
 
   # 3. Pilotes manettes & Wi-Fi / réseau dans l'ISO
-  boot.kernelModules = [ "uinput" "joydev" "r8169" "igc" "e1000e" ];
+  boot.kernelModules = [ "uinput" "joydev" "r8169" "igc" "e1000e" "iwlwifi" ];
   hardware.xpadneo.enable = true;
   hardware.enableRedistributableFirmware = true;
   services.udev.packages = with pkgs; [ game-devices-udev-rules ];
