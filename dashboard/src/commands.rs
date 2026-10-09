@@ -270,6 +270,7 @@ pub async fn launch_app(app: AppHandle, app_id: String) -> Result<bool, String> 
             }
         }
         "jellyfin" => {
+            ensure_jellyfin_fullscreen_config();
             if Command::new("which").arg("jellyfin-tv").output().map(|o| o.status.success()).unwrap_or(false) {
                 ("jellyfin-tv".to_string(), vec![])
             } else if Command::new("which").arg("jellyfin-desktop").output().map(|o| o.status.success()).unwrap_or(false) {
@@ -305,6 +306,9 @@ pub async fn launch_app(app: AppHandle, app_id: String) -> Result<bool, String> 
         if std::env::var("WAYLAND_DISPLAY").is_err() {
             cmd.env("WAYLAND_DISPLAY", "wayland-0");
         }
+        cmd.env("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1");
+        cmd.env("QT_QPA_PLATFORM", "wayland;xcb");
+        cmd.env("QT_WAYLAND_SHELL_INTEGRATION", "xdg-shell");
 
         match cmd.spawn() {
             Ok(mut child) => {
@@ -475,4 +479,78 @@ pub async fn power_action(action: String) -> Result<(), String> {
         }
     });
     Ok(())
+}
+
+/// S'assure que le profil Jellyfin Desktop et libmpv sont configurés en plein écran absolu sans bordures
+fn ensure_jellyfin_fullscreen_config() {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/home/noos".to_string());
+    let base_dir = std::path::PathBuf::from(&home).join(".local/share/jellyfin-desktop");
+    let _ = std::fs::create_dir_all(&base_dir);
+
+    let conf_content = r#"{
+    "sections": {
+        "main": {
+            "allowBrowserZoom": true,
+            "alwaysOnTop": false,
+            "autodetectCertBundle": true,
+            "checkForUpdates": false,
+            "disablemouse": false,
+            "enableInputRepeat": true,
+            "enableMPV": true,
+            "enableWindowsMediaIntegration": true,
+            "enableWindowsTaskbarIntegration": true,
+            "forceAlwaysFS": true,
+            "forceFSScreen": "",
+            "fullscreen": true,
+            "hdmi_poweron": false,
+            "ignoreSSLErrors": false,
+            "layout": "tv",
+            "logLevel": "info",
+            "minimizeOnDefocus": false,
+            "sdlEnabled": true,
+            "showPowerOptions": true,
+            "useOpenGL": false,
+            "useSystemVideoCodecs": true,
+            "userWebClient": "",
+            "webMode": "desktop"
+        },
+        "video": {
+            "allow_transcode_to_hevc": false,
+            "always_force_transcode": false,
+            "force_transcode_4k": false,
+            "force_transcode_av1": false,
+            "force_transcode_dovi": false,
+            "force_transcode_hdr": false,
+            "force_transcode_hevc": false,
+            "force_transcode_hi10p": false,
+            "hardwareDecoding": "auto-safe",
+            "prefer_transcode_to_h265": false,
+            "refreshrate.auto_switch": false,
+            "sync_mode": "audio"
+        }
+    },
+    "version": 7
+}"#;
+
+    let mpv_content = "vo=gpu-next\ngpu-context=wayland\ntarget-colorspace-hint=yes\ntone-mapping=auto\nhdr-compute-peak=yes\nhwdec=auto-safe\nfs=yes\nborder=no\nkeep-open=no\n";
+
+    // 1. Configuration racine
+    let _ = std::fs::write(base_dir.join("jellyfin-desktop.conf"), conf_content);
+    let _ = std::fs::write(base_dir.join("mpv.conf"), mpv_content);
+
+    // 2. Propagation à tous les sous-profils existants
+    let profiles_dir = base_dir.join("profiles");
+    if let Ok(entries) = std::fs::read_dir(&profiles_dir) {
+        for entry in entries.flatten() {
+            if entry.path().is_dir() {
+                let _ = std::fs::write(entry.path().join("jellyfin-desktop.conf"), conf_content);
+                let _ = std::fs::write(entry.path().join("mpv.conf"), mpv_content);
+            }
+        }
+    }
+
+    // 3. Configuration MPV globale de l'utilisateur
+    let mpv_conf_dir = std::path::PathBuf::from(&home).join(".config/mpv");
+    let _ = std::fs::create_dir_all(&mpv_conf_dir);
+    let _ = std::fs::write(mpv_conf_dir.join("mpv.conf"), mpv_content);
 }

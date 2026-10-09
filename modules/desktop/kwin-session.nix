@@ -6,6 +6,10 @@ let
 
   # Règles de fenêtrage KWin pour forcer le plein écran sans bordures façon Smart TV
   kwinRules = ''
+    [General]
+    count=2
+    rules=1,2
+
     [1]
     Description=Noos HTPC Plein Ecran Universel
     noborder=true
@@ -14,6 +18,20 @@ let
     fullscreenrule=2
     wmclass=.*
     wmclassmatch=3
+
+    [2]
+    Description=Noos HTPC Jellyfin Plein Ecran Strict
+    noborder=true
+    noborderrule=2
+    fullscreen=true
+    fullscreenrule=2
+    wmclass=jellyfin.*
+    wmclassmatch=3
+  '';
+
+  kwinrc = ''
+    [Windows]
+    BorderlessMaximizedWindows=true
   '';
 
   # Script de lancement de session TV Wayland KWin HTPC
@@ -27,6 +45,8 @@ let
     export XDG_CURRENT_DESKTOP=KDE
     export GDK_BACKEND="wayland,x11"
     export QT_QPA_PLATFORM="wayland;xcb"
+    export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
+    export QT_WAYLAND_SHELL_INTEGRATION=xdg-shell
     export SDL_VIDEODRIVER="wayland,x11"
     export MOZ_ENABLE_WAYLAND=1
     export WEBKIT_DISABLE_COMPOSITING_MODE=0
@@ -101,6 +121,7 @@ in
     systemd.tmpfiles.rules = [
       "d /home/noos/.config 0755 noos users -"
       "C+ /home/noos/.config/kwinrulesrc 0644 noos users - ${pkgs.writeText "kwinrulesrc" kwinRules}"
+      "C+ /home/noos/.config/kwinrc 0644 noos users - ${pkgs.writeText "kwinrc" kwinrc}"
     ];
 
     # 2. Paquets de session et compositeur Wayland

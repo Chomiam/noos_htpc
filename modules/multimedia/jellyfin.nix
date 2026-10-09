@@ -12,13 +12,15 @@ let
     export WAYLAND_DISPLAY="''${WAYLAND_DISPLAY:-wayland-0}"
     export QT_QPA_PLATFORM="wayland;xcb"
     export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
+    export QT_WAYLAND_SHELL_INTEGRATION=xdg-shell
 
     # Configuration automatique du profil Jellyfin Desktop
     CONF_DIR="$HOME/.local/share/jellyfin-desktop"
     mkdir -p "$CONF_DIR"
 
-    # 1. Configuration principale pour le mode TV 10-foot et le plein écran universel
-    cat << 'EOF' > "$CONF_DIR/jellyfin-desktop.conf"
+    # 1. Configuration principale pour le mode TV 10-foot et le plein écran universel sans bordures
+    write_jellyfin_conf() {
+      cat << 'EOF' > "$1"
 {
     "sections": {
         "main": {
@@ -80,8 +82,20 @@ let
     "version": 7
 }
 EOF
+    }
 
-    # 2. Configuration MPV embarquée pour Jellyfin (Moteur de rendu HDR Rec.2020)
+    write_jellyfin_conf "$CONF_DIR/jellyfin-desktop.conf"
+
+    # Application récursive à tous les profils de profils/
+    if [ -d "$CONF_DIR/profiles" ]; then
+      for p in "$CONF_DIR"/profiles/*; do
+        if [ -d "$p" ]; then
+          write_jellyfin_conf "$p/jellyfin-desktop.conf"
+        fi
+      done
+    fi
+
+    # 2. Configuration MPV embarquée pour Jellyfin (Moteur de rendu HDR Rec.2020 sans bordures)
     cat << 'EOF' > "$CONF_DIR/mpv.conf"
 vo=gpu-next
 gpu-context=wayland
@@ -90,8 +104,13 @@ tone-mapping=auto
 hdr-compute-peak=yes
 hwdec=auto-safe
 fs=yes
+border=no
 keep-open=no
 EOF
+
+    # Propagation vers ~/.config/mpv/mpv.conf
+    mkdir -p "$HOME/.config/mpv"
+    cp "$CONF_DIR/mpv.conf" "$HOME/.config/mpv/mpv.conf"
 
     exec ${pkgs.jellyfin-media-player}/bin/jellyfin-desktop --tv --fullscreen "$@"
   '';
