@@ -17,9 +17,6 @@ let
     elif command -v hypnotix >/dev/null 2>&1; then
       echo "[Noos IPTV] Lancement d'Hypnotix..."
       exec ${pkgs.hypnotix}/bin/hypnotix
-    elif command -v kodi >/dev/null 2>&1; then
-      echo "[Noos IPTV] Lancement de Kodi..."
-      exec ${pkgs.kodi-wayland}/bin/kodi
     else
       echo "[Noos IPTV] Aucune playlist trouvée dans $PLAYLIST_DIR"
       notify-send "Noos IPTV" "Déposez vos fichiers .m3u dans /home/noos/IPTV/ ou configurez Hypnotix."
@@ -31,11 +28,6 @@ in
   environment.systemPackages = with pkgs; [
     hypnotix            # Lecteur IPTV dédié avec gestion de chaînes et EPG
     noosIptvLauncher    # Script lanceur TV Noos IPTV
-
-    # Paquet Kodi Wayland avec le client PVR IPTV Simple préintégré (optionnel de haute qualité)
-    (kodi-wayland.passthru.withPackages (kpkgs: with kpkgs; [
-      pvr-iptvsimple
-    ]))
   ];
 
   # 2. Raccourci .desktop pour l'accès TV

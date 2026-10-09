@@ -34,9 +34,10 @@
   };
 
   # ==============================================================================
-  # GESTION DES PAQUETS NON-LIBRES & VERSION SYSTÈME
+  # GESTION DES PAQUETS NON-LIBRES, FLAKES & VERSION SYSTÈME
   # ==============================================================================
   nixpkgs.config.allowUnfree = true;
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
   # Version d'état NixOS (synchronisée sur le standard Noos 26.05)
   system.stateVersion = "26.05";

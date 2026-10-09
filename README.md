@@ -46,8 +46,9 @@ Distribution NixOS personnalisée, légère, hautement optimisée et 100% reprod
 │   │   └── display-manager.nix              # Autologin direct via Greetd sans mot de passe
 │   ├── multimedia/                          # Lecteurs multimédias
 │   │   ├── mpv.nix                          # MPV 4K, shaders upscaling iGPU vs dGPU, passthrough
-│   │   ├── iptv.nix                         # Hypnotix, Kodi PVR IPTV, script noos-iptv
-│   │   └── storage-network.nix              # Samba (partage ROMs), SFTP/SSHFS, UDisks2, Thunar
+│   │   ├── iptv.nix                         # Hypnotix, script noos-iptv
+│   │   ├── flatpak.nix                      # nix-flatpak, VacuumTube (YouTube TV), Pear Desktop
+│   │   └── storage-network.nix              # Samba (partage /home), SFTP/SSHFS, UDisks2, Thunar
 │   └── gaming/                              # Émulation
 │       ├── emulationstation.nix             # ES-DE préconfiguré pour la TV
 │       └── retroarch.nix                    # RetroArch avec cores et mapping /home/noos/Retro

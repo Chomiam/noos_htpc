@@ -245,9 +245,9 @@ pub async fn start_installation(app: AppHandle, req: InstallRequest) -> Result<b
                 .status();
         }
 
-        // Injection déclarative du profil GPU et du hostname forcé "noos-htpc"
+        // Injection déclarative du profil GPU, du hostname forcé "noos-htpc" et des fonctionnalités flakes
         let host_override = format!(
-            "{{ lib, ... }}: {{\n  networking.hostName = lib.mkForce \"noos-htpc\";\n  hardware.noos-htpc.gpu.profile = lib.mkForce \"{}\";\n  hardware.noos-htpc.gpu.enableHDR = lib.mkForce {};\n}}\n",
+            "{{ lib, ... }}: {{\n  networking.hostName = lib.mkForce \"noos-htpc\";\n  hardware.noos-htpc.gpu.profile = lib.mkForce \"{}\";\n  hardware.noos-htpc.gpu.enableHDR = lib.mkForce {};\n  nix.settings.experimental-features = [ \"nix-command\" \"flakes\" ];\n}}\n",
             req.gpu_profile, req.enable_hdr
         );
         let _ = std::fs::write("/mnt/etc/nixos/hosts/htpc/host-settings.local.nix", host_override);

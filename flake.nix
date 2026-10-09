@@ -4,9 +4,12 @@
   inputs = {
     # Synchronisation sur la branche standard de l'écosystème Noos (nixos-26.05)
     nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
+
+    # Gestion déclarative des paquets Flatpak
+    nix-flatpak.url = "github:gmodena/nix-flatpak";
   };
 
-  outputs = { self, nixpkgs, ... }@inputs:
+  outputs = { self, nixpkgs, nix-flatpak, ... }@inputs:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -19,6 +22,7 @@
         inherit system;
         specialArgs = { inherit inputs self; };
         modules = [
+          nix-flatpak.nixosModules.nix-flatpak
           {
             networking.hostName = hostname;
           }
@@ -46,8 +50,13 @@
 
       # Module exportable pour inclusion dans d'autres dépôts Noos
       nixosModules = {
-        default = ./modules;
-        htpc = ./modules;
+        default = {
+          imports = [
+            nix-flatpak.nixosModules.nix-flatpak
+            ./modules
+          ];
+        };
+        htpc = self.nixosModules.default;
       };
 
       # Application d'installation graphique Rust + Tauri & Cible ISO
