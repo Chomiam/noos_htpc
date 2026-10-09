@@ -1137,9 +1137,9 @@
       { category_id: "22", category_name: "Science-Fiction & Fantastique" }
     ],
     series_streams: [
-      { num: 1, name: "Fallout", series_id: 2001, cover: "https://image.tmdb.org/t/p/w500/AnsZu4h0wYwJ38e7s5pP6G2xQ2z.jpg", rating: "8.4", year: "2024", category_id: "22" },
-      { num: 2, name: "The Last of Us", series_id: 2002, cover: "https://image.tmdb.org/t/p/w500/uKvVjHNqB5VmOrdxqMisSYaq9e3.jpg", rating: "8.8", year: "2023", category_id: "21" },
-      { num: 3, name: "House of the Dragon", series_id: 2003, cover: "https://image.tmdb.org/t/p/w500/1X4h40fcB4WWUmIBK0auT4zRBAV.jpg", rating: "8.5", year: "2024", category_id: "22" },
+      { num: 1, name: "Fallout", series_id: 2001, cover: "https://image.tmdb.org/t/p/w500/AnsZu4h0wYwJ38e7s5pP6G2xQ2z.jpg", rating: "8.4", year: "2024", category_id: "20" },
+      { num: 2, name: "The Last of Us", series_id: 2002, cover: "https://image.tmdb.org/t/p/w500/uKvVjHNqB5VmOrdxqMisSYaq9e3.jpg", rating: "8.8", year: "2023", category_id: "20" },
+      { num: 3, name: "House of the Dragon", series_id: 2003, cover: "https://image.tmdb.org/t/p/w500/1X4h40fcB4WWUmIBK0auT4zRBAV.jpg", rating: "8.5", year: "2024", category_id: "20" },
       { num: 4, name: "Shōgun", series_id: 2004, cover: "https://image.tmdb.org/t/p/w500/7O4iVfOMQmdCSxhOg1WNzG1AgYT.jpg", rating: "8.7", year: "2024", category_id: "21" },
       { num: 5, name: "Severance", series_id: 2005, cover: "https://image.tmdb.org/t/p/w500/p1cu0gS84yvQkQ1uN2f3E4z6L1u.jpg", rating: "8.7", year: "2022", category_id: "22" },
       { num: 6, name: "Stranger Things", series_id: 2006, cover: "https://image.tmdb.org/t/p/w500/49WJfeN0moxb9IPfGn8AIqMGskD.jpg", rating: "8.7", year: "2022", category_id: "22" }
