@@ -6,3 +6,4 @@ result-*
 *.bak
 *.local.nix
 hardware-configuration.local.nix
+*.iso
