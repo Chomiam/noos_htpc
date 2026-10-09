@@ -864,16 +864,18 @@ pub fn detect_gpu_brand() -> String {
     // 2. Fallback via lspci
     if let Ok(output) = Command::new("lspci").output() {
         if let Ok(text) = String::from_utf8(output.stdout) {
-            let lower = text.to_lowercase();
-            if lower.contains("vga") || lower.contains("3d controller") || lower.contains("display controller") {
-                if lower.contains("amd") || lower.contains("radeon") || lower.contains("advanced micro devices") {
-                    return "amd".to_string();
-                }
-                if lower.contains("nvidia") || lower.contains("geforce") {
-                    return "nvidia".to_string();
-                }
-                if lower.contains("intel") || lower.contains("arc") || lower.contains("iris") {
-                    return "intel".to_string();
+            for line in text.lines() {
+                let lower = line.to_lowercase();
+                if lower.contains("vga") || lower.contains("3d controller") || lower.contains("display controller") {
+                    if lower.contains("amd") || lower.contains("radeon") || lower.contains("advanced micro devices") {
+                        return "amd".to_string();
+                    }
+                    if lower.contains("nvidia") || lower.contains("geforce") {
+                        return "nvidia".to_string();
+                    }
+                    if lower.contains("intel") || lower.contains("arc") || lower.contains("iris") {
+                        return "intel".to_string();
+                    }
                 }
             }
         }
