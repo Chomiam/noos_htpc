@@ -563,7 +563,12 @@ body.tv-mode {
   transition: opacity var(--anim-fast);
 }
 
+.hidden {
+  display: none !important;
+}
+
 .modal-overlay.hidden {
+  display: flex !important;
   opacity: 0;
   pointer-events: none;
 }
