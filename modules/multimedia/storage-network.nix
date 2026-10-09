@@ -29,8 +29,8 @@
     settings = {
       global = {
         "workgroup" = "WORKGROUP";
-        "server string" = "Noos HTPC Network Storage";
-        "netbios name" = "NOOS-HTPC";
+        "server string" = "${config.networking.hostName} Storage";
+        "netbios name" = lib.strings.toUpper config.networking.hostName;
         "security" = "user";
         "map to guest" = "Bad User";
         "guest account" = "noos";

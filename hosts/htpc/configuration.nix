@@ -4,13 +4,13 @@
   imports = [
     ./hardware-configuration.nix
     ../../modules
-  ];
+  ] ++ lib.optional (builtins.pathExists ./host-settings.local.nix) ./host-settings.local.nix;
 
   # ==============================================================================
   # IDENTITÉ DE LA MACHINE & RÉSEAU
   # ==============================================================================
   networking = {
-    hostName = "noos-htpc";
+    hostName = lib.mkDefault "noos-htpc";
     networkmanager.enable = true;
     firewall = {
       enable = true;

@@ -83,6 +83,13 @@ pub async fn start_installation(app: AppHandle, req: InstallRequest) -> Result<b
             .args(["-rf", "/home/chomiam/Projets/noos_htpc/.", "/mnt/etc/nixos/"])
             .status();
 
+        // Injection déclarative du hostname et du profil GPU choisis
+        let host_override = format!(
+            "{{ ... }}: {{\n  networking.hostName = \"{}\";\n  hardware.noos-htpc.gpu.profile = \"{}\";\n  hardware.noos-htpc.gpu.enableHDR = {};\n}}\n",
+            req.hostname, req.gpu_profile, req.enable_hdr
+        );
+        let _ = std::fs::write("/mnt/etc/nixos/hosts/htpc/host-settings.local.nix", host_override);
+
         // Étape 6 : Exécution de nixos-install avec streaming des logs
         emit_step(6, "Installation et compilation du système NixOS", 70, "Lancement de nixos-install...");
 
