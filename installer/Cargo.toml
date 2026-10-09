@@ -1,6 +1,6 @@
 [package]
 name = "noos-htpc-installer"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Chomiam <chomiam@users.noreply.github.com>"]
 description = "Installateur graphique TV pour Noos HTPC contrôlable à la manette avec clavier virtuel"

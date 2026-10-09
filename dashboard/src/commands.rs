@@ -670,10 +670,10 @@ pub async fn check_for_updates(channel: String) -> Result<UpdateInfo, String> {
         let repo = find_repo_dir();
         let target_channel = if channel.is_empty() { "testing".to_string() } else { channel };
 
-        // 1. Récupération des métadonnées distantes
+        // 1. Récupération des métadonnées distantes et des tags de release
         let _ = Command::new("git")
             .current_dir(&repo)
-            .args(["fetch", "origin", &target_channel, "--quiet"])
+            .args(["fetch", "origin", &target_channel, "--tags", "--quiet"])
             .status();
 
         let head_commit = Command::new("git")
@@ -718,8 +718,46 @@ pub async fn check_for_updates(channel: String) -> Result<UpdateInfo, String> {
             .collect();
 
         let has_update = !commits.is_empty();
-        let current_version = "v0.1.0".to_string();
-        let latest_version = if has_update {
+
+        // 3. Résolution dynamique des versions et tags
+        let current_version = Command::new("git")
+            .current_dir(&repo)
+            .args(["describe", "--tags", "--abbrev=0"])
+            .output()
+            .ok()
+            .and_then(|o| {
+                if o.status.success() {
+                    let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
+                    if !s.is_empty() { Some(s) } else { None }
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| format!("v{}", env!("CARGO_PKG_VERSION")));
+
+        let remote_tag = Command::new("git")
+            .current_dir(&repo)
+            .args(["describe", "--tags", "--abbrev=0", &format!("origin/{}", target_channel)])
+            .output()
+            .ok()
+            .and_then(|o| {
+                if o.status.success() {
+                    let s = String::from_utf8_lossy(&o.stdout).trim().to_string();
+                    if !s.is_empty() { Some(s) } else { None }
+                } else {
+                    None
+                }
+            });
+
+        let latest_version = if let Some(tag) = remote_tag {
+            if has_update && tag != current_version {
+                tag
+            } else if has_update {
+                format!("{} ({})", current_version, remote_commit)
+            } else {
+                current_version.clone()
+            }
+        } else if has_update {
             format!("{} ({})", current_version, remote_commit)
         } else {
             current_version.clone()
@@ -773,7 +811,7 @@ pub async fn apply_system_update(app: AppHandle, channel: String) -> Result<bool
         emit_step(1, "Synchronisation des sources Git", 15, &format!("Récupération de la branche origin/{}...", target_channel));
         let s1 = Command::new("git")
             .current_dir(&repo)
-            .args(["fetch", "origin", &target_channel])
+            .args(["fetch", "origin", &target_channel, "--tags"])
             .status();
         if s1.is_err() || !s1.unwrap().success() {
             emit_step(1, "Erreur de synchronisation", 15, "Impossible de joindre le dépôt GitHub distant.");
@@ -781,7 +819,10 @@ pub async fn apply_system_update(app: AppHandle, channel: String) -> Result<bool
         }
 
         let _ = Command::new("git").current_dir(&repo).args(["checkout", &target_channel]).status();
-        let _ = Command::new("git").current_dir(&repo).args(["pull", "origin", &target_channel]).status();
+        let s_pull = Command::new("git").current_dir(&repo).args(["pull", "origin", &target_channel]).status();
+        if s_pull.is_err() || !s_pull.unwrap().success() {
+            let _ = Command::new("git").current_dir(&repo).args(["reset", "--hard", &format!("origin/{}", target_channel)]).status();
+        }
 
         // Étape 2 : Actualisation du fichier flake.lock
         emit_step(2, "Mise à jour déclarative de flake.lock", 40, "Actualisation des entrées du verrou Flake...");

@@ -310,7 +310,11 @@
       try {
         const info = await window.__TAURI__.core.invoke('check_for_updates', { channel });
         if (info) {
-          if (currentVersionTag) currentVersionTag.textContent = info.latest_version;
+          if (currentVersionTag) {
+            currentVersionTag.textContent = info.has_update
+              ? `${info.current_version} ➔ ${info.latest_version}`
+              : info.current_version;
+          }
           if (updateStatusMsg) updateStatusMsg.textContent = info.message;
 
           if (info.has_update) {

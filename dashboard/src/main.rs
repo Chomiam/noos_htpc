@@ -22,8 +22,11 @@ fn main() {
             let handle_update = handle.clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-                if let Ok(info) = commands::check_for_updates("testing".to_string()).await {
-                    let _ = handle_update.emit("update_badge_status", info.has_update);
+                loop {
+                    if let Ok(info) = commands::check_for_updates("testing".to_string()).await {
+                        let _ = handle_update.emit("update_badge_status", info.has_update);
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_secs(45)).await;
                 }
             });
 
