@@ -26,6 +26,16 @@
   const btnLayoutAzerty = document.getElementById('btn-layout-azerty');
   const btnLayoutQwerty = document.getElementById('btn-layout-qwerty');
 
+  // Sélecteurs Moteur d'Upscaling MPV
+  const upscaleScreenRes = document.getElementById('upscale-screen-res');
+  const upscaleGpuBadge = document.getElementById('upscale-gpu-badge');
+  const btnGpuAmd = document.getElementById('btn-gpu-amd');
+  const btnGpuNvidia = document.getElementById('btn-gpu-nvidia');
+  const btnGpuIntel = document.getElementById('btn-gpu-intel');
+  const upscaleProfilesContainer = document.getElementById('upscale-profiles-container');
+  let activeUpscaleBrand = null;
+  let activeUpscaleProfileId = null;
+
   // Sélecteurs Modal Mise à Jour
   const modalUpdate = document.getElementById('modal-update');
   const btnCloseUpdateModal = document.getElementById('modal-update-close');
@@ -204,6 +214,7 @@
     modalSettings.classList.remove('hidden');
     refreshSystemInfo();
     initKeyboardConfig();
+    loadUpscaleProfiles();
   }
 
   function closeSettings() {
@@ -361,6 +372,145 @@
     }
   }
 
+  // 8c. Gestion des profils d'upscaling MPV (AMD, NVIDIA, Intel)
+  async function loadUpscaleProfiles(requestedBrand = null) {
+    if (!upscaleProfilesContainer) return;
+
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        const info = await window.__TAURI__.core.invoke('get_upscale_info', { brand: requestedBrand });
+        if (info) {
+          activeUpscaleBrand = info.active_brand;
+          activeUpscaleProfileId = info.current_profile_id;
+
+          if (upscaleScreenRes) {
+            upscaleScreenRes.textContent = `Écran : ${info.detected_max_res}`;
+          }
+          if (upscaleGpuBadge) {
+            const brandNames = { amd: 'AMD Radeon', nvidia: 'NVIDIA GeForce', intel: 'Intel Arc' };
+            upscaleGpuBadge.textContent = `GPU : ${brandNames[info.detected_brand] || info.detected_brand.toUpperCase()}`;
+          }
+
+          // Mise à jour de la pilule de marque active
+          if (btnGpuAmd) btnGpuAmd.classList.toggle('active', info.active_brand === 'amd');
+          if (btnGpuNvidia) btnGpuNvidia.classList.toggle('active', info.active_brand === 'nvidia');
+          if (btnGpuIntel) btnGpuIntel.classList.toggle('active', info.active_brand === 'intel');
+
+          // Rendu des 3 cartes de profils
+          renderUpscaleProfiles(info.profiles, info.current_profile_id);
+        }
+      } catch (err) {
+        console.error('Erreur chargement profils d\'upscale :', err);
+      }
+    } else {
+      // Mock data pour tests hors Tauri
+      const mockProfiles = [
+        {
+          id: 'amd_simple',
+          name: 'FidelityFX CAS',
+          brand: 'amd',
+          level: 'simple',
+          level_label: 'Simple',
+          tech_tag: 'FidelityFX CAS',
+          description: 'Accentuation adaptative des contrastes AMD FidelityFX CAS. Traitement ultraléger.',
+          scale_method: 'spline36',
+          max_res_target: '3840×2160 (4K UHD)'
+        },
+        {
+          id: 'amd_moyen',
+          name: 'AMD FSR Équilibré',
+          brand: 'amd',
+          level: 'moyen',
+          level_label: 'Moyen',
+          tech_tag: 'FSR (EASU + RCAS)',
+          description: 'Super-résolution spatiale AMD FidelityFX Super Resolution (FSR).',
+          scale_method: 'ewa_lanczossharp',
+          max_res_target: '3840×2160 (4K UHD)'
+        },
+        {
+          id: 'amd_eleve',
+          name: 'AMD FSR Ultra Neuronal',
+          brand: 'amd',
+          level: 'eleve',
+          level_label: 'Élevé',
+          tech_tag: 'FSRCNNX 16 + FSR Ultra',
+          description: 'Réseau de neurones convolutifs FSRCNNX 16 passes couplé au shader FSR.',
+          scale_method: 'ewa_lanczossharp',
+          max_res_target: '3840×2160 (4K UHD)'
+        }
+      ];
+      renderUpscaleProfiles(mockProfiles, 'amd_moyen');
+    }
+  }
+
+  function renderUpscaleProfiles(profiles, currentProfileId) {
+    if (!upscaleProfilesContainer) return;
+    upscaleProfilesContainer.innerHTML = '';
+
+    profiles.forEach(p => {
+      const card = document.createElement('div');
+      const isActive = p.id === currentProfileId;
+      card.className = `upscale-card ${isActive ? 'active-profile' : ''}`;
+      card.setAttribute('data-profile-id', p.id);
+      card.setAttribute('tabindex', '0');
+
+      card.innerHTML = `
+        <div class="upscale-card-header">
+          <span class="upscale-level-badge level-${p.level}">${p.level_label}</span>
+          ${isActive ? '<span class="upscale-status-indicator"><span class="indicator-dot"></span>ACTIF</span>' : ''}
+        </div>
+        <div class="upscale-card-title">${p.name}</div>
+        <div class="upscale-card-tag">${p.tech_tag}</div>
+        <div class="upscale-card-desc">${p.description}</div>
+        <div class="upscale-card-footer">
+          <span>Cible : ${p.max_res_target}</span>
+          <span>${p.scale_method}</span>
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        applyUpscaleProfile(p.id);
+      });
+
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          applyUpscaleProfile(p.id);
+        }
+      });
+
+      upscaleProfilesContainer.appendChild(card);
+    });
+  }
+
+  async function applyUpscaleProfile(profileId) {
+    playConfirmSound();
+    activeUpscaleProfileId = profileId;
+
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        await window.__TAURI__.core.invoke('set_upscale_profile', { profileId });
+        await loadUpscaleProfiles(activeUpscaleBrand);
+      } catch (err) {
+        console.error('Erreur application profil d\'upscale :', err);
+      }
+    } else {
+      // Mock update
+      document.querySelectorAll('.upscale-card').forEach(c => {
+        const isTarget = c.getAttribute('data-profile-id') === profileId;
+        c.classList.toggle('active-profile', isTarget);
+        const header = c.querySelector('.upscale-card-header');
+        if (header) {
+          const oldInd = header.querySelector('.upscale-status-indicator');
+          if (oldInd) oldInd.remove();
+          if (isTarget) {
+            header.insertAdjacentHTML('beforeend', '<span class="upscale-status-indicator"><span class="indicator-dot"></span>ACTIF</span>');
+          }
+        }
+      });
+    }
+  }
+
   // 9. Bascule HDR
   async function toggleHdr() {
     hdrEnabled = !hdrEnabled;
@@ -511,6 +661,10 @@
 
   if (btnLayoutAzerty) btnLayoutAzerty.addEventListener('click', () => setKeyboardLayout('azerty'));
   if (btnLayoutQwerty) btnLayoutQwerty.addEventListener('click', () => setKeyboardLayout('qwerty'));
+
+  if (btnGpuAmd) btnGpuAmd.addEventListener('click', () => loadUpscaleProfiles('amd'));
+  if (btnGpuNvidia) btnGpuNvidia.addEventListener('click', () => loadUpscaleProfiles('nvidia'));
+  if (btnGpuIntel) btnGpuIntel.addEventListener('click', () => loadUpscaleProfiles('intel'));
 
   document.querySelectorAll('.power-action-btn').forEach(btn => {
     btn.addEventListener('click', () => {

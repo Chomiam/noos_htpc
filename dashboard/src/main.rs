@@ -5,8 +5,8 @@ mod home_button;
 
 use commands::{
     apply_system_update, check_for_updates, eject_disc, get_keyboard_config, get_optical_drive,
-    get_system_info, launch_app, play_disc, power_action, restart_dashboard, set_keyboard_config,
-    toggle_hdr,
+    get_system_info, get_upscale_info, launch_app, play_disc, power_action, restart_dashboard,
+    set_keyboard_config, set_upscale_profile, toggle_hdr,
 };
 use tauri::Emitter;
 
@@ -41,7 +41,9 @@ fn main() {
             apply_system_update,
             get_keyboard_config,
             set_keyboard_config,
-            restart_dashboard
+            restart_dashboard,
+            get_upscale_info,
+            set_upscale_profile
         ])
         .run(tauri::generate_context!())
         .expect("Erreur lors de l'exécution du Dashboard Noos TV");

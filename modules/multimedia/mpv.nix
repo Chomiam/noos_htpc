@@ -136,9 +136,19 @@ in
     })
     yt-dlp          # Support du streaming et liens web dans MPV
     ffmpeg-full     # Pile universelle de décodage/encodage (AV1, HEVC, DTS, Dolby)
+    mpv-shim-default-shaders # Shaders FSR, CAS, FSRCNNX, NIS, NNEDI3, KrigBilateral
   ];
 
   # 2. Déploiement de la configuration déclarative globale /etc/mpv/
   environment.etc."mpv/mpv.conf".text = mpvConfig;
   environment.etc."mpv/input.conf".text = mpvInput;
+  environment.etc."mpv/shaders".source = "${pkgs.mpv-shim-default-shaders}/share/mpv-shim-default-shaders/shaders";
+
+  # 3. Liens symboliques utilisateurs pour Jellyfin et MPV
+  systemd.tmpfiles.rules = [
+    "d /home/noos/.config/mpv 0755 noos users -"
+    "L+ /home/noos/.config/mpv/shaders - - - - /etc/mpv/shaders"
+    "d /home/noos/.config/jellyfin-media-player 0755 noos users -"
+    "L+ /home/noos/.config/jellyfin-media-player/shaders - - - - /etc/mpv/shaders"
+  ];
 }

@@ -313,6 +313,42 @@
           </div>
         </div>
 
+        <!-- Section Profils d'Upscaling MPV (AMD FSR, NVIDIA DLSS/NIS, Intel XeSS) -->
+        <div class="setting-upscale-container">
+          <div class="setting-section-header">
+            <div class="setting-section-title">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+              <span>Profil d'Upscale Vidéo MPV</span>
+            </div>
+            <div class="upscale-hw-info">
+              <span class="hw-badge hw-res" id="upscale-screen-res">Écran : Détection...</span>
+              <span class="hw-badge hw-gpu" id="upscale-gpu-badge">GPU : Détection...</span>
+            </div>
+          </div>
+
+          <div class="upscale-gpu-selector">
+            <span class="selector-label">Architecture GPU :</span>
+            <div class="gpu-pills">
+              <button class="gpu-pill active" data-brand="amd" id="btn-gpu-amd">
+                <span class="brand-dot dot-amd"></span> AMD Radeon (FSR)
+              </button>
+              <button class="gpu-pill" data-brand="nvidia" id="btn-gpu-nvidia">
+                <span class="brand-dot dot-nvidia"></span> NVIDIA GeForce (DLSS / NIS)
+              </button>
+              <button class="gpu-pill" data-brand="intel" id="btn-gpu-intel">
+                <span class="brand-dot dot-intel"></span> Intel Arc / Iris (XeSS)
+              </button>
+            </div>
+          </div>
+
+          <!-- Grille des 3 profils d'upscaling pour la marque sélectionnée -->
+          <div class="upscale-profiles-grid" id="upscale-profiles-container">
+            <!-- 3 profils rendus dynamiquement via app.js -->
+          </div>
+        </div>
+
         <div class="setting-row">
           <div>
             <div class="setting-name">Réseau & Wi-Fi</div>

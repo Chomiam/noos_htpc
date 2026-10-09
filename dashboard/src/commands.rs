@@ -806,3 +806,376 @@ pub async fn restart_dashboard(app: AppHandle) -> Result<(), String> {
     let _ = app.emit("dashboard_restarting", ());
     Ok(())
 }
+
+/* ========================================================================= */
+/* GESTION DES PROFILS D'UPSCALE MPV (AMD, NVIDIA, INTEL)                     */
+/* ========================================================================= */
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UpscaleProfile {
+    pub id: String,
+    pub name: String,
+    pub brand: String, // "amd", "nvidia", "intel"
+    pub level: String, // "simple", "moyen", "eleve"
+    pub level_label: String,
+    pub tech_tag: String,
+    pub description: String,
+    pub scale_method: String,
+    pub shaders: Vec<String>,
+    pub max_res_target: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UpscaleSystemInfo {
+    pub detected_brand: String,
+    pub active_brand: String,
+    pub detected_max_res: String,
+    pub max_width: u32,
+    pub max_height: u32,
+    pub current_profile_id: String,
+    pub profiles: Vec<UpscaleProfile>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UpscaleConfig {
+    pub active_brand: String,
+    pub active_profile_id: String,
+}
+
+pub fn detect_gpu_brand() -> String {
+    // 1. DRM sysfs vendor ID check
+    // 0x1002 = AMD, 0x10de = NVIDIA, 0x8086 = Intel
+    if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
+        for entry in entries.flatten() {
+            let path = entry.path().join("device/vendor");
+            if let Ok(vendor_str) = std::fs::read_to_string(path) {
+                let v = vendor_str.trim().to_lowercase();
+                if v == "0x1002" {
+                    return "amd".to_string();
+                } else if v == "0x10de" {
+                    return "nvidia".to_string();
+                } else if v == "0x8086" {
+                    return "intel".to_string();
+                }
+            }
+        }
+    }
+
+    // 2. Fallback via lspci
+    if let Ok(output) = Command::new("lspci").output() {
+        if let Ok(text) = String::from_utf8(output.stdout) {
+            let lower = text.to_lowercase();
+            if lower.contains("vga") || lower.contains("3d controller") || lower.contains("display controller") {
+                if lower.contains("amd") || lower.contains("radeon") || lower.contains("advanced micro devices") {
+                    return "amd".to_string();
+                }
+                if lower.contains("nvidia") || lower.contains("geforce") {
+                    return "nvidia".to_string();
+                }
+                if lower.contains("intel") || lower.contains("arc") || lower.contains("iris") {
+                    return "intel".to_string();
+                }
+            }
+        }
+    }
+
+    "amd".to_string()
+}
+
+pub fn detect_max_resolution() -> (u32, u32, String) {
+    let mut max_w = 0u32;
+    let mut max_h = 0u32;
+
+    if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
+        for entry in entries.flatten() {
+            let modes_path = entry.path().join("modes");
+            if let Ok(content) = std::fs::read_to_string(modes_path) {
+                for line in content.lines() {
+                    let parts: Vec<&str> = line.trim().split('x').collect();
+                    if parts.len() == 2 {
+                        if let (Ok(w), Ok(h)) = (parts[0].parse::<u32>(), parts[1].parse::<u32>()) {
+                            if (w as u64) * (h as u64) > (max_w as u64) * (max_h as u64) {
+                                max_w = w;
+                                max_h = h;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if max_w == 0 || max_h == 0 {
+        max_w = 1920;
+        max_h = 1080;
+    }
+
+    let label = match (max_w, max_h) {
+        (w, h) if w >= 3840 || h >= 2160 => format!("{}×{} (4K UHD)", w, h),
+        (w, h) if w >= 2560 || h >= 1440 => format!("{}×{} (2K QHD)", w, h),
+        (w, h) if w >= 1920 || h >= 1080 => format!("{}×{} (1080p FHD)", w, h),
+        (w, h) => format!("{}×{}", w, h),
+    };
+
+    (max_w, max_h, label)
+}
+
+pub fn get_all_upscale_profiles(max_res_label: &str) -> Vec<UpscaleProfile> {
+    vec![
+        // AMD
+        UpscaleProfile {
+            id: "amd_simple".to_string(),
+            name: "FidelityFX CAS".to_string(),
+            brand: "amd".to_string(),
+            level: "simple".to_string(),
+            level_label: "Simple".to_string(),
+            tech_tag: "FidelityFX CAS".to_string(),
+            description: "Accentuation adaptative des contrastes AMD FidelityFX CAS. Traitement ultraléger garantissant une image nette sans surconsommation GPU.".to_string(),
+            scale_method: "spline36".to_string(),
+            shaders: vec!["CAS-scaled.glsl".to_string()],
+            max_res_target: max_res_label.to_string(),
+        },
+        UpscaleProfile {
+            id: "amd_moyen".to_string(),
+            name: "AMD FSR Équilibré".to_string(),
+            brand: "amd".to_string(),
+            level: "moyen".to_string(),
+            level_label: "Moyen".to_string(),
+            tech_tag: "FSR (EASU + RCAS)".to_string(),
+            description: "Super-résolution spatiale AMD FidelityFX Super Resolution (FSR). Combine reconstruction des contours et filtrage de netteté haute fidélité.".to_string(),
+            scale_method: "ewa_lanczossharp".to_string(),
+            shaders: vec!["FSR.glsl".to_string()],
+            max_res_target: max_res_label.to_string(),
+        },
+        UpscaleProfile {
+            id: "amd_eleve".to_string(),
+            name: "AMD FSR Ultra Neuronal".to_string(),
+            brand: "amd".to_string(),
+            level: "eleve".to_string(),
+            level_label: "Élevé".to_string(),
+            tech_tag: "FSRCNNX 16 + FSR Ultra".to_string(),
+            description: "Réseau de neurones convolutifs FSRCNNX 16 passes couplé au shader FSR. Clarté cinématographique maximale poussant le GPU à son plein potentiel.".to_string(),
+            scale_method: "ewa_lanczossharp".to_string(),
+            shaders: vec!["FSRCNNX_x2_16-0-4-1.glsl".to_string(), "FSR.glsl".to_string()],
+            max_res_target: max_res_label.to_string(),
+        },
+
+        // NVIDIA
+        UpscaleProfile {
+            id: "nvidia_simple".to_string(),
+            name: "NVIDIA Image Scaling (NIS)".to_string(),
+            brand: "nvidia".to_string(),
+            level: "simple".to_string(),
+            level_label: "Simple".to_string(),
+            tech_tag: "NVIDIA NIS".to_string(),
+            description: "Filtre directionnel 6-taps avec netteté adaptative NVIDIA Image Scaling. Léger et fluide, conçu pour préserver le framerate.".to_string(),
+            scale_method: "spline36".to_string(),
+            shaders: vec!["NVScaler.glsl".to_string()],
+            max_res_target: max_res_label.to_string(),
+        },
+        UpscaleProfile {
+            id: "nvidia_moyen".to_string(),
+            name: "RTX VSR / DLSS Équivalent".to_string(),
+            brand: "nvidia".to_string(),
+            level: "moyen".to_string(),
+            level_label: "Moyen".to_string(),
+            tech_tag: "NNEDI3 64 Neurones".to_string(),
+            description: "Super-échantillonnage neuronal NNEDI3 64 neurones simulant le rendu DLSS / VSR. Reconstitution fidèle des textures et suppression des artefacts.".to_string(),
+            scale_method: "ewa_lanczossharp".to_string(),
+            shaders: vec!["nnedi3-nns64-win8x6.hook".to_string()],
+            max_res_target: max_res_label.to_string(),
+        },
+        UpscaleProfile {
+            id: "nvidia_eleve".to_string(),
+            name: "RTX VSR Ultra Cinéma".to_string(),
+            brand: "nvidia".to_string(),
+            level: "eleve".to_string(),
+            level_label: "Élevé".to_string(),
+            tech_tag: "NNEDI3 128 + KrigBilateral".to_string(),
+            description: "Architecture neuronale lourde NNEDI3 128 neurones combinée au reconstructeur de chrominance KrigBilateral et deband pour une précision 4K absolue.".to_string(),
+            scale_method: "ewa_lanczossharp".to_string(),
+            shaders: vec!["nnedi3-nns128-win8x6.hook".to_string(), "KrigBilateral.glsl".to_string()],
+            max_res_target: max_res_label.to_string(),
+        },
+
+        // Intel
+        UpscaleProfile {
+            id: "intel_simple".to_string(),
+            name: "Intel Adaptive CAS".to_string(),
+            brand: "intel".to_string(),
+            level: "simple".to_string(),
+            level_label: "Simple".to_string(),
+            tech_tag: "Intel CAS".to_string(),
+            description: "Filtre d'accentuation adaptatif basse consommation pour GPU Intel Iris Xe et Arc. Réhausse les textures sans artefact de sur-accentuation.".to_string(),
+            scale_method: "spline36".to_string(),
+            shaders: vec!["CAS-scaled.glsl".to_string()],
+            max_res_target: max_res_label.to_string(),
+        },
+        UpscaleProfile {
+            id: "intel_moyen".to_string(),
+            name: "Intel XeSS Équilibré".to_string(),
+            brand: "intel".to_string(),
+            level: "moyen".to_string(),
+            level_label: "Moyen".to_string(),
+            tech_tag: "XeSS Neural 8-Couches".to_string(),
+            description: "Super-échantillonnage haute résolution assisté par réseau neuronal FSRCNNX 8 couches. Compromis optimal entre fluidité et piqué d'image.".to_string(),
+            scale_method: "ewa_lanczossharp".to_string(),
+            shaders: vec!["FSRCNNX_x2_8-0-4-1.glsl".to_string()],
+            max_res_target: max_res_label.to_string(),
+        },
+        UpscaleProfile {
+            id: "intel_eleve".to_string(),
+            name: "Intel XeSS Ultra Fidélité".to_string(),
+            brand: "intel".to_string(),
+            level: "eleve".to_string(),
+            level_label: "Élevé".to_string(),
+            tech_tag: "XeSS Ultra 16 + SSim".to_string(),
+            description: "Traitement neuronal intensif 16 couches FSRCNNX associé au rééchantillonnage perceptuel SSim. Clarté maximale sur écrans haute densité.".to_string(),
+            scale_method: "ewa_lanczossharp".to_string(),
+            shaders: vec!["FSRCNNX_x2_16-0-4-1.glsl".to_string(), "SSimDownscaler.glsl".to_string()],
+            max_res_target: max_res_label.to_string(),
+        },
+    ]
+}
+
+pub fn apply_mpv_profile(profile: &UpscaleProfile, max_res_label: &str) {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/home/noos".to_string());
+    
+    let mut config_text = format!(
+        "# === NOOS UPSCALE PROFILE : {} ({}) ===\n\
+         # Marque GPU : {} | Résolution Écran Max : {}\n\
+         profile=gpu-hq\n\
+         scale={}\n\
+         cscale=ewa_lanczossharp\n\
+         dscale=mitchell\n\
+         correct-downscaling=yes\n\
+         linear-downscaling=yes\n\
+         glsl-shaders-clr\n",
+        profile.name,
+        profile.tech_tag,
+        profile.brand.to_uppercase(),
+        max_res_label,
+        profile.scale_method
+    );
+
+    for s in &profile.shaders {
+        config_text.push_str(&format!("glsl-shader=\"/etc/mpv/shaders/{}\"\n", s));
+    }
+
+    if profile.level == "eleve" {
+        config_text.push_str("deband=yes\ndeband-iterations=4\ndeband-threshold=48\ndeband-range=16\ndeband-grain=48\n");
+    }
+
+    config_text.push_str("# === END NOOS UPSCALE PROFILE ===\n");
+
+    // 1. Déploiement dans ~/.config/mpv/mpv.conf
+    let mpv_dir = std::path::PathBuf::from(&home).join(".config/mpv");
+    let _ = std::fs::create_dir_all(&mpv_dir);
+    let mpv_conf = mpv_dir.join("mpv.conf");
+
+    let current_mpv = std::fs::read_to_string(&mpv_conf).unwrap_or_default();
+    let cleaned_mpv = clean_upscale_section(&current_mpv);
+    let new_mpv = format!("{}\n{}", cleaned_mpv.trim(), config_text);
+    let _ = std::fs::write(&mpv_conf, new_mpv.trim_start());
+
+    // 2. Déploiement dans ~/.config/jellyfin-media-player/mpv.conf
+    let jmp_dir = std::path::PathBuf::from(&home).join(".config/jellyfin-media-player");
+    let _ = std::fs::create_dir_all(&jmp_dir);
+    let jmp_conf = jmp_dir.join("mpv.conf");
+
+    let current_jmp = std::fs::read_to_string(&jmp_conf).unwrap_or_default();
+    let cleaned_jmp = clean_upscale_section(&current_jmp);
+    let new_jmp = format!("{}\n{}", cleaned_jmp.trim(), config_text);
+    let _ = std::fs::write(&jmp_conf, new_jmp.trim_start());
+}
+
+fn clean_upscale_section(content: &str) -> String {
+    let start_tag = "# === NOOS UPSCALE PROFILE";
+    let end_tag = "# === END NOOS UPSCALE PROFILE ===";
+
+    if let (Some(start_idx), Some(end_idx)) = (content.find(start_tag), content.find(end_tag)) {
+        let after_end = end_idx + end_tag.len();
+        format!("{}{}", &content[..start_idx], &content[after_end..])
+    } else {
+        content.to_string()
+    }
+}
+
+#[tauri::command]
+pub async fn get_upscale_info(brand: Option<String>) -> Result<UpscaleSystemInfo, String> {
+    let detected_brand = detect_gpu_brand();
+    let (max_w, max_h, max_res_label) = detect_max_resolution();
+
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/home/noos".to_string());
+    let upscale_file = std::path::PathBuf::from(&home).join(".config/noos-htpc/upscale.json");
+
+    let saved_config: Option<UpscaleConfig> = if let Ok(data) = std::fs::read_to_string(&upscale_file) {
+        serde_json::from_str(&data).ok()
+    } else {
+        None
+    };
+
+    let active_brand = brand.unwrap_or_else(|| {
+        if let Some(ref cfg) = saved_config {
+            cfg.active_brand.clone()
+        } else {
+            detected_brand.clone()
+        }
+    });
+
+    let current_profile_id = if let Some(ref cfg) = saved_config {
+        if cfg.active_brand == active_brand {
+            cfg.active_profile_id.clone()
+        } else {
+            format!("{}_moyen", active_brand)
+        }
+    } else {
+        format!("{}_moyen", active_brand)
+    };
+
+    let all_profiles = get_all_upscale_profiles(&max_res_label);
+    let profiles: Vec<UpscaleProfile> = all_profiles
+        .into_iter()
+        .filter(|p| p.brand == active_brand)
+        .collect();
+
+    Ok(UpscaleSystemInfo {
+        detected_brand,
+        active_brand,
+        detected_max_res: max_res_label,
+        max_width: max_w,
+        max_height: max_h,
+        current_profile_id,
+        profiles,
+    })
+}
+
+#[tauri::command]
+pub async fn set_upscale_profile(profile_id: String) -> Result<bool, String> {
+    let (_, _, max_res_label) = detect_max_resolution();
+    let all_profiles = get_all_upscale_profiles(&max_res_label);
+
+    let profile = all_profiles
+        .into_iter()
+        .find(|p| p.id == profile_id)
+        .ok_or_else(|| format!("Profil d'upscaling '{}' inconnu.", profile_id))?;
+
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/home/noos".to_string());
+    let conf_dir = std::path::PathBuf::from(&home).join(".config/noos-htpc");
+    let _ = std::fs::create_dir_all(&conf_dir);
+    let upscale_file = conf_dir.join("upscale.json");
+
+    let cfg = UpscaleConfig {
+        active_brand: profile.brand.clone(),
+        active_profile_id: profile.id.clone(),
+    };
+
+    if let Ok(json) = serde_json::to_string_pretty(&cfg) {
+        let _ = std::fs::write(&upscale_file, json);
+    }
+
+    apply_mpv_profile(&profile, &max_res_label);
+
+    Ok(true)
+}
+
