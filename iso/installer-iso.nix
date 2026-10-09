@@ -40,7 +40,6 @@ in
 {
   # 1. Image ISO Live bootable
   image.fileName = lib.mkForce "noos-htpc-installer.iso";
-  isoImage.isoName = lib.mkForce "noos-htpc-installer.iso";
   isoImage.volumeID = lib.mkForce "NOOS_HTPC";
   isoImage.makeEfiBootable = true;
   isoImage.makeUsbBootable = true;
