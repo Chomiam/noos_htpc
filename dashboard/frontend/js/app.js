@@ -646,6 +646,11 @@
     if (isModalOpen) closeSettings();
     if (isUpdateModalOpen) closeUpdateModal();
     isIptvModalOpen = true;
+    if (window.NOOS_LOGO_DATA_URI) {
+      document.querySelectorAll('.iptv-logo, .iptv-sync-logo').forEach(img => {
+        img.src = window.NOOS_LOGO_DATA_URI;
+      });
+    }
     if (modalIptv) modalIptv.classList.remove('hidden');
     await loadIptvProfiles();
   }
@@ -1236,6 +1241,11 @@
 
   // 15. Initialisation au chargement & écoute des événements système Tauri
   window.addEventListener('DOMContentLoaded', () => {
+    if (window.NOOS_LOGO_DATA_URI) {
+      document.querySelectorAll('.iptv-logo, .iptv-sync-logo').forEach(img => {
+        img.src = window.NOOS_LOGO_DATA_URI;
+      });
+    }
     selectCard(0, false);
     refreshSystemInfo();
     initKeyboardConfig();
