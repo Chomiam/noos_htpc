@@ -530,6 +530,10 @@
     if (isUpdateModalOpen) {
       if (e.key === 'Escape' || e.key === 'Backspace') {
         closeUpdateModal();
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        if (!isUpdating && btnApplyUpdate && !btnApplyUpdate.disabled && !updateChangelogSection.classList.contains('hidden')) {
+          applyUpdate();
+        }
       }
       return;
     }
