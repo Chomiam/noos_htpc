@@ -1,0 +1,8 @@
+target/
+result
+result-*
+.direnv/
+*.swp
+*.bak
+*.local.nix
+hardware-configuration.local.nix

@@ -1,0 +1,7 @@
+{ ... }:
+
+{
+  imports = [
+    ./gpu-profiles.nix
+  ];
+}
