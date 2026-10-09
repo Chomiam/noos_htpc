@@ -1,18 +1,36 @@
 { config, lib, pkgs, ... }:
 
+let
+  grubTheme = ../../themes/grub-theme;
+in
 {
-  # 1. Chargeur d'amorçage UEFI moderne avec historique des générations (Rollback natif)
+  # 1. Chargeur d'amorçage GRUB moderne et stylisé Noos HTPC (Thème Catppuccin Mocha)
   boot.loader = {
-    systemd-boot = {
+    systemd-boot.enable = lib.mkForce false;
+    grub = {
       enable = true;
+      efiSupport = true;
+      efiInstallAsRemovable = false;
+      device = "nodev";
       configurationLimit = 15; # Conserve les 15 dernières générations pour un rollback instantané
-      editor = false;          # Sécurisation contre l'édition manuelle sur TV
-      consoleMode = "max";
+      configurationName = "Noos-HTPC";
+      theme = grubTheme;
+      splashImage = null; # Intégré dans background.png du thème
+      gfxmodeEfi = "1920x1080,auto";
+      entryOptions = "--class noos-htpc --class gnu-linux --class os";
+      subEntryOptions = "--class noos-htpc --class gnu-linux --class os";
+
+      # Copie de sauvegarde EFI universelle (BOOTX64.EFI) en cas de réinitialisation NVRAM
+      extraInstallCommands = ''
+        ${pkgs.coreutils}/bin/mkdir -p /boot/EFI/BOOT
+        ${pkgs.coreutils}/bin/cp -f /boot/EFI/*/grubx64.efi /boot/EFI/BOOT/BOOTX64.EFI || true
+      '';
     };
     efi = {
       canTouchEfiVariables = true;
+      efiSysMountPoint = "/boot";
     };
-    timeout = 2; # 2 secondes d'affichage du menu boot avant démarrage automatique
+    timeout = 3; # 3 secondes d'affichage du menu boot TV avant démarrage automatique
   };
 
   # 2. Démarrage silencieux "Console Style" (aucun log textuel au démarrage sur la TV)

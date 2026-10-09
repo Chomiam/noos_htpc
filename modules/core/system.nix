@@ -140,4 +140,10 @@ in
     dosfstools
     ntfs3g
   ];
+
+  # 6. Identité de distribution Noos HTPC (renommage des entrées GRUB et de l'OS)
+  system.nixos = {
+    distroName = "Noos-HTPC";
+    distroId = "noos-htpc";
+  };
 }
