@@ -3,6 +3,7 @@
 let
   gpuCfg = config.hardware.noos-htpc.gpu;
   dashboardPkg = pkgs.callPackage ../../dashboard/default.nix { };
+  oskPkg = pkgs.callPackage ../../osk/default.nix { };
 
   # Règles de fenêtrage KWin pour forcer le plein écran sans bordures façon Smart TV
   kwinRules = ''
@@ -88,6 +89,9 @@ let
       IS_VM=1
     fi
 
+    # Lancement du clavier virtuel universel Wayland en arrière-plan
+    (${oskPkg}/bin/noos-osk &) || true
+
     if [ "$IS_VM" = "1" ]; then
       echo "[Noos HTPC] Environnement virtualisé détecté : démarrage optimisé avec Cage (pixman)..."
       export WLR_RENDERER=pixman
@@ -127,6 +131,7 @@ in
     # 2. Paquets de session et compositeur Wayland
     environment.systemPackages = with pkgs; [
       dashboardPkg
+      oskPkg
       noosTvSession
       kdePackages.kwin
       kdePackages.libkscreen

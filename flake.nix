@@ -63,6 +63,7 @@
       packages.${system} = rec {
         noos-htpc-installer = pkgs.callPackage ./installer/default.nix { };
         noos-tv-dashboard = pkgs.callPackage ./dashboard/default.nix { };
+        noos-osk = pkgs.callPackage ./osk/default.nix { };
         iso = self.nixosConfigurations.iso.config.system.build.isoImage;
         default = iso;
       };

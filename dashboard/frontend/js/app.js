@@ -5,7 +5,7 @@
 (function() {
   'use strict';
 
-  // Sélecteurs DOM
+  // Sélecteurs DOM Principaux
   const cards = Array.from(document.querySelectorAll('.app-card'));
   const ambientGlow = document.getElementById('ambient-glow');
   const heroBadge = document.getElementById('hero-badge');
@@ -22,9 +22,44 @@
   const wifiName = document.getElementById('wifi-name');
   const settingsStorageStatus = document.getElementById('settings-storage-status');
 
+  // Sélecteurs Clavier Virtuel
+  const btnLayoutAzerty = document.getElementById('btn-layout-azerty');
+  const btnLayoutQwerty = document.getElementById('btn-layout-qwerty');
+
+  // Sélecteurs Modal Mise à Jour
+  const modalUpdate = document.getElementById('modal-update');
+  const btnCloseUpdateModal = document.getElementById('modal-update-close');
+  const updateBadge = document.getElementById('update-badge');
+  const updateTileSubtitle = document.getElementById('update-tile-subtitle');
+  const btnChannelStable = document.getElementById('btn-channel-stable');
+  const btnChannelTesting = document.getElementById('btn-channel-testing');
+  const currentVersionTag = document.getElementById('current-version-tag');
+  const statusBadge = document.getElementById('status-badge');
+  const updateStatusMsg = document.getElementById('update-status-msg');
+  const btnCheckUpdates = document.getElementById('btn-check-updates');
+  const updateChangelogSection = document.getElementById('update-changelog-section');
+  const updateCommitsList = document.getElementById('update-commits-list');
+  const btnApplyUpdate = document.getElementById('btn-apply-update');
+  const updateProgressContainer = document.getElementById('update-progress-container');
+  const progressStepName = document.getElementById('progress-step-name');
+  const progressPercent = document.getElementById('progress-percent');
+  const progressBarFill = document.getElementById('progress-bar-fill');
+  const progressLogLine = document.getElementById('progress-log-line');
+
+  // Sélecteurs Splash Screen Redémarrage
+  const restartSplash = document.getElementById('restart-splash');
+  const splashStatusText = document.getElementById('splash-status-text');
+
   let currentIndex = 0;
   let isModalOpen = false;
+  let isUpdateModalOpen = false;
+  let isUpdating = false;
+  let currentChannel = 'testing';
   let hdrEnabled = true;
+
+  function isAnyModalOpen() {
+    return isModalOpen || isUpdateModalOpen;
+  }
 
   // 1. Synthétiseur Audio Web Audio API (Sons de navigation feutrés & discrets)
   let audioCtx = null;
@@ -78,7 +113,7 @@
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
-    clockDisplay.textContent = `${hours}:${minutes}`;
+    if (clockDisplay) clockDisplay.textContent = `${hours}:${minutes}`;
   }
   setInterval(updateClock, 1000);
   updateClock();
@@ -92,13 +127,14 @@
     const meta = card.getAttribute('data-meta') || '';
     const color = card.getAttribute('data-color') || '#38bdf8';
 
-    heroTitle.textContent = title;
-    heroBadge.textContent = badge;
-    heroDesc.textContent = desc;
-    heroMeta.textContent = meta;
+    if (heroTitle) heroTitle.textContent = title;
+    if (heroBadge) heroBadge.textContent = badge;
+    if (heroDesc) heroDesc.textContent = desc;
+    if (heroMeta) heroMeta.textContent = meta;
 
-    // Dégradé d'ambiance avec couleur réactive feutrée
-    ambientGlow.style.background = `radial-gradient(circle, ${color}22 0%, rgba(7, 8, 11, 0) 70%)`;
+    if (ambientGlow) {
+      ambientGlow.style.background = `radial-gradient(circle, ${color}22 0%, rgba(7, 8, 11, 0) 70%)`;
+    }
   }
 
   // 4. Sélection et focus d'une carte
@@ -131,6 +167,11 @@
       return;
     }
 
+    if (appId === 'update-modal') {
+      openUpdateModal();
+      return;
+    }
+
     if (appId === 'disc_player') {
       console.log('[Noos TV] Lancement de la lecture DVD / Blu-ray');
       if (window.__TAURI__ && window.__TAURI__.core) {
@@ -158,9 +199,11 @@
 
   // 6. Gestion du Modal Paramètres
   function openSettings() {
+    if (isUpdateModalOpen) closeUpdateModal();
     isModalOpen = true;
     modalSettings.classList.remove('hidden');
     refreshSystemInfo();
+    initKeyboardConfig();
   }
 
   function closeSettings() {
@@ -169,7 +212,156 @@
     selectCard(currentIndex, false);
   }
 
-  // 7. Bascule HDR
+  // 7. Gestion du Modal Mise à Jour
+  function openUpdateModal() {
+    if (isModalOpen) closeSettings();
+    isUpdateModalOpen = true;
+    modalUpdate.classList.remove('hidden');
+    checkForUpdates(currentChannel);
+  }
+
+  function closeUpdateModal() {
+    if (isUpdating) return;
+    isUpdateModalOpen = false;
+    modalUpdate.classList.add('hidden');
+    selectCard(currentIndex, false);
+  }
+
+  function setChannel(channel) {
+    currentChannel = channel;
+    if (channel === 'stable') {
+      btnChannelStable.classList.add('active');
+      btnChannelTesting.classList.remove('active');
+    } else {
+      btnChannelTesting.classList.add('active');
+      btnChannelStable.classList.remove('active');
+    }
+    checkForUpdates(currentChannel);
+  }
+
+  async function checkForUpdates(channel) {
+    if (btnCheckUpdates) btnCheckUpdates.disabled = true;
+    if (updateStatusMsg) updateStatusMsg.textContent = `Recherche de mises à jour sur le canal '${channel}'...`;
+    if (statusBadge) {
+      statusBadge.textContent = 'Vérification...';
+      statusBadge.className = 'badge-pill';
+    }
+
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        const info = await window.__TAURI__.core.invoke('check_for_updates', { channel });
+        if (info) {
+          if (currentVersionTag) currentVersionTag.textContent = info.latest_version;
+          if (updateStatusMsg) updateStatusMsg.textContent = info.message;
+
+          if (info.has_update) {
+            if (statusBadge) {
+              statusBadge.textContent = 'Mise à jour disponible';
+              statusBadge.className = 'badge-pill hdr-active';
+            }
+            if (updateBadge) updateBadge.style.display = 'block';
+            if (updateTileSubtitle) updateTileSubtitle.textContent = 'MàJ disponible !';
+
+            if (updateCommitsList) {
+              updateCommitsList.innerHTML = '';
+              info.commits.forEach(c => {
+                const item = document.createElement('div');
+                item.className = 'commit-item';
+                const parts = c.split(' • ');
+                const hash = parts[0] || '';
+                const msg = parts[1] || c;
+                item.innerHTML = `<span class="commit-hash">${hash}</span><span class="commit-msg">${msg}</span>`;
+                updateCommitsList.appendChild(item);
+              });
+            }
+            if (updateChangelogSection) updateChangelogSection.classList.remove('hidden');
+            if (btnApplyUpdate) btnApplyUpdate.disabled = false;
+          } else {
+            if (statusBadge) {
+              statusBadge.textContent = 'À jour';
+              statusBadge.className = 'badge-pill';
+            }
+            if (updateBadge) updateBadge.style.display = 'none';
+            if (updateTileSubtitle) updateTileSubtitle.textContent = 'Système à jour';
+            if (updateChangelogSection) updateChangelogSection.classList.add('hidden');
+          }
+        }
+      } catch (err) {
+        console.error('Erreur check updates :', err);
+        if (updateStatusMsg) updateStatusMsg.textContent = 'Erreur vérification : ' + err;
+        if (statusBadge) statusBadge.textContent = 'Erreur';
+      } finally {
+        if (btnCheckUpdates) btnCheckUpdates.disabled = false;
+      }
+    } else {
+      setTimeout(() => {
+        if (statusBadge) statusBadge.textContent = 'À jour';
+        if (updateStatusMsg) updateStatusMsg.textContent = `Votre système Noos HTPC est à jour sur le canal '${channel}'.`;
+        if (btnCheckUpdates) btnCheckUpdates.disabled = false;
+      }, 500);
+    }
+  }
+
+  async function applyUpdate() {
+    if (isUpdating) return;
+    isUpdating = true;
+    playConfirmSound();
+
+    if (btnApplyUpdate) btnApplyUpdate.disabled = true;
+    if (btnCheckUpdates) btnCheckUpdates.disabled = true;
+    if (btnChannelStable) btnChannelStable.disabled = true;
+    if (btnChannelTesting) btnChannelTesting.disabled = true;
+    if (updateProgressContainer) updateProgressContainer.classList.remove('hidden');
+
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        await window.__TAURI__.core.invoke('apply_system_update', { channel: currentChannel });
+      } catch (err) {
+        console.error('Erreur application mise à jour :', err);
+        if (progressStepName) progressStepName.textContent = 'Erreur lors de la mise à jour';
+        if (progressLogLine) progressLogLine.textContent = String(err);
+        isUpdating = false;
+        if (btnApplyUpdate) btnApplyUpdate.disabled = false;
+        if (btnCheckUpdates) btnCheckUpdates.disabled = false;
+        if (btnChannelStable) btnChannelStable.disabled = false;
+        if (btnChannelTesting) btnChannelTesting.disabled = false;
+      }
+    }
+  }
+
+  // 8. Clavier Virtuel : Disposition AZERTY / QWERTY
+  async function initKeyboardConfig() {
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        const cfg = await window.__TAURI__.core.invoke('get_keyboard_config');
+        if (cfg && cfg.layout) {
+          setKeyboardLayoutUI(cfg.layout);
+        }
+      } catch (err) {
+        console.warn('Erreur chargement disposition clavier :', err);
+      }
+    }
+  }
+
+  function setKeyboardLayoutUI(layout) {
+    const isAzerty = layout.toLowerCase() === 'azerty';
+    if (btnLayoutAzerty) btnLayoutAzerty.classList.toggle('active', isAzerty);
+    if (btnLayoutQwerty) btnLayoutQwerty.classList.toggle('active', !isAzerty);
+  }
+
+  async function setKeyboardLayout(layout) {
+    setKeyboardLayoutUI(layout);
+    playConfirmSound();
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        await window.__TAURI__.core.invoke('set_keyboard_config', { config: { layout } });
+      } catch (err) {
+        console.error('Erreur configuration disposition clavier :', err);
+      }
+    }
+  }
+
+  // 9. Bascule HDR
   async function toggleHdr() {
     hdrEnabled = !hdrEnabled;
     applyHdrState(hdrEnabled);
@@ -184,20 +376,24 @@
   }
 
   function applyHdrState(enabled) {
-    toggleHdrBtn.classList.toggle('active', enabled);
-    toggleHdrBtn.textContent = enabled ? 'Activé (Rec.2020)' : 'Désactivé (SDR)';
-    if (enabled) {
-      hdrPill.classList.add('hdr-active');
-      hdrPill.classList.remove('sdr-active');
-      hdrPill.innerHTML = '<span class="status-dot"></span><span>4K HDR</span>';
-    } else {
-      hdrPill.classList.remove('hdr-active');
-      hdrPill.classList.add('sdr-active');
-      hdrPill.innerHTML = '<span class="status-dot sdr"></span><span>SDR • Tonemap Auto</span>';
+    if (toggleHdrBtn) {
+      toggleHdrBtn.classList.toggle('active', enabled);
+      toggleHdrBtn.textContent = enabled ? 'Activé (Rec.2020)' : 'Désactivé (SDR)';
+    }
+    if (hdrPill) {
+      if (enabled) {
+        hdrPill.classList.add('hdr-active');
+        hdrPill.classList.remove('sdr-active');
+        hdrPill.innerHTML = '<span class="status-dot"></span><span>4K HDR</span>';
+      } else {
+        hdrPill.classList.remove('hdr-active');
+        hdrPill.classList.add('sdr-active');
+        hdrPill.innerHTML = '<span class="status-dot sdr"></span><span>SDR • Tonemap Auto</span>';
+      }
     }
   }
 
-  // 8. Actions d'alimentation
+  // 10. Actions d'alimentation
   async function handlePowerAction(action) {
     playConfirmSound();
     if (window.__TAURI__ && window.__TAURI__.core) {
@@ -211,16 +407,16 @@
     }
   }
 
-  // 9. Rafraîchissement des informations système
+  // 11. Rafraîchissement des informations système
   async function refreshSystemInfo() {
     if (window.__TAURI__ && window.__TAURI__.core) {
       try {
         const info = await window.__TAURI__.core.invoke('get_system_info');
         if (info) {
-          if (info.wifi_connected && info.wifi_ssid) {
+          if (info.wifi_connected && info.wifi_ssid && wifiName) {
             wifiName.textContent = info.wifi_ssid;
           }
-          if (info.storage_free_gb && info.storage_total_gb) {
+          if (info.storage_free_gb && info.storage_total_gb && settingsStorageStatus) {
             settingsStorageStatus.textContent = `${info.storage_free_gb} Go libres sur ${info.storage_total_gb} Go`;
           }
           hdrEnabled = info.hdr_enabled;
@@ -232,7 +428,7 @@
     }
   }
 
-  // 10. Surveillance et détection en direct des lecteurs DVD/Blu-ray (USB & SATA)
+  // 12. Surveillance et détection en direct des lecteurs DVD/Blu-ray (USB & SATA)
   let currentOpticalDrive = null;
   const cardDiscPlayer = document.getElementById('card-disc-player');
   const discCardBadge = document.getElementById('disc-card-badge');
@@ -286,24 +482,35 @@
   setInterval(checkOpticalDrive, 2500);
   checkOpticalDrive();
 
-  // 10. Événements DOM (Souris / Clavier)
+  // 13. Événements DOM (Souris / Clavier)
   cards.forEach((card, index) => {
     card.addEventListener('mouseenter', () => {
-      if (!isModalOpen) selectCard(index);
+      if (!isAnyModalOpen()) selectCard(index);
     });
     card.addEventListener('click', () => {
       launchApplication(card.getAttribute('data-id'));
     });
   });
 
-  btnLaunchHero.addEventListener('click', () => {
-    const activeCard = cards[currentIndex];
-    if (activeCard) launchApplication(activeCard.getAttribute('data-id'));
-  });
+  if (btnLaunchHero) {
+    btnLaunchHero.addEventListener('click', () => {
+      const activeCard = cards[currentIndex];
+      if (activeCard) launchApplication(activeCard.getAttribute('data-id'));
+    });
+  }
 
-  btnPower.addEventListener('click', openSettings);
-  btnCloseModal.addEventListener('click', closeSettings);
-  toggleHdrBtn.addEventListener('click', toggleHdr);
+  if (btnPower) btnPower.addEventListener('click', openSettings);
+  if (btnCloseModal) btnCloseModal.addEventListener('click', closeSettings);
+  if (btnCloseUpdateModal) btnCloseUpdateModal.addEventListener('click', closeUpdateModal);
+  if (toggleHdrBtn) toggleHdrBtn.addEventListener('click', toggleHdr);
+
+  if (btnChannelStable) btnChannelStable.addEventListener('click', () => setChannel('stable'));
+  if (btnChannelTesting) btnChannelTesting.addEventListener('click', () => setChannel('testing'));
+  if (btnCheckUpdates) btnCheckUpdates.addEventListener('click', () => checkForUpdates(currentChannel));
+  if (btnApplyUpdate) btnApplyUpdate.addEventListener('click', applyUpdate);
+
+  if (btnLayoutAzerty) btnLayoutAzerty.addEventListener('click', () => setKeyboardLayout('azerty'));
+  if (btnLayoutQwerty) btnLayoutQwerty.addEventListener('click', () => setKeyboardLayout('qwerty'));
 
   document.querySelectorAll('.power-action-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -314,8 +521,16 @@
   // Clavier physique
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Home') {
+      if (isUpdateModalOpen) closeUpdateModal();
       if (isModalOpen) closeSettings();
       selectCard(0);
+      return;
+    }
+
+    if (isUpdateModalOpen) {
+      if (e.key === 'Escape' || e.key === 'Backspace') {
+        closeUpdateModal();
+      }
       return;
     }
 
@@ -339,7 +554,7 @@
   });
 
   // ==============================================================================
-  // 11. GESTION DE LA MANETTE DE JEU (GAMEPAD API)
+  // 14. GESTION DE LA MANETTE DE JEU (GAMEPAD API)
   // ==============================================================================
   let lastNavTime = 0;
   const NAV_COOLDOWN = 180; // ms entre deux pas de navigation
@@ -358,23 +573,18 @@
       const btnX = gp.buttons[2]?.pressed;       // Carré / X (Options)
       const btnY = gp.buttons[3]?.pressed;       // Triangle / Y (Alimentation)
       const btnHome = gp.buttons[16]?.pressed;   // Guide / Xbox / PS / Home (Bouton HOME)
-      const dpadUp = gp.buttons[12]?.pressed;
-      const dpadDown = gp.buttons[13]?.pressed;
-      const dpadLeft = gp.buttons[14]?.pressed;
-      const dpadRight = gp.buttons[15]?.pressed;
 
       // Sticks analogiques avec zone morte 0.45
       const axisX = gp.axes[0] || 0;
-      const axisY = gp.axes[1] || 0;
+      const dpadLeft = gp.buttons[14]?.pressed;
+      const dpadRight = gp.buttons[15]?.pressed;
 
       const stickLeft = axisX < -0.45;
       const stickRight = axisX > 0.45;
-      const stickUp = axisY < -0.45;
-      const stickDown = axisY > 0.45;
 
       // Navigation Horizontale D-Pad / Stick
       if (now - lastNavTime > NAV_COOLDOWN) {
-        if (!isModalOpen) {
+        if (!isAnyModalOpen()) {
           if (dpadRight || stickRight) {
             selectCard(currentIndex + 1);
             lastNavTime = now;
@@ -388,14 +598,18 @@
       // Action HOME (Retour direct au lanceur / Accueil TV)
       if (btnHome && !prevButtonsState['Home']) {
         playConfirmSound();
+        if (isUpdateModalOpen) closeUpdateModal();
         if (isModalOpen) closeSettings();
         selectCard(0);
       }
 
-      // Action A (Ouvrir) - Déclenchement sur front montant
+      // Action A (Ouvrir / Valider)
       if (btnA && !prevButtonsState['A']) {
-        if (isModalOpen) {
-          // Si dans modal, valide le bouton actif
+        if (isUpdateModalOpen) {
+          if (!isUpdating && btnApplyUpdate && !btnApplyUpdate.disabled && !updateChangelogSection.classList.contains('hidden')) {
+            applyUpdate();
+          }
+        } else if (isModalOpen) {
           const activeEl = document.activeElement;
           if (activeEl && activeEl.click) activeEl.click();
         } else {
@@ -406,22 +620,29 @@
 
       // Action B (Retour / Fermer modal)
       if (btnB && !prevButtonsState['B']) {
-        if (isModalOpen) closeSettings();
+        if (isUpdateModalOpen) closeUpdateModal();
+        else if (isModalOpen) closeSettings();
       }
 
-      // Action X (Paramètres)
+      // Action X (Paramètres ou Vérifier MàJ si modal ouvert)
       if (btnX && !prevButtonsState['X']) {
-        if (!isModalOpen) openSettings(); else closeSettings();
+        if (isUpdateModalOpen) {
+          checkForUpdates(currentChannel);
+        } else if (!isModalOpen) {
+          openSettings();
+        } else {
+          closeSettings();
+        }
       }
 
       // Action Y (Éjection si sur le lecteur disque, sinon alimentation)
       if (btnY && !prevButtonsState['Y']) {
-        if (!isModalOpen && cards[currentIndex] === cardDiscPlayer) {
+        if (!isAnyModalOpen() && cards[currentIndex] === cardDiscPlayer) {
           playConfirmSound();
           if (window.__TAURI__ && window.__TAURI__.core) {
             window.__TAURI__.core.invoke('eject_disc', { device: null });
           }
-        } else {
+        } else if (!isAnyModalOpen()) {
           openSettings();
         }
       }
@@ -437,19 +658,61 @@
     requestAnimationFrame(pollGamepad);
   }
 
-  // Initialisation au chargement
+  // 15. Initialisation au chargement & écoute des événements système Tauri
   window.addEventListener('DOMContentLoaded', () => {
     selectCard(0, false);
     refreshSystemInfo();
+    initKeyboardConfig();
     requestAnimationFrame(pollGamepad);
 
-    // Écoute de l'événement système global Tauri lorsque le bouton HOME est pressé
     if (window.__TAURI__ && window.__TAURI__.event) {
+      // 1. Bouton HOME global
       window.__TAURI__.event.listen('home_pressed', () => {
         console.log('[Noos TV] Interruption globale reçue : retour au lanceur');
         playConfirmSound();
+        if (isUpdateModalOpen) closeUpdateModal();
         if (isModalOpen) closeSettings();
         selectCard(0);
+      });
+
+      // 2. Progression de la mise à jour
+      window.__TAURI__.event.listen('update_progress', (e) => {
+        const p = e.payload;
+        if (p) {
+          if (progressStepName) progressStepName.textContent = `Étape ${p.step}/${p.total_steps} : ${p.step_name}`;
+          if (progressPercent) progressPercent.textContent = `${p.percent}%`;
+          if (progressBarFill) progressBarFill.style.width = `${p.percent}%`;
+          if (progressLogLine) progressLogLine.textContent = p.log_line;
+        }
+      });
+
+      // 3. Mise à jour terminée : Affichage du Splash Screen Stylisé (Logo Infini + Blur) puis Redémarrage
+      window.__TAURI__.event.listen('update_completed', async () => {
+        console.log('[Noos TV] Mise à jour terminée avec succès !');
+        if (restartSplash) {
+          restartSplash.classList.remove('hidden');
+        }
+        if (splashStatusText) {
+          splashStatusText.textContent = 'Mise à jour appliquée avec succès !';
+        }
+        setTimeout(async () => {
+          try {
+            await window.__TAURI__.core.invoke('restart_dashboard');
+          } catch (err) {
+            console.error('Erreur relance dashboard :', err);
+          }
+        }, 2600);
+      });
+
+      // 4. Pastille rouge dynamique sur la tuile Mise à jour
+      window.__TAURI__.event.listen('update_badge_status', (e) => {
+        const hasUpdate = !!e.payload;
+        if (updateBadge) {
+          updateBadge.style.display = hasUpdate ? 'block' : 'none';
+        }
+        if (updateTileSubtitle) {
+          updateTileSubtitle.textContent = hasUpdate ? 'MàJ disponible !' : 'Système à jour';
+        }
       });
     }
   });

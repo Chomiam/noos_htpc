@@ -214,12 +214,36 @@
           </div>
         </div>
 
-        <!-- Tuile 6 : Paramètres Système -->
+        <!-- Tuile 6 : Mise à jour Système -->
+        <div class="app-card" data-id="update-modal" tabindex="0"
+             data-title="Mise à jour" 
+             data-badge="SYSTÈME • RELEASES & FLAKES" 
+             data-meta="Canal Stable / Testing • Vérifier"
+             data-desc="Recherchez et appliquez les dernières fonctionnalités, correctifs et montées de version déclaratives de votre Noos HTPC."
+             data-color="#38bdf8">
+          <div class="card-inner">
+            <div class="card-glow"></div>
+            <span class="update-badge" id="update-badge" style="display: none;"></span>
+            <div class="card-icon-wrap icon-cyan">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="19" x2="12" y2="5"></line>
+                <polyline points="5 12 12 5 19 12"></polyline>
+              </svg>
+            </div>
+            <div class="card-text">
+              <div class="card-badge">Système</div>
+              <div class="card-title">Mise à jour</div>
+              <div class="card-subtitle" id="update-tile-subtitle">Rechercher...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tuile 7 : Paramètres Système -->
         <div class="app-card" data-id="settings-modal" tabindex="0"
              data-title="Paramètres Système" 
              data-badge="CONFIGURATION HTPC" 
-             data-meta="HDR • Audio • Wi-Fi"
-             data-desc="Personnalisez la sortie vidéo HDR, le son surround passthrough, les connexions Wi-Fi et les options de veille."
+             data-meta="HDR • Clavier • Wi-Fi"
+             data-desc="Personnalisez la sortie vidéo HDR, le son surround passthrough, les connexions Wi-Fi et la disposition du clavier virtuel."
              data-color="#64748b">
           <div class="card-inner">
             <div class="card-glow"></div>
@@ -232,7 +256,7 @@
             <div class="card-text">
               <div class="card-badge">Réglages</div>
               <div class="card-title">Paramètres</div>
-              <div class="card-subtitle">Affichage & Réseau</div>
+              <div class="card-subtitle">Affichage & Clavier</div>
             </div>
           </div>
         </div>
@@ -272,6 +296,17 @@
 
         <div class="setting-row">
           <div>
+            <div class="setting-name">Clavier Virtuel Manette</div>
+            <div class="setting-desc">Disposition des touches pour la saisie de texte à la manette</div>
+          </div>
+          <div class="keyboard-layout-selector">
+            <button id="btn-layout-azerty" class="choice-pill active" data-layout="azerty">AZERTY (FR)</button>
+            <button id="btn-layout-qwerty" class="choice-pill" data-layout="qwerty">QWERTY (EN)</button>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div>
             <div class="setting-name">Réseau & Wi-Fi</div>
             <div id="settings-wifi-status" class="setting-desc">Connecté au réseau local</div>
           </div>
@@ -301,6 +336,92 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal Mise à Jour Système -->
+  <div id="modal-update" class="modal-overlay hidden">
+    <div class="modal-panel update-panel">
+      <div class="modal-header">
+        <div class="modal-title">Mise à jour du Système</div>
+        <button id="modal-update-close" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Sélecteur de canal (Stable / Testing) -->
+        <div class="update-channel-bar">
+          <span class="channel-label">Canal de mise à jour :</span>
+          <div class="channel-buttons">
+            <button id="btn-channel-stable" class="channel-btn" data-channel="stable">Stable</button>
+            <button id="btn-channel-testing" class="channel-btn active" data-channel="testing">Testing</button>
+          </div>
+        </div>
+
+        <!-- Carte Statut Système -->
+        <div class="update-status-card" id="update-status-card">
+          <div class="status-details">
+            <div class="status-version-line">
+              <span class="version-label">Version actuelle :</span>
+              <span id="current-version-tag" class="version-value">v0.1.0</span>
+              <span id="status-badge" class="badge-pill">Prêt</span>
+            </div>
+            <div id="update-status-msg" class="status-message">Recherche des mises à jour disponibles...</div>
+          </div>
+          <button id="btn-check-updates" class="btn-check-action">
+            <span class="btn-pad-icon">X</span>
+            <span>Vérifier</span>
+          </button>
+        </div>
+
+        <!-- Section Liste des Commits / Changements -->
+        <div id="update-changelog-section" class="update-changelog hidden">
+          <div class="changelog-title">Modifications apportées par la mise à jour :</div>
+          <div id="update-commits-list" class="commits-list">
+            <!-- Liste dynamique -->
+          </div>
+          <div class="update-action-footer">
+            <button id="btn-apply-update" class="btn-primary-action btn-update-apply">
+              <span class="btn-pad-icon">A</span>
+              <span>Installer la mise à jour</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Barre de progression de l'installation -->
+        <div id="update-progress-container" class="update-progress-wrap hidden">
+          <div class="progress-info">
+            <span id="progress-step-name">Application de la mise à jour...</span>
+            <span id="progress-percent">0%</span>
+          </div>
+          <div class="progress-bar-track">
+            <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%;"></div>
+          </div>
+          <div id="progress-log-line" class="progress-log">Initialisation...</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Splash Screen Stylisé Redémarrage Noos TV -->
+  <div id="restart-splash" class="restart-splash-overlay hidden">
+    <div class="restart-splash-content">
+      <div class="infinity-loader">
+        <svg viewBox="0 0 100 50" class="infinity-svg">
+          <path d="M25,25 C10,25 10,10 25,10 C40,10 60,40 75,40 C90,40 90,25 75,25 C60,25 40,10 25,10 C10,10 10,40 25,40 C40,40 60,10 75,10 C90,10 90,25 75,25" 
+                fill="none" stroke="url(#infinity-gradient)" stroke-width="4.5" stroke-linecap="round" class="infinity-path"/>
+          <defs>
+            <linearGradient id="infinity-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#38bdf8" />
+              <stop offset="50%" stop-color="#818cf8" />
+              <stop offset="100%" stop-color="#c084fc" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="splash-brand">NOOS<span>TV</span></div>
+      <div class="splash-status" id="splash-status-text">Mise à jour appliquée avec succès</div>
+      <div class="splash-sub">Redémarrage du système...</div>
     </div>
   </div>
 

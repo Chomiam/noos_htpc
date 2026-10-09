@@ -690,3 +690,420 @@ body.tv-mode {
   border-color: #ef4444;
   color: #ef4444;
 }
+
+/* ==============================================================================
+   7. PASTILLE DE MISE À JOUR (Badge Rouge Pulsant)
+   ============================================================================== */
+.update-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 14px;
+  height: 14px;
+  background: #ef4444;
+  border-radius: 50%;
+  border: 2px solid #0b0c10;
+  box-shadow: 0 0 12px #ef4444, 0 0 24px rgba(239, 68, 68, 0.7);
+  animation: pulse-update-badge 1.8s infinite ease-in-out;
+  z-index: 5;
+}
+
+@keyframes pulse-update-badge {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 10px #ef4444, 0 0 20px rgba(239, 68, 68, 0.6);
+  }
+  50% {
+    transform: scale(1.3);
+    box-shadow: 0 0 18px #ef4444, 0 0 32px rgba(239, 68, 68, 0.95);
+  }
+}
+
+/* ==============================================================================
+   8. SÉLECTEUR DE DISPOSITION CLAVIER VIRTUEL
+   ============================================================================== */
+.keyboard-layout-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.choice-pill {
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--anim-fast);
+}
+
+.choice-pill:hover, .choice-pill:focus {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+  outline: none;
+}
+
+.choice-pill.active {
+  background: #3b82f6;
+  border-color: #60a5fa;
+  color: #ffffff;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+}
+
+/* ==============================================================================
+   9. MODAL DE MISE À JOUR DU SYSTÈME (Git, Flakes & Releases)
+   ============================================================================== */
+.update-panel {
+  width: 740px;
+}
+
+.update-channel-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.channel-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.channel-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.channel-btn {
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--anim-fast);
+}
+
+.channel-btn:hover, .channel-btn:focus {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  outline: none;
+}
+
+.channel-btn.active {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.45);
+}
+
+.update-status-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+}
+
+.status-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.status-version-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.version-label {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.version-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: #38bdf8;
+  font-family: monospace;
+}
+
+.status-message {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.btn-check-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: var(--radius-pill);
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid #38bdf8;
+  color: #38bdf8;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--anim-fast);
+}
+
+.btn-check-action:hover, .btn-check-action:focus {
+  background: #38bdf8;
+  color: #0b0c10;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+  transform: scale(1.03);
+  outline: none;
+}
+
+.btn-pad-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.2);
+  color: inherit;
+}
+
+.update-changelog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.changelog-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.commits-list {
+  max-height: 170px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.commits-list::-webkit-scrollbar {
+  width: 6px;
+}
+.commits-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.commit-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+.commit-hash {
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 2px 6px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.commit-msg {
+  font-size: 13px;
+  color: #ffffff;
+  line-height: 1.4;
+  flex-grow: 1;
+}
+
+.update-action-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.btn-primary-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: 1px solid #34d399;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+  transition: all var(--anim-fast);
+}
+
+.btn-primary-action:hover, .btn-primary-action:focus {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.55);
+  outline: none;
+}
+
+.btn-primary-action:disabled, .btn-check-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.update-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.progress-bar-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-log {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: monospace;
+}
+
+/* ==============================================================================
+   10. SPLASH SCREEN REDÉMARRAGE (Logo Infini Animé & Blur Arrière-plan)
+   ============================================================================== */
+.restart-splash-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 12, 16, 0.94);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.restart-splash-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.restart-splash-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.infinity-loader {
+  width: 140px;
+  height: 70px;
+  position: relative;
+}
+
+.infinity-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 15px rgba(129, 140, 248, 0.6))
+          drop-shadow(0 0 35px rgba(56, 189, 248, 0.4));
+}
+
+.infinity-path {
+  stroke-dasharray: 240;
+  stroke-dashoffset: 240;
+  animation: draw-infinity 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes draw-infinity {
+  0% {
+    stroke-dashoffset: 240;
+    transform-origin: center;
+    transform: rotate(0deg) scale(0.95);
+  }
+  50% {
+    stroke-dashoffset: 0;
+    transform-origin: center;
+    transform: rotate(180deg) scale(1.05);
+  }
+  100% {
+    stroke-dashoffset: -240;
+    transform-origin: center;
+    transform: rotate(360deg) scale(0.95);
+  }
+}
+
+.splash-brand {
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: #ffffff;
+  margin-top: 10px;
+  text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+}
+
+.splash-brand span {
+  color: #38bdf8;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.splash-status {
+  font-size: 16px;
+  font-weight: 700;
+  color: #38bdf8;
+  letter-spacing: 0.5px;
+}
+
+.splash-sub {
+  font-size: 13px;
+  color: var(--text-dim);
+}

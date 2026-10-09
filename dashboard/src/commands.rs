@@ -554,3 +554,255 @@ fn ensure_jellyfin_fullscreen_config() {
     let _ = std::fs::create_dir_all(&mpv_conf_dir);
     let _ = std::fs::write(mpv_conf_dir.join("mpv.conf"), mpv_content);
 }
+
+/* ========================================================================= */
+/* MODULE DE MISE A JOUR DECLARATIVE NOOS HTPC (GIT, FLAKES & NIXOS-REBUILD) */
+/* ========================================================================= */
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UpdateInfo {
+    pub has_update: bool,
+    pub current_version: String,
+    pub latest_version: String,
+    pub current_branch: String,
+    pub target_channel: String,
+    pub commits: Vec<String>,
+    pub message: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UpdateProgress {
+    pub step: u8,
+    pub total_steps: u8,
+    pub step_name: String,
+    pub percent: u8,
+    pub log_line: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct KeyboardConfig {
+    pub layout: String, // "azerty" ou "qwerty"
+}
+
+fn find_repo_dir() -> std::path::PathBuf {
+    let candidates = [
+        "/etc/nixos",
+        "/home/chomiam/Projets/noos_htpc",
+        "/etc/noos-htpc-source",
+    ];
+    for c in candidates {
+        let p = std::path::PathBuf::from(c);
+        if p.join(".git").exists() || p.join("flake.nix").exists() {
+            return p;
+        }
+    }
+    std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("/etc/nixos"))
+}
+
+#[tauri::command]
+pub async fn check_for_updates(channel: String) -> Result<UpdateInfo, String> {
+    tokio::task::spawn_blocking(move || {
+        let repo = find_repo_dir();
+        let target_channel = if channel.is_empty() { "testing".to_string() } else { channel };
+
+        // 1. Récupération des métadonnées distantes
+        let _ = Command::new("git")
+            .current_dir(&repo)
+            .args(["fetch", "origin", &target_channel, "--quiet"])
+            .status();
+
+        let head_commit = Command::new("git")
+            .current_dir(&repo)
+            .args(["rev-parse", "--short", "HEAD"])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+            .unwrap_or_else(|_| "unknown".to_string());
+
+        let remote_commit = Command::new("git")
+            .current_dir(&repo)
+            .args(["rev-parse", "--short", &format!("origin/{}", target_channel)])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+            .unwrap_or_else(|_| head_commit.clone());
+
+        let current_branch = Command::new("git")
+            .current_dir(&repo)
+            .args(["rev-parse", "--abbrev-ref", "HEAD"])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+            .unwrap_or_else(|_| "testing".to_string());
+
+        // 2. Vérification des commits d'écart
+        let log_output = Command::new("git")
+            .current_dir(&repo)
+            .args([
+                "log",
+                &format!("HEAD..origin/{}", target_channel),
+                "--pretty=format:%h • %s (%cr)",
+                "-n",
+                "15",
+            ])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+            .unwrap_or_default();
+
+        let commits: Vec<String> = log_output
+            .lines()
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty())
+            .collect();
+
+        let has_update = !commits.is_empty();
+        let current_version = "v0.1.0".to_string();
+        let latest_version = if has_update {
+            format!("{} ({})", current_version, remote_commit)
+        } else {
+            current_version.clone()
+        };
+
+        let message = if has_update {
+            format!(
+                "Nouvelle version disponible sur le canal '{}' ({} nouveau(x) commit(s)).",
+                target_channel,
+                commits.len()
+            )
+        } else {
+            format!(
+                "Votre système Noos HTPC est parfaitement à jour sur le canal '{}'.",
+                target_channel
+            )
+        };
+
+        Ok(UpdateInfo {
+            has_update,
+            current_version,
+            latest_version,
+            current_branch,
+            target_channel,
+            commits,
+            message,
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn apply_system_update(app: AppHandle, channel: String) -> Result<bool, String> {
+    tokio::task::spawn(async move {
+        let repo = find_repo_dir();
+        let target_channel = if channel.is_empty() { "testing".to_string() } else { channel };
+
+        let emit_step = |step: u8, name: &str, percent: u8, log: &str| {
+            let progress = UpdateProgress {
+                step,
+                total_steps: 4,
+                step_name: name.to_string(),
+                percent,
+                log_line: log.to_string(),
+            };
+            let _ = app.emit("update_progress", progress);
+        };
+
+        // Étape 1 : Synchronisation Git des sources
+        emit_step(1, "Synchronisation des sources Git", 15, &format!("Récupération de la branche origin/{}...", target_channel));
+        let s1 = Command::new("git")
+            .current_dir(&repo)
+            .args(["fetch", "origin", &target_channel])
+            .status();
+        if s1.is_err() || !s1.unwrap().success() {
+            emit_step(1, "Erreur de synchronisation", 15, "Impossible de joindre le dépôt GitHub distant.");
+            return;
+        }
+
+        let _ = Command::new("git").current_dir(&repo).args(["checkout", &target_channel]).status();
+        let _ = Command::new("git").current_dir(&repo).args(["pull", "origin", &target_channel]).status();
+
+        // Étape 2 : Actualisation du fichier flake.lock
+        emit_step(2, "Mise à jour déclarative de flake.lock", 40, "Actualisation des entrées du verrou Flake...");
+        let s2 = Command::new("nix")
+            .current_dir(&repo)
+            .args(["flake", "update"])
+            .status();
+        if s2.is_err() || !s2.unwrap().success() {
+            tracing::warn!("Mise à jour flake.lock en avertissement, continuation...");
+        }
+
+        // Étape 3 : Reconstruction déclarative NixOS sans mot de passe
+        emit_step(3, "Reconstruction du système NixOS", 70, "Exécution de nixos-rebuild switch (sudo NOPASSWD)...");
+        let flake_target = format!("{}#htpc", repo.display());
+        let s3 = Command::new("sudo")
+            .args(["nixos-rebuild", "switch", "--flake", &flake_target])
+            .status();
+
+        if s3.is_err() || !s3.unwrap().success() {
+            emit_step(3, "Erreur Reconstruction", 70, "Échec de nixos-rebuild switch. Rollback actif.");
+            return;
+        }
+
+        // Étape 4 : Finalisation et relance avec animation
+        emit_step(4, "Mise à jour terminée", 100, "Le système est à jour. Préparation de la relance...");
+        tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
+
+        let _ = app.emit("update_completed", true);
+    });
+
+    Ok(true)
+}
+
+/* ========================================================================= */
+/* GESTION DE LA DISPOSITION DU CLAVIER VIRTUEL                              */
+/* ========================================================================= */
+
+#[tauri::command]
+pub async fn get_keyboard_config() -> Result<KeyboardConfig, String> {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/home/noos".to_string());
+    let conf_path = std::path::PathBuf::from(&home).join(".config/noos-htpc/keyboard.json");
+
+    if let Ok(data) = std::fs::read_to_string(&conf_path) {
+        if let Ok(cfg) = serde_json::from_str::<KeyboardConfig>(&data) {
+            return Ok(cfg);
+        }
+    }
+
+    Ok(KeyboardConfig {
+        layout: "azerty".to_string(),
+    })
+}
+
+#[tauri::command]
+pub async fn set_keyboard_config(config: KeyboardConfig) -> Result<bool, String> {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/home/noos".to_string());
+    let conf_dir = std::path::PathBuf::from(&home).join(".config/noos-htpc");
+    let _ = std::fs::create_dir_all(&conf_dir);
+    let conf_path = conf_dir.join("keyboard.json");
+
+    if let Ok(json) = serde_json::to_string_pretty(&config) {
+        let _ = std::fs::write(&conf_path, json);
+    }
+
+    // Notifier le démon noos-osk via son socket UNIX
+    tokio::task::spawn_blocking(move || {
+        use std::io::Write;
+        use std::os::unix::net::UnixStream;
+
+        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/run/user/1000".to_string());
+        let sock_path = format!("{}/noos-osk.sock", runtime_dir);
+
+        if let Ok(mut stream) = UnixStream::connect(&sock_path) {
+            let msg = format!("SET_LAYOUT {}", config.layout.to_lowercase());
+            let _ = stream.write_all(msg.as_bytes());
+        }
+    });
+
+    Ok(true)
+}
+
+#[tauri::command]
+pub async fn restart_dashboard(app: AppHandle) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        let _ = Command::new("sudo").args(["systemctl", "restart", "greetd"]).status();
+    });
+    let _ = app.emit("dashboard_restarting", ());
+    Ok(())
+}

@@ -4,16 +4,49 @@ let
   # Script noos-update embarqué dans le PATH système
   noosUpdateScript = pkgs.writeShellScriptBin "noos-update" ''
     set -euo pipefail
-    echo -e "\033[1;34m[Noos HTPC]\033[0m Lancement de la mise à jour du système..."
     
-    TARGET_FLAKE="/home/chomiam/Projets/noos_htpc"
-    if [ ! -d "$TARGET_FLAKE" ]; then
-      TARGET_FLAKE="/etc/nixos"
+    ACTION="''${1:---apply}"
+    CHANNEL="''${2:-testing}"
+    
+    TARGET_DIR="/etc/nixos"
+    if [ ! -d "$TARGET_DIR/.git" ] && [ -d "/home/chomiam/Projets/noos_htpc/.git" ]; then
+      TARGET_DIR="/home/chomiam/Projets/noos_htpc"
     fi
 
-    echo -e "\033[1;33m[*] Reconstruction de la configuration depuis $TARGET_FLAKE...\033[0m"
-    if sudo nixos-rebuild switch --flake "$TARGET_FLAKE#htpc"; then
-      echo -e "\033[1;32m[✓] Mise à jour appliquée avec succès !\033[0m"
+    if [ "$ACTION" = "--check" ]; then
+      echo "[Noos Update] Recherche de mises à jour sur le canal '$CHANNEL'..."
+      cd "$TARGET_DIR"
+      git fetch origin "$CHANNEL" --quiet || true
+      REMOTE_HASH=$(git rev-parse "origin/$CHANNEL" 2>/dev/null || echo "")
+      LOCAL_HASH=$(git rev-parse HEAD 2>/dev/null || echo "")
+      
+      if [ -n "$REMOTE_HASH" ] && [ "$REMOTE_HASH" != "$LOCAL_HASH" ]; then
+        echo "UPDATE_AVAILABLE"
+        git log "HEAD..origin/$CHANNEL" --oneline -n 10
+      else
+        echo "UP_TO_DATE"
+      fi
+      exit 0
+    fi
+
+    echo -e "\033[1;34m[Noos HTPC]\033[0m Lancement de la mise à jour (Canal: $CHANNEL)..."
+    cd "$TARGET_DIR"
+
+    # 1. Récupération des dernières sources
+    echo -e "\033[1;33m[1/4] Synchronisation des sources Git ($CHANNEL)...\033[0m"
+    git fetch origin "$CHANNEL"
+    git checkout "$CHANNEL"
+    git pull origin "$CHANNEL"
+
+    # 2. Mise à jour impérative du fichier flake.lock
+    echo -e "\033[1;33m[2/4] Mise à jour des dépendances et du flake.lock...\033[0m"
+    nix flake update
+
+    # 3. Reconstruction déclarative NixOS sans mot de passe
+    echo -e "\033[1;33m[3/4] Reconstruction de la configuration NixOS ($TARGET_DIR#htpc)...\033[0m"
+    if sudo nixos-rebuild switch --flake "$TARGET_DIR#htpc"; then
+      echo -e "\033[1;32m[4/4] Mise à jour appliquée avec succès !\033[0m"
+      exit 0
     else
       echo -e "\033[1;31m[✗] Échec de la mise à jour. Aucun changement appliqué (sécurité rollback active).\033[0m"
       exit 1
@@ -29,7 +62,11 @@ let
   '';
 in
 {
-  # 1. Fuseau horaire et localisation en français
+  # 1. Services d'accessibilité universelle et périphériques virtuels
+  services.gnome.at-spi2-core.enable = true;
+  hardware.uinput.enable = true;
+
+  # 2. Fuseau horaire et localisation en français
   time.timeZone = lib.mkDefault "Europe/Paris";
   i18n.defaultLocale = "fr_FR.UTF-8";
   i18n.extraLocaleSettings = {
@@ -45,19 +82,19 @@ in
   };
   console.keyMap = "fr";
 
-  # 2. Gestion de la mémoire et swap ZRAM (optimal pour mini-PC HTPC)
+  # 3. Gestion de la mémoire et swap ZRAM (optimal pour mini-PC HTPC)
   zramSwap = {
     enable = true;
     algorithm = "zstd";
     memoryPercent = 50;
   };
 
-  # 3. Microcodes CPU et firmwares propriétaires indispensables (Wi-Fi, Bluetooth, GPU)
+  # 4. Microcodes CPU et firmwares propriétaires indispensables (Wi-Fi, Bluetooth, GPU)
   hardware.enableRedistributableFirmware = true;
   hardware.cpu.intel.updateMicrocode = lib.mkDefault true;
   hardware.cpu.amd.updateMicrocode = lib.mkDefault true;
 
-  # 4. Activation de Flakes et optimisation du store Nix
+  # 5. Activation de Flakes et optimisation du store Nix
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
     auto-optimise-store = true;
