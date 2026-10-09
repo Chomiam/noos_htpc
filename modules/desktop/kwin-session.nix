@@ -60,8 +60,22 @@ let
     ) &
     ''}
 
-    # 4. Lancement prioritaire de KWin Wayland avec le Dashboard Noos TV
-    # Si le matériel ne supporte pas KWin (ex: VM sans 3D), repli immédiat sur Cage
+    # 4. Choix du compositeur Wayland selon le matériel :
+    # Sur VM (QEMU/KVM/VirtualBox sans accélération 3D DRM), lancement direct avec Cage.
+    # Sur matériel physique TV (AMD, Intel, Nvidia), lancement de KWin Wayland avec gestion HDR.
+    IS_VM=0
+    if [ "${gpuCfg.profile}" = "vm" ] || ${pkgs.systemd}/bin/systemd-detect-virt -q; then
+      IS_VM=1
+    fi
+
+    if [ "$IS_VM" = "1" ]; then
+      echo "[Noos HTPC] Environnement virtualisé détecté : démarrage optimisé avec Cage (pixman)..."
+      export WLR_RENDERER=pixman
+      export LIBGL_ALWAYS_SOFTWARE=1
+      exec ${pkgs.cage}/bin/cage -s -- ${dashboardPkg}/bin/noos-tv-dashboard
+    fi
+
+    echo "[Noos HTPC] Matériel physique TV détecté : démarrage de KWin Wayland (HDR & DRM)..."
     if ${pkgs.kdePackages.kwin}/bin/kwin_wayland \
          --no-lockscreen \
          --xwayland \

@@ -108,7 +108,8 @@ pub async fn start_installation(app: AppHandle, req: InstallRequest) -> Result<b
 
         // Désactivation des swaps et démontage des montages résiduels éventuels
         let _ = Command::new("swapoff").args(["-a"]).status();
-        let _ = Command::new("umount").args(["-R", "/mnt"]).status();
+        let _ = Command::new("umount").args(["-l", "-R", "/mnt"]).status();
+        let _ = Command::new("umount").args(["-f", "-R", "/mnt"]).status();
         let _ = Command::new("udevadm").args(["settle", "--timeout=5"]).status();
 
         let is_nvme = req.target_disk.contains("nvme") || req.target_disk.contains("mmcblk");
