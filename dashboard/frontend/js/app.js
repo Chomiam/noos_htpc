@@ -61,15 +61,46 @@
   const restartSplash = document.getElementById('restart-splash');
   const splashStatusText = document.getElementById('splash-status-text');
 
+  // Sélecteurs Noos IPTV
+  const modalIptv = document.getElementById('modal-iptv');
+  const btnCloseIptvModal = document.getElementById('btn-close-iptv-modal');
+  const iptvViewProfiles = document.getElementById('iptv-view-profiles');
+  const iptvViewLogin = document.getElementById('iptv-view-login');
+  const iptvViewSync = document.getElementById('iptv-view-sync');
+  const iptvProfilesGrid = document.getElementById('iptv-profiles-grid');
+  const btnIptvNewAccount = document.getElementById('btn-iptv-new-account');
+  const iptvLoginForm = document.getElementById('iptv-login-form');
+  const iptvInputName = document.getElementById('iptv-input-name');
+  const iptvInputUrl = document.getElementById('iptv-input-url');
+  const iptvInputUser = document.getElementById('iptv-input-user');
+  const iptvInputPass = document.getElementById('iptv-input-pass');
+  const iptvCheckSave = document.getElementById('iptv-check-save');
+  const iptvLoginError = document.getElementById('iptv-login-error');
+  const btnIptvBackProfiles = document.getElementById('btn-iptv-back-profiles');
+  const btnIptvSubmitLogin = document.getElementById('btn-iptv-submit-login');
+  const iptvSyncTitle = document.getElementById('iptv-sync-title');
+  const iptvSyncStepName = document.getElementById('iptv-sync-step-name');
+  const iptvSyncProgressFill = document.getElementById('iptv-sync-progress-fill');
+  const iptvSyncDetails = document.getElementById('iptv-sync-details');
+  const iptvSyncStats = document.getElementById('iptv-sync-stats');
+  const iptvStatChannels = document.getElementById('iptv-stat-channels');
+  const iptvStatMovies = document.getElementById('iptv-stat-movies');
+  const iptvStatSeries = document.getElementById('iptv-stat-series');
+  const iptvSyncSuccessActions = document.getElementById('iptv-sync-success-actions');
+  const btnIptvOpenCatalog = document.getElementById('btn-iptv-open-catalog');
+
   let currentIndex = 0;
   let isModalOpen = false;
   let isUpdateModalOpen = false;
   let isUpdating = false;
+  let isIptvModalOpen = false;
+  let isIptvSyncing = false;
+  let savedIptvProfiles = [];
   let currentChannel = 'testing';
   let hdrEnabled = true;
 
   function isAnyModalOpen() {
-    return isModalOpen || isUpdateModalOpen;
+    return isModalOpen || isUpdateModalOpen || isIptvModalOpen;
   }
 
   // 1. Synthétiseur Audio Web Audio API (Sons de navigation feutrés & discrets)
@@ -225,8 +256,13 @@
       return;
     }
 
-    if (appId === 'update-modal') {
+    if (appId === 'update-modal' || appId === 'update') {
       openUpdateModal();
+      return;
+    }
+
+    if (appId === 'noos-iptv') {
+      openIptvModal();
       return;
     }
 
@@ -595,7 +631,227 @@
     }
   }
 
-  // 10. Actions d'alimentation
+  // 10. GESTION NOOS IPTV (PROFILES CHIFFRÉS, LOGIN XTREAM & CACHE SYNC)
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  async function openIptvModal() {
+    if (isModalOpen) closeSettings();
+    if (isUpdateModalOpen) closeUpdateModal();
+    isIptvModalOpen = true;
+    if (modalIptv) modalIptv.classList.remove('hidden');
+    await loadIptvProfiles();
+  }
+
+  function closeIptvModal() {
+    if (isIptvSyncing) return;
+    isIptvModalOpen = false;
+    if (modalIptv) modalIptv.classList.add('hidden');
+  }
+
+  async function loadIptvProfiles() {
+    if (!window.__TAURI__ || !window.__TAURI__.core) {
+      showIptvLoginForm(false);
+      return;
+    }
+
+    try {
+      savedIptvProfiles = await window.__TAURI__.core.invoke('iptv_get_saved_profiles') || [];
+      if (savedIptvProfiles.length > 0) {
+        showIptvProfilesView();
+      } else {
+        showIptvLoginForm(false);
+      }
+    } catch (err) {
+      console.error('Erreur chargement profils IPTV :', err);
+      showIptvLoginForm(false);
+    }
+  }
+
+  function showIptvProfilesView() {
+    if (iptvViewProfiles) iptvViewProfiles.classList.remove('hidden');
+    if (iptvViewLogin) iptvViewLogin.classList.add('hidden');
+    if (iptvViewSync) iptvViewSync.classList.add('hidden');
+
+    if (iptvProfilesGrid) {
+      iptvProfilesGrid.innerHTML = '';
+      savedIptvProfiles.forEach((p) => {
+        const card = document.createElement('div');
+        card.className = 'iptv-profile-card';
+        card.tabIndex = 0;
+        card.setAttribute('data-profile-id', p.id);
+        card.innerHTML = `
+          <div class="profile-card-top">
+            <div class="profile-avatar-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+                <polyline points="17 2 12 7 7 2"></polyline>
+              </svg>
+            </div>
+            <div class="profile-card-info">
+              <div class="profile-name">${escapeHtml(p.name)}</div>
+              <div class="profile-user">${escapeHtml(p.username)}</div>
+              <div class="profile-server">${escapeHtml(p.server_url)}</div>
+            </div>
+          </div>
+          <div class="profile-card-bottom">
+            <span class="profile-badge">Chiffré</span>
+            <button class="btn-profile-delete" title="Supprimer ce compte" data-delete-id="${p.id}">Supprimer</button>
+          </div>
+        `;
+
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('.btn-profile-delete')) return;
+          startIptvSync(p.id, null, false);
+        });
+
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            if (e.target.closest('.btn-profile-delete')) return;
+            e.preventDefault();
+            startIptvSync(p.id, null, false);
+          }
+        });
+
+        const deleteBtn = card.querySelector('.btn-profile-delete');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await deleteIptvProfile(p.id);
+          });
+        }
+
+        iptvProfilesGrid.appendChild(card);
+      });
+
+      const firstCard = iptvProfilesGrid.querySelector('.iptv-profile-card');
+      if (firstCard) firstCard.focus();
+    }
+  }
+
+  function showIptvLoginForm(allowBack = true) {
+    if (iptvViewLogin) iptvViewLogin.classList.remove('hidden');
+    if (iptvViewProfiles) iptvViewProfiles.classList.add('hidden');
+    if (iptvViewSync) iptvViewSync.classList.add('hidden');
+
+    if (btnIptvBackProfiles) {
+      btnIptvBackProfiles.classList.toggle('hidden', !allowBack);
+    }
+    if (iptvLoginError) iptvLoginError.classList.add('hidden');
+
+    if (iptvInputUrl) iptvInputUrl.focus();
+  }
+
+  async function deleteIptvProfile(profileId) {
+    playConfirmSound();
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        await window.__TAURI__.core.invoke('iptv_delete_profile', { profileId });
+        await loadIptvProfiles();
+      } catch (err) {
+        console.error('Erreur suppression profil IPTV :', err);
+      }
+    }
+  }
+
+  async function handleIptvLoginSubmit() {
+    const name = iptvInputName ? iptvInputName.value.trim() : '';
+    const server_url = iptvInputUrl ? iptvInputUrl.value.trim() : '';
+    const username = iptvInputUser ? iptvInputUser.value.trim() : '';
+    const password = iptvInputPass ? iptvInputPass.value : '';
+    const save = iptvCheckSave ? iptvCheckSave.checked : true;
+
+    if (!server_url || !username || !password) {
+      if (iptvLoginError) {
+        iptvLoginError.textContent = 'Veuillez remplir l\'URL du serveur, l\'identifiant et le mot de passe.';
+        iptvLoginError.classList.remove('hidden');
+      }
+      return;
+    }
+
+    if (iptvLoginError) iptvLoginError.classList.add('hidden');
+    await startIptvSync(null, { name, server_url, username, password }, save);
+  }
+
+  async function startIptvSync(profileId = null, creds = null, saveProfile = true) {
+    if (isIptvSyncing) return;
+    isIptvSyncing = true;
+    playConfirmSound();
+
+    if (iptvViewSync) iptvViewSync.classList.remove('hidden');
+    if (iptvViewProfiles) iptvViewProfiles.classList.add('hidden');
+    if (iptvViewLogin) iptvViewLogin.classList.add('hidden');
+
+    if (iptvSyncTitle) iptvSyncTitle.textContent = 'Mise en cache du catalogue...';
+    if (iptvSyncStepName) iptvSyncStepName.textContent = 'Étape 1/5 : Authentification Xtream Codes';
+    if (iptvSyncProgressFill) iptvSyncProgressFill.style.width = '15%';
+    if (iptvSyncDetails) iptvSyncDetails.textContent = 'Connexion sécurisée en cours...';
+    if (iptvSyncStats) iptvSyncStats.classList.add('hidden');
+    if (iptvSyncSuccessActions) iptvSyncSuccessActions.classList.add('hidden');
+
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        const result = await window.__TAURI__.core.invoke('iptv_login_and_sync', {
+          profileId,
+          newCreds: creds,
+          saveProfile,
+        });
+
+        if (result && result.success) {
+          if (iptvSyncTitle) iptvSyncTitle.textContent = 'Catalogue synchronisé avec succès !';
+          if (iptvSyncStepName) iptvSyncStepName.textContent = `Compte : ${result.profile_name}`;
+          if (iptvSyncProgressFill) iptvSyncProgressFill.style.width = '100%';
+          if (iptvSyncDetails) iptvSyncDetails.textContent = result.message;
+
+          if (iptvStatChannels) iptvStatChannels.textContent = result.channels_count;
+          if (iptvStatMovies) iptvStatMovies.textContent = result.movies_count;
+          if (iptvStatSeries) iptvStatSeries.textContent = result.series_count;
+          if (iptvSyncStats) iptvSyncStats.classList.remove('hidden');
+          if (iptvSyncSuccessActions) iptvSyncSuccessActions.classList.remove('hidden');
+
+          isIptvSyncing = false;
+        }
+      } catch (err) {
+        console.error('Erreur synchronisation IPTV :', err);
+        isIptvSyncing = false;
+        if (iptvSyncTitle) iptvSyncTitle.textContent = 'Échec de synchronisation';
+        if (iptvSyncStepName) iptvSyncStepName.textContent = 'Une erreur est survenue';
+        if (iptvSyncDetails) iptvSyncDetails.textContent = String(err);
+
+        if (iptvSyncSuccessActions) {
+          iptvSyncSuccessActions.innerHTML = `
+            <button id="btn-iptv-retry" class="btn-action-primary">
+              <span class="btn-key-hint">A</span> Réessayer
+            </button>
+          `;
+          iptvSyncSuccessActions.classList.remove('hidden');
+          document.getElementById('btn-iptv-retry')?.addEventListener('click', () => {
+            showIptvLoginForm(savedIptvProfiles.length > 0);
+          });
+        }
+      }
+    } else {
+      setTimeout(() => {
+        if (iptvSyncProgressFill) iptvSyncProgressFill.style.width = '100%';
+        if (iptvSyncTitle) iptvSyncTitle.textContent = 'Catalogue synchronisé avec succès !';
+        if (iptvStatChannels) iptvStatChannels.textContent = '1250';
+        if (iptvStatMovies) iptvStatMovies.textContent = '3800';
+        if (iptvStatSeries) iptvStatSeries.textContent = '420';
+        if (iptvSyncStats) iptvSyncStats.classList.remove('hidden');
+        if (iptvSyncSuccessActions) iptvSyncSuccessActions.classList.remove('hidden');
+        isIptvSyncing = false;
+      }, 1500);
+    }
+  }
+
+  // 11. Actions d'alimentation
   async function handlePowerAction(action) {
     playConfirmSound();
     if (window.__TAURI__ && window.__TAURI__.core) {
@@ -717,10 +973,41 @@
     });
   }
 
+  function navigateModalFocus(modalEl, direction) {
+    if (!modalEl) return;
+    const focusables = Array.from(modalEl.querySelectorAll('button:not([disabled]):not(.hidden), input:not([disabled]):not(.hidden), .iptv-profile-card, select, [tabindex="0"]'))
+      .filter(el => el.offsetParent !== null && !el.classList.contains('hidden'));
+    if (focusables.length === 0) return;
+    const currentIdx = focusables.indexOf(document.activeElement);
+    let nextIdx = 0;
+    if (currentIdx === -1) {
+      nextIdx = direction > 0 ? 0 : focusables.length - 1;
+    } else {
+      nextIdx = (currentIdx + direction + focusables.length) % focusables.length;
+    }
+    focusables[nextIdx].focus();
+    playTickSound();
+  }
+
   if (btnPower) btnPower.addEventListener('click', openSettings);
   if (btnCloseModal) btnCloseModal.addEventListener('click', closeSettings);
   if (btnCloseUpdateModal) btnCloseUpdateModal.addEventListener('click', closeUpdateModal);
   if (toggleHdrBtn) toggleHdrBtn.addEventListener('click', toggleHdr);
+
+  if (btnCloseIptvModal) btnCloseIptvModal.addEventListener('click', closeIptvModal);
+  if (btnIptvNewAccount) btnIptvNewAccount.addEventListener('click', () => showIptvLoginForm(true));
+  if (btnIptvBackProfiles) btnIptvBackProfiles.addEventListener('click', showIptvProfilesView);
+  if (iptvLoginForm) {
+    iptvLoginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleIptvLoginSubmit();
+    });
+  }
+  if (btnIptvOpenCatalog) {
+    btnIptvOpenCatalog.addEventListener('click', () => {
+      closeIptvModal();
+    });
+  }
 
   if (btnChannelStable) btnChannelStable.addEventListener('click', () => setChannel('stable'));
   if (btnChannelTesting) btnChannelTesting.addEventListener('click', () => setChannel('testing'));
@@ -743,10 +1030,24 @@
   // Clavier physique
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Home') {
+      if (isIptvModalOpen && !isIptvSyncing) closeIptvModal();
       if (isUpdateModalOpen) closeUpdateModal();
       if (isModalOpen) closeSettings();
       setCategory('home', false);
       selectCard(0);
+      return;
+    }
+
+    if (isIptvModalOpen) {
+      if (e.key === 'Escape' || e.key === 'Backspace') {
+        if (!isIptvSyncing) {
+          if (iptvViewLogin && !iptvViewLogin.classList.contains('hidden') && savedIptvProfiles.length > 0) {
+            showIptvProfilesView();
+          } else {
+            closeIptvModal();
+          }
+        }
+      }
       return;
     }
 
@@ -813,11 +1114,16 @@
 
       // Sticks analogiques avec zone morte 0.45
       const axisX = gp.axes[0] || 0;
+      const axisY = gp.axes[1] || 0;
       const dpadLeft = gp.buttons[14]?.pressed;
       const dpadRight = gp.buttons[15]?.pressed;
+      const dpadUp = gp.buttons[12]?.pressed;
+      const dpadDown = gp.buttons[13]?.pressed;
 
       const stickLeft = axisX < -0.45;
       const stickRight = axisX > 0.45;
+      const stickUp = axisY < -0.45;
+      const stickDown = axisY > 0.45;
 
       // Navigation Horizontale D-Pad / Stick
       if (now - lastNavTime > NAV_COOLDOWN) {
@@ -827,6 +1133,14 @@
             lastNavTime = now;
           } else if (dpadLeft || stickLeft) {
             selectCard(currentIndex - 1);
+            lastNavTime = now;
+          }
+        } else if (isIptvModalOpen && !isIptvSyncing) {
+          if (dpadRight || stickRight || dpadDown || stickDown) {
+            navigateModalFocus(modalIptv, 1);
+            lastNavTime = now;
+          } else if (dpadLeft || stickLeft || dpadUp || stickUp) {
+            navigateModalFocus(modalIptv, -1);
             lastNavTime = now;
           }
         }
@@ -843,6 +1157,7 @@
       // Action HOME (Retour direct au lanceur / Accueil TV)
       if (btnHome && !prevButtonsState['Home']) {
         playConfirmSound();
+        if (isIptvModalOpen && !isIptvSyncing) closeIptvModal();
         if (isUpdateModalOpen) closeUpdateModal();
         if (isModalOpen) closeSettings();
         setCategory('home', false);
@@ -851,7 +1166,12 @@
 
       // Action A (Ouvrir / Valider)
       if (btnA && !prevButtonsState['A']) {
-        if (isUpdateModalOpen) {
+        if (isIptvModalOpen) {
+          if (!isIptvSyncing) {
+            const activeEl = document.activeElement;
+            if (activeEl && activeEl.click) activeEl.click();
+          }
+        } else if (isUpdateModalOpen) {
           if (!isUpdating && btnApplyUpdate && !btnApplyUpdate.disabled && !updateChangelogSection.classList.contains('hidden')) {
             applyUpdate();
           }
@@ -866,7 +1186,15 @@
 
       // Action B (Retour / Fermer modal)
       if (btnB && !prevButtonsState['B']) {
-        if (isUpdateModalOpen) closeUpdateModal();
+        if (isIptvModalOpen) {
+          if (!isIptvSyncing) {
+            if (iptvViewLogin && !iptvViewLogin.classList.contains('hidden') && savedIptvProfiles.length > 0) {
+              showIptvProfilesView();
+            } else {
+              closeIptvModal();
+            }
+          }
+        } else if (isUpdateModalOpen) closeUpdateModal();
         else if (isModalOpen) closeSettings();
       }
 
@@ -918,6 +1246,7 @@
       window.__TAURI__.event.listen('home_pressed', () => {
         console.log('[Noos TV] Interruption globale reçue : retour au lanceur');
         playConfirmSound();
+        if (isIptvModalOpen && !isIptvSyncing) closeIptvModal();
         if (isUpdateModalOpen) closeUpdateModal();
         if (isModalOpen) closeSettings();
         selectCard(0);
@@ -960,6 +1289,16 @@
         }
         if (updateTileSubtitle) {
           updateTileSubtitle.textContent = hasUpdate ? 'MàJ disponible !' : 'Système à jour';
+        }
+      });
+
+      // 5. Progression de la synchronisation Noos IPTV (Mise en cache)
+      window.__TAURI__.event.listen('iptv_sync_progress', (e) => {
+        const p = e.payload;
+        if (p) {
+          if (iptvSyncStepName) iptvSyncStepName.textContent = `Étape ${p.step}/${p.total_steps} : ${p.step_name}`;
+          if (iptvSyncProgressFill) iptvSyncProgressFill.style.width = `${p.percent}%`;
+          if (iptvSyncDetails) iptvSyncDetails.textContent = p.log_line;
         }
       });
     }

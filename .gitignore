@@ -7,3 +7,6 @@ result-*
 *.local.nix
 hardware-configuration.local.nix
 *.iso
+*.enc
+iptv_cache/
+

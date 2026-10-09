@@ -72,3 +72,14 @@
      * `fix(scope): ...` pour les corrections d'anomalies
      * `chore(release): bump version vX.Y.Z et synchronisation flake.lock`
 2. **Traçabilité :** Mentionner systématiquement les identifiants de tickets ou de correctifs si applicables.
+
+---
+
+## 🔒 Règle n°6 : Confidentialité des Identifiants & Chiffrement Obligatoire (IPTV & Services)
+
+1. **Interdiction formelle de hardcoder ou compiler des identifiants :**
+   * Aucun identifiant, nom d'utilisateur, mot de passe, token ou URL de flux/abonnement privé (fournisseurs IPTV Xtream Codes, clés API, comptes utilisateurs) ne doit **JAMAIS** être inscrit en dur, hardcodé ou compilé dans le code source, les fichiers de configuration par défaut ou les dépôts Git.
+2. **Chiffrement systématique au repos (At-Rest Encryption) :**
+   * Tout stockage local d'identifiants (profils de connexion rapide, mots de passe Xtream) doit être **obligatoirement et systématiquement chiffré** avant persistance sur disque (clé dérivée de manière sécurisée à partir de l'empreinte locale du système / machine-id avec sel).
+   * Les données sensibles ne doivent jamais être journalisées (pas de logs de mots de passe) ni sauvegardées en clair.
+

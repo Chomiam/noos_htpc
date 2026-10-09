@@ -130,9 +130,9 @@
         <!-- Tuile 3 : Noos IPTV -->
         <div class="app-card" data-id="noos-iptv" data-category="media" tabindex="0"
              data-title="Noos IPTV" 
-             data-badge="TÉLÉVISION EN DIRECT • MPV" 
-             data-meta="Décodage Matériel • Shaders 4K"
-             data-desc="Lecteur TV universel pour flux en direct et playlists M3U avec moteur vidéo MPV optimisé et accélération matérielle."
+             data-badge="XTREAM CODES • DIRECT & VOD" 
+             data-meta="Profils Chiffrés • Cache Local"
+             data-desc="Télévision en direct, films et séries Xtream Codes avec profils chiffrés et mise en cache locale."
              data-color="#00d2ff">
           <div class="card-inner">
             <div class="card-glow"></div>
@@ -473,6 +473,118 @@
         </div>
 
       </div>
+    </div>
+  </div>
+
+  <!-- Modal Noos IPTV (Connexion Xtream Codes & Synchronisation) -->
+  <div id="modal-iptv" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-panel iptv-panel">
+      <!-- En-tête avec Logo Noos IPTV -->
+      <div class="iptv-header">
+        <div class="iptv-brand-wrap">
+          <img src="assets/logo.png" alt="Noos IPTV" class="iptv-logo" />
+          <div class="iptv-title-wrap">
+            <h2 class="iptv-title">Noos <span>IPTV</span></h2>
+            <p class="iptv-subtitle">Télévision en direct, Films & Séries Xtream Codes</p>
+          </div>
+        </div>
+        <button id="btn-close-iptv-modal" class="modal-close-btn" aria-label="Fermer">✕</button>
+      </div>
+
+      <!-- Vue 1 : Profils & Connexions Rapides -->
+      <div id="iptv-view-profiles" class="iptv-view">
+        <div class="iptv-section-heading">
+          <span class="heading-title">Comptes enregistrés (Chiffrement sécurisé)</span>
+          <span class="heading-meta">Sélectionnez un profil pour une connexion instantanée</span>
+        </div>
+        <div id="iptv-profiles-grid" class="iptv-profiles-grid">
+          <!-- Injecté dynamiquement par app.js -->
+        </div>
+        <div class="iptv-actions-bar">
+          <button id="btn-iptv-new-account" class="btn-action-secondary">
+            <span class="btn-key-hint">+</span> Ajouter un compte Xtream Codes
+          </button>
+        </div>
+      </div>
+
+      <!-- Vue 2 : Formulaire de connexion Xtream Codes -->
+      <div id="iptv-view-login" class="iptv-view hidden">
+        <div class="iptv-section-heading">
+          <span class="heading-title">Connexion à votre abonnement</span>
+          <span class="heading-meta">Vos identifiants sont chiffrés localement (AES / ChaCha20)</span>
+        </div>
+        <form id="iptv-login-form" class="iptv-form" onsubmit="event.preventDefault();">
+          <div class="iptv-form-group">
+            <label for="iptv-input-name">Nom du profil (optionnel)</label>
+            <input type="text" id="iptv-input-name" placeholder="Ex: Mon Fournisseur IPTV" class="iptv-input" />
+          </div>
+
+          <div class="iptv-form-group">
+            <label for="iptv-input-url">URL du serveur Xtream Codes *</label>
+            <input type="url" id="iptv-input-url" placeholder="http://serveur-fournisseur.com:8080" class="iptv-input" required />
+          </div>
+
+          <div class="iptv-form-row">
+            <div class="iptv-form-group flex-1">
+              <label for="iptv-input-user">Nom d'utilisateur *</label>
+              <input type="text" id="iptv-input-user" placeholder="Nom d'utilisateur" class="iptv-input" required />
+            </div>
+            <div class="iptv-form-group flex-1">
+              <label for="iptv-input-pass">Mot de passe *</label>
+              <input type="password" id="iptv-input-pass" placeholder="Mot de passe" class="iptv-input" required />
+            </div>
+          </div>
+
+          <div class="iptv-checkbox-group">
+            <label class="iptv-checkbox-label">
+              <input type="checkbox" id="iptv-check-save" checked />
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">Mémoriser ce compte de façon chiffrée pour les connexions rapides ultérieures</span>
+            </label>
+          </div>
+
+          <div id="iptv-login-error" class="iptv-error-msg hidden"></div>
+
+          <div class="iptv-form-actions">
+            <button type="button" id="btn-iptv-back-profiles" class="btn-action-secondary hidden">
+              <span class="btn-key-hint">B</span> Annuler
+            </button>
+            <button type="submit" id="btn-iptv-submit-login" class="btn-action-primary">
+              <span class="btn-key-hint">A</span> Se connecter & Mettre en cache
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Vue 3 : Écran de chargement et mise en cache (Sync) -->
+      <div id="iptv-view-sync" class="iptv-view hidden">
+        <div class="iptv-sync-container">
+          <div class="iptv-sync-logo-wrap">
+            <img src="assets/logo.png" alt="Noos IPTV" class="iptv-sync-logo pulsing" />
+            <div class="iptv-sync-spinner"></div>
+          </div>
+          <h3 id="iptv-sync-title" class="iptv-sync-title">Mise en cache du catalogue...</h3>
+          <div id="iptv-sync-step-name" class="iptv-sync-step-name">Étape 1/5 : Authentification Xtream Codes</div>
+          
+          <div class="progress-bar-track iptv-progress-track">
+            <div id="iptv-sync-progress-fill" class="progress-bar-fill" style="width: 15%;"></div>
+          </div>
+          <div id="iptv-sync-details" class="iptv-sync-details">Vérification du compte auprès du fournisseur...</div>
+
+          <div id="iptv-sync-stats" class="iptv-sync-stats hidden">
+            <div class="stat-pill"><span class="stat-num" id="iptv-stat-channels">0</span> Chaînes direct</div>
+            <div class="stat-pill"><span class="stat-num" id="iptv-stat-movies">0</span> Films</div>
+            <div class="stat-pill"><span class="stat-num" id="iptv-stat-series">0</span> Séries</div>
+          </div>
+
+          <div id="iptv-sync-success-actions" class="iptv-sync-actions hidden">
+            <button id="btn-iptv-open-catalog" class="btn-action-primary">
+              <span class="btn-key-hint">A</span> Accéder à la Télévision en Direct
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
