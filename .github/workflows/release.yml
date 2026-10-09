@@ -1,0 +1,84 @@
+name: "Build and Release Noos HTPC ISO"
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version du tag (ex: v0.1.0)"
+        required: true
+        default: "v0.1.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: "Compiler et Publier l'ISO Noos HTPC"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Récupération du dépôt
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ❄️ Installation de Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: ⚡ Configuration Cachix (steveos)
+        uses: cachix/cachix-action@v17
+        with:
+          name: steveos
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - name: 🔨 Compilation de l'Image ISO Noos HTPC
+        run: |
+          nix build .#iso --print-out-paths
+
+      - name: 📦 Préparation des artefacts ISO
+        id: prep
+        run: |
+          mkdir -p release-assets
+          ISO_PATH=$(ls result/iso/*.iso | head -n1)
+          cp "$ISO_PATH" release-assets/noos-htpc-installer.iso
+          cd release-assets
+          sha256sum noos-htpc-installer.iso > noos-htpc-installer.iso.sha256
+          echo "SHA256=$(cat noos-htpc-installer.iso.sha256 | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+
+      - name: 🚀 Publication de la Release GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.prep.outputs.TAG }}
+          name: "Noos HTPC Installer ${{ steps.prep.outputs.TAG }}"
+          body: |
+            ## 🎮 Noos HTPC — Image ISO d'Installation TV Console (${{ steps.prep.outputs.TAG }})
+
+            Image ISO minimale bootable pour l'installation autonome de **Noos HTPC** sur TV.
+
+            ### 📋 Caractéristiques incluses :
+            - 🎮 **Installateur 100% Manette** (Xbox, PlayStation, 8BitDo, Switch)
+            - ⌨️ **Clavier Virtuel Intégré (OSK)** au D-Pad pour la saisie des mots de passe Wi-Fi
+            - ⚡ **Détection matérielle automatique** des disques et GPU (AMD, Intel, Nvidia)
+            - 📺 **Affichage plein écran Gamescope** sans tearing
+            - 💾 **Déploiement automatisé** de NixOS et initialisation des dossiers Retro/ROMS
+
+            ### 💾 Empreinte SHA-256 :
+            - **Fichier** : `noos-htpc-installer.iso`
+            - **SHA-256** : `${{ steps.prep.outputs.SHA256 }}`
+          files: |
+            release-assets/noos-htpc-installer.iso
+            release-assets/noos-htpc-installer.iso.sha256
+          generate_release_notes: false
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
