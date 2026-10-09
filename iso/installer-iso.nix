@@ -48,11 +48,14 @@ in
         user = "root";
       };
       default_session = {
-        command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --cmd '${installerSession}/bin/noos-iso-session'";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd '${installerSession}/bin/noos-iso-session'";
         user = "root";
       };
     };
   };
+
+  # Recommandation ZFS pour éviter les avertissements d'importation
+  boot.zfs.forceImportRoot = false;
 
   # 6. Outils d'installation et dépendances dans l'environnement Live
   environment.systemPackages = with pkgs; [

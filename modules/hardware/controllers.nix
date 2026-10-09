@@ -10,7 +10,7 @@
   # Support Bluetooth haute performance pour manettes sans fil
   hardware.bluetooth = {
     enable = true;
-    powerOnOnBoot = true;
+    powerOnBoot = true;
     settings = {
       General = {
         Enable = "Source,Sink,Media,Socket";

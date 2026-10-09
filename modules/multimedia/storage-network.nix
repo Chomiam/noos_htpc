@@ -4,7 +4,7 @@
   # 1. Gestionnaire de fichiers Thunar adapté avec plugins de volumes et d'archives
   programs.thunar = {
     enable = true;
-    plugins = with pkgs.xfce; [
+    plugins = with pkgs; [
       thunar-archive-plugin
       thunar-volman
     ];
@@ -72,6 +72,6 @@
     sshfs         # Montage distant sécurisé SFTP/SSHFS
     samba         # Client smbclient et outils NetBIOS
     file-roller   # Extraction d'archives ZIP/RAR de ROMs en un clic
-    xfce.tumbler  # Générateur de miniatures d'images/vidéos pour Thunar
+    tumbler       # Générateur de miniatures d'images/vidéos pour Thunar
   ];
 }

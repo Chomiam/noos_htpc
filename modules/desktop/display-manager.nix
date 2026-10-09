@@ -14,7 +14,7 @@ in
         user = "noos";
       };
       default_session = {
-        command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --user-menu --cmd 'noos-tv-session'";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --user-menu --cmd 'noos-tv-session'";
         user = "greeter";
       };
     };
@@ -24,7 +24,7 @@ in
   security.pam.services.greetd.enableGnomeKeyring = true;
 
   # 3. Empêcher la mise en veille et l'extinction d'écran sur TV
-  services.xserver.displayManager.gdm.autoSuspend = false;
+  services.displayManager.gdm.autoSuspend = false;
   systemd.targets.sleep.enable = false;
   systemd.targets.suspend.enable = false;
   systemd.targets.hibernate.enable = false;

@@ -2,27 +2,25 @@
 
 let
   # Définition de RetroArch avec sa suite complète de cores émulés
-  retroarchWithCores = pkgs.retroarch.override {
-    cores = with pkgs.libretro; [
-      # Nintendo
-      nestopia        # NES
-      snes9x          # Super Nintendo
-      mgba            # Game Boy / Color / Advance
-      mupen64plus     # Nintendo 64
+  retroarchWithCores = pkgs.retroarch.withCores (cores: with pkgs.libretro; [
+    # Nintendo
+    nestopia        # NES
+    snes9x          # Super Nintendo
+    mgba            # Game Boy / Color / Advance
+    mupen64plus     # Nintendo 64
 
-      # Sega
-      genesis-plus-gx # Master System / Mega Drive / Genesis / Game Gear
-      beetle-saturn   # Sega Saturn
+    # Sega
+    genesis-plus-gx # Master System / Mega Drive / Genesis / Game Gear
+    beetle-saturn   # Sega Saturn
 
-      # Sony
-      beetle-psx-hw   # PlayStation 1 avec rendu matériel Vulkan/OpenGL
-      pcsx-rearmed    # PlayStation 1 optimisé basse consommation
+    # Sony
+    beetle-psx-hw   # PlayStation 1 avec rendu matériel Vulkan/OpenGL
+    pcsx-rearmed    # PlayStation 1 optimisé basse consommation
 
-      # Arcade & Divers
-      fbneo           # NeoGeo, CPS1/2/3, Arcade
-      dosbox-pure     # Jeux rétro PC / DOS
-    ];
-  };
+    # Arcade & Divers
+    fbneo           # NeoGeo, CPS1/2/3, Arcade
+    dosbox-pure     # Jeux rétro PC / DOS
+  ]);
 
   # Configuration déclarative TV pour RetroArch
   retroarchConfig = ''

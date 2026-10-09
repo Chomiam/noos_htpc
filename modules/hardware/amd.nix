@@ -18,19 +18,17 @@ in
     # 3. Pilote d'affichage X11 / Wayland
     services.xserver.videoDrivers = [ "amdgpu" ];
 
-    # 4. Accélération graphique matérielle (OpenGL & Vulkan RADV)
+    # 4. Accélération graphique matérielle (OpenGL & Vulkan RADV par défaut)
     hardware.graphics = {
       enable = true;
       enable32Bit = true;
       extraPackages = with pkgs; [
-        mesa.drivers
-        amdvlk
-        vaapiVdpau
+        libva-vdpau-driver
         libvdpau-va-gl
       ];
       extraPackages32 = with pkgs.pkgsi686Linux; [
-        mesa.drivers
-        amdvlk
+        libva-vdpau-driver
+        libvdpau-va-gl
       ];
     };
 

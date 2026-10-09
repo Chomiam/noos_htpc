@@ -35,10 +35,10 @@ let
 
     # Lancement prioritaire d'EmulationStation-DE ou du launcher HTPC
     if command -v es-de >/dev/null 2>&1; then
-      exec ${pkgs.gamescope}/bin/gamescope "''${GAMESCOPE_ARGS[@]}" -- ${pkgs.es-de}/bin/es-de
+      exec ${pkgs.gamescope}/bin/gamescope "''${GAMESCOPE_ARGS[@]}" -- es-de
     else
       # Secours : lance RetroArch ou un terminal TV
-      exec ${pkgs.gamescope}/bin/gamescope "''${GAMESCOPE_ARGS[@]}" -- ${pkgs.retroarch}/bin/retroarch
+      exec ${pkgs.gamescope}/bin/gamescope "''${GAMESCOPE_ARGS[@]}" -- retroarch
     fi
   '';
 in
