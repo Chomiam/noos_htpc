@@ -75,8 +75,7 @@ EOF
     exec ${pkgs.flatpak}/bin/flatpak run \
       --device=all \
       --socket=wayland \
-      --nosocket=x11 \
-      --nosocket=fallback-x11 \
+      --socket=fallback-x11 \
       org.vinegarhq.Sober \
       "$@"
   '';
@@ -93,7 +92,7 @@ in
       "org.vinegarhq.Sober" = {
         Context = {
           devices = [ "all" ];
-          sockets = [ "wayland" "!x11" "!fallback-x11" "pulseaudio" ];
+          sockets = [ "wayland" "fallback-x11" "pulseaudio" ];
           shared = [ "network" "ipc" ];
         };
       };

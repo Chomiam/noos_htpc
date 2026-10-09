@@ -293,8 +293,7 @@ pub async fn launch_app(app: AppHandle, app_id: String) -> Result<bool, String> 
                         "run".to_string(),
                         "--device=all".to_string(),
                         "--socket=wayland".to_string(),
-                        "--nosocket=x11".to_string(),
-                        "--nosocket=fallback-x11".to_string(),
+                        "--socket=fallback-x11".to_string(),
                         "org.vinegarhq.Sober".to_string(),
                     ],
                 )

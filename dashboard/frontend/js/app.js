@@ -735,6 +735,7 @@
     if (e.key === 'Home') {
       if (isUpdateModalOpen) closeUpdateModal();
       if (isModalOpen) closeSettings();
+      setCategory('home', false);
       selectCard(0);
       return;
     }
