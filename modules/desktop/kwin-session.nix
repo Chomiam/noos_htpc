@@ -53,9 +53,8 @@ let
     # 1. Variables d'environnement Wayland pour grand écran TV
     export XDG_SESSION_TYPE=wayland
     export XDG_CURRENT_DESKTOP=KDE
-    export WAYLAND_DISPLAY="wayland-0"
     export KWIN_FORCE_ASSUME_HDR_SUPPORT=1
-    export GDK_BACKEND="wayland,x11"
+    export GDK_BACKEND="wayland"
     export QT_QPA_PLATFORM="wayland;xcb"
     export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
     export QT_WAYLAND_SHELL_INTEGRATION=xdg-shell
@@ -93,15 +92,43 @@ Use=true
 VariantList=
 EOF
 
+    # 3. Lancement asynchrone des services TV dès que le serveur Wayland est prêt
+    # Lancement du Dashboard TV Noos
+    (
+      for i in $(seq 1 40); do
+        if [ -S "/run/user/1000/wayland-0" ]; then
+          sleep 0.5
+          export WAYLAND_DISPLAY=wayland-0
+          export XDG_RUNTIME_DIR=/run/user/1000
+          ${dashboardPkg}/bin/noos-tv-dashboard &
+          break
+        fi
+        sleep 0.5
+      done
+    ) &
 
-    # 3. Détection intelligente de l'écran : HDR natif / Wide Color Gamut (Rec.2020)
+    # Lancement du clavier virtuel universel TV
+    (
+      for i in $(seq 1 40); do
+        if [ -S "/run/user/1000/wayland-0" ]; then
+          sleep 0.5
+          export WAYLAND_DISPLAY=wayland-0
+          export XDG_RUNTIME_DIR=/run/user/1000
+          ${oskPkg}/bin/noos-osk &
+          break
+        fi
+        sleep 0.5
+      done
+    ) &
+
+    # Détection intelligente de l'écran : HDR natif / Wide Color Gamut (Rec.2020)
     ${lib.optionalString gpuCfg.enableHDR ''
     (
-      sleep 3
-      export WAYLAND_DISPLAY=wayland-0
-      export XDG_RUNTIME_DIR=/run/user/1000
-      for i in $(seq 1 10); do
-        if timeout 2 ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor -j >/dev/null 2>&1; then
+      for i in $(seq 1 30); do
+        if [ -S "/run/user/1000/wayland-0" ]; then
+          sleep 2
+          export WAYLAND_DISPLAY=wayland-0
+          export XDG_RUNTIME_DIR=/run/user/1000
           echo "[Noos HTPC] Affichage compatible détecté : activation de l'espace colorimétrique Rec.2020 / HDR..."
           timeout 2 ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.1.wcg.enable || true
           timeout 2 ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.1.hdr.enable || true
@@ -111,7 +138,7 @@ EOF
           timeout 2 ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.DP-1.hdr.enable || true
           break
         fi
-        sleep 1
+        sleep 0.5
       done
     ) &
     ''}
@@ -124,30 +151,14 @@ EOF
       IS_VM=1
     fi
 
-    # Lancement du clavier virtuel universel dès que Wayland est prêt
-    (
-      for i in $(seq 1 40); do
-        if [ -e "${config.services.noos-htpc.desktop.runtimeDir or "/run/user/1000"}/wayland-0" ] || [ -e "/run/user/1000/wayland-0" ]; then
-          sleep 0.5
-          export WAYLAND_DISPLAY=wayland-0
-          ${oskPkg}/bin/noos-osk &
-          break
-        fi
-        sleep 0.5
-      done
-    ) &
-
     if [ "$IS_VM" = "1" ]; then
       echo "[Noos HTPC] Environnement virtualisé détecté : démarrage optimisé avec Cage..."
       exec ${pkgs.cage}/bin/cage -s -- ${dashboardPkg}/bin/noos-tv-dashboard
     fi
 
     echo "[Noos HTPC] Matériel physique TV détecté : démarrage de KWin Wayland (HDR & DRM)..."
-    if ${pkgs.kdePackages.kwin}/bin/kwin_wayland \
-         --no-lockscreen \
-         --xwayland \
-         --exit-with-session ${dashboardPkg}/bin/noos-tv-dashboard \
-         ${dashboardPkg}/bin/noos-tv-dashboard; then
+    unset WAYLAND_DISPLAY DISPLAY
+    if ${pkgs.kdePackages.kwin}/bin/kwin_wayland --drm --no-lockscreen; then
       exit 0
     fi
 
