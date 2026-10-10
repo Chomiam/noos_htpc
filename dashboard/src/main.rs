@@ -6,9 +6,10 @@ mod iptv;
 
 use commands::{
     apply_system_update, check_for_updates, eject_disc, get_audio_sinks, get_keyboard_config,
-    get_optical_drive, get_system_info, get_upscale_info, hide_virtual_keyboard, launch_app,
-    play_disc, power_action, restart_dashboard, set_audio_sink, set_keyboard_config,
-    set_upscale_profile, show_virtual_keyboard, toggle_hdr,
+    get_master_volume, get_optical_drive, get_system_info, get_upscale_info,
+    hide_virtual_keyboard, launch_app, play_disc, power_action, restart_dashboard,
+    set_audio_sink, set_keyboard_config, set_master_volume, set_upscale_profile,
+    show_virtual_keyboard, toggle_hdr, toggle_master_mute,
 };
 use iptv::{
     iptv_delete_profile, iptv_get_cache_summary, iptv_get_catalog, iptv_get_channel_epg,
@@ -19,6 +20,13 @@ use iptv::{
 use tauri::Emitter;
 
 fn main() {
+    // Forcer l'accélération matérielle et le compositing GPU WebKitGTK
+    std::env::remove_var("WEBKIT_DISABLE_COMPOSITING_MODE");
+    std::env::set_var("WEBKIT_FORCE_COMPOSITING_MODE", "1");
+    std::env::set_var("WEBKIT_ENABLE_GPU_PROCESS", "1");
+    std::env::set_var("WEBKIT_ENABLE_ACCELERATED_2D_CANVAS", "1");
+    std::env::set_var("WEBKIT_ENABLE_WEBGL", "1");
+
     tracing_subscriber::fmt::init();
 
     tauri::Builder::default()
@@ -45,6 +53,9 @@ fn main() {
             get_system_info,
             get_audio_sinks,
             set_audio_sink,
+            get_master_volume,
+            set_master_volume,
+            toggle_master_mute,
             toggle_hdr,
             power_action,
             get_optical_drive,

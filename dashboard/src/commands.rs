@@ -959,11 +959,290 @@ pub async fn restart_dashboard(app: AppHandle) -> Result<(), String> {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AudioSink {
-    pub id: u32,
+    pub id: String,
     pub name: String,
     pub is_default: bool,
     pub volume_percent: u32,
     pub icon: String,
+    pub description: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AudioVolumeInfo {
+    pub volume_percent: u32,
+    pub is_muted: bool,
+}
+
+pub fn parse_volume_info(text: &str) -> (u32, bool) {
+    let is_muted = text.contains("[MUTED]");
+    let clean = text.replace("Volume:", "").replace("[MUTED]", "");
+    let vol_float = clean.trim().parse::<f32>().unwrap_or(0.5);
+    let volume_percent = (vol_float * 100.0).round().min(100.0) as u32;
+    (volume_percent, is_muted)
+}
+
+fn get_current_volume_internal() -> (u32, bool) {
+    if let Ok(output) = Command::new("wpctl").args(["get-volume", "@DEFAULT_AUDIO_SINK@"]).output() {
+        if output.status.success() {
+            let text = String::from_utf8_lossy(&output.stdout);
+            return parse_volume_info(&text);
+        }
+    }
+    (80, false)
+}
+
+#[tauri::command]
+pub async fn get_master_volume() -> Result<AudioVolumeInfo, String> {
+    tokio::task::spawn_blocking(|| {
+        let (volume_percent, is_muted) = get_current_volume_internal();
+        Ok(AudioVolumeInfo {
+            volume_percent,
+            is_muted,
+        })
+    })
+    .await
+    .map_err(|e| format!("Erreur thread volume : {}", e))?
+}
+
+#[tauri::command]
+pub async fn set_master_volume(volume_percent: u32) -> Result<AudioVolumeInfo, String> {
+    tokio::task::spawn_blocking(move || {
+        let clamped = volume_percent.min(100);
+        let vol_float = clamped as f32 / 100.0;
+        let vol_str = format!("{:.2}", vol_float);
+
+        let _ = Command::new("wpctl")
+            .args(["set-volume", "@DEFAULT_AUDIO_SINK@", &vol_str])
+            .status();
+
+        let (volume_percent, is_muted) = get_current_volume_internal();
+        Ok(AudioVolumeInfo {
+            volume_percent,
+            is_muted,
+        })
+    })
+    .await
+    .map_err(|e| format!("Erreur thread réglage volume : {}", e))?
+}
+
+#[tauri::command]
+pub async fn toggle_master_mute() -> Result<AudioVolumeInfo, String> {
+    tokio::task::spawn_blocking(|| {
+        let _ = Command::new("wpctl")
+            .args(["set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"])
+            .status();
+
+        let (volume_percent, is_muted) = get_current_volume_internal();
+        Ok(AudioVolumeInfo {
+            volume_percent,
+            is_muted,
+        })
+    })
+    .await
+    .map_err(|e| format!("Erreur thread mute : {}", e))?
+}
+
+pub fn parse_pw_dump_sinks(text: &str, current_vol: u32) -> Option<Vec<AudioSink>> {
+    let data: serde_json::Value = serde_json::from_str(text).ok()?;
+    let arr = data.as_array()?;
+
+    let mut sinks = Vec::new();
+    let mut parsed_card_ids = std::collections::HashSet::new();
+
+    // 1. Détecter les cartes audio ALSA et leurs sorties physiques (HDMI, Haut-parleurs, Casque)
+    for item in arr {
+        let info = match item.get("info") {
+            Some(i) => i,
+            None => continue,
+        };
+        let props = match info.get("props") {
+            Some(p) => p,
+            None => continue,
+        };
+        let media_class = props.get("media.class").and_then(|v| v.as_str()).unwrap_or("");
+
+        if media_class == "Audio/Device" {
+            let card_id = item.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
+            let card_desc = props.get("device.description").and_then(|v| v.as_str()).unwrap_or("Audio interne");
+
+            let params = match info.get("params") {
+                Some(p) => p,
+                None => continue,
+            };
+
+            // Profil actif de la carte
+            let active_profile_idx = params.get("Profile")
+                .and_then(|p| p.as_array())
+                .and_then(|a| a.first())
+                .and_then(|p0| p0.get("index"))
+                .and_then(|v| v.as_u64());
+
+            // Profils disponibles (non désactivés)
+            let mut avail_profiles = Vec::new();
+            if let Some(enum_prof) = params.get("EnumProfile").and_then(|p| p.as_array()) {
+                for prof in enum_prof {
+                    let idx = prof.get("index").and_then(|v| v.as_u64()).unwrap_or(0);
+                    let name = prof.get("name").and_then(|v| v.as_str()).unwrap_or("");
+                    let avail = prof.get("available").and_then(|v| v.as_str()).unwrap_or("");
+                    if avail != "no" && idx != 0 {
+                        avail_profiles.push((idx, name.to_string()));
+                    }
+                }
+            }
+
+            // Routes de sortie (Output)
+            if let Some(enum_route) = params.get("EnumRoute").and_then(|r| r.as_array()) {
+                let mut card_has_routes = false;
+                for route in enum_route {
+                    let direction = route.get("direction").and_then(|v| v.as_str()).unwrap_or("");
+                    if direction != "Output" {
+                        continue;
+                    }
+                    let available = route.get("available").and_then(|v| v.as_str()).unwrap_or("");
+                    // Ignorer les ports explicitement non branchés
+                    if available == "no" {
+                        continue;
+                    }
+
+                    let route_name = route.get("name").and_then(|v| v.as_str()).unwrap_or("");
+                    let route_desc = route.get("description").and_then(|v| v.as_str()).unwrap_or("");
+
+                    // Extraction du nom de l'équipement (ex: LG TV SSCR2) et détection des codecs Dolby
+                    let mut prod_name = None;
+                    let mut has_dolby = false;
+                    if let Some(info_arr) = route.get("info").and_then(|v| v.as_array()) {
+                        let mut i = 0;
+                        while i < info_arr.len() {
+                            if let Some(key) = info_arr[i].as_str() {
+                                if key == "device.product.name" && i + 1 < info_arr.len() {
+                                    prod_name = info_arr[i + 1].as_str().map(|s| s.to_string());
+                                } else if key == "iec958.codecs.detected" && i + 1 < info_arr.len() {
+                                    if let Some(codecs_str) = info_arr[i + 1].as_str() {
+                                        if codecs_str.contains("AC3") || codecs_str.contains("EAC3") || codecs_str.contains("TrueHD") {
+                                            has_dolby = true;
+                                        }
+                                    }
+                                }
+                            }
+                            i += 1;
+                        }
+                    }
+
+                    let route_profiles: Vec<u64> = route.get("profiles")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| arr.iter().filter_map(|x| x.as_u64()).collect())
+                        .unwrap_or_default();
+
+                    let is_active = active_profile_idx.map(|idx| route_profiles.contains(&idx)).unwrap_or(false);
+
+                    // Meilleur profil cible pour cette route
+                    let target_prof = route_profiles.iter().find(|&&p_idx| {
+                        avail_profiles.iter().any(|(idx, name)| *idx == p_idx && name.contains("+input:"))
+                    }).or_else(|| {
+                        route_profiles.iter().find(|&&p_idx| {
+                            avail_profiles.iter().any(|(idx, _)| *idx == p_idx)
+                        })
+                    }).copied().unwrap_or_else(|| route_profiles.first().copied().unwrap_or(1));
+
+                    let is_hdmi = route_name.contains("hdmi") || route_desc.contains("HDMI");
+                    let is_headphone = route_name.contains("headphone") || route_desc.contains("Casque");
+                    let is_speaker = route_name.contains("speaker") || route_desc.contains("Haut-parleur");
+
+                    let icon = if is_hdmi {
+                        "📺".to_string()
+                    } else if is_headphone {
+                        "🎧".to_string()
+                    } else if route_name.contains("spdif") || route_name.contains("optical") {
+                        "🔊".to_string()
+                    } else {
+                        "🔈".to_string()
+                    };
+
+                    let (name, sub) = if let Some(p) = prod_name {
+                        let bitperfect_tag = if has_dolby { " • Audio Bitperfect Dolby / PCM" } else { "" };
+                        (format!("{} (HDMI)", p), format!("Écran TV{} • Port {}", bitperfect_tag, route_name))
+                    } else if is_speaker {
+                        (format!("{} (Haut-parleurs)", card_desc), "Sortie audio analogique interne / Ligne".to_string())
+                    } else if is_headphone {
+                        (format!("{} (Casque)", card_desc), "Prise casque audio 3.5mm".to_string())
+                    } else {
+                        (format!("{} ({})", card_desc, route_desc), format!("Sortie {}", route_name))
+                    };
+
+                    sinks.push(AudioSink {
+                        id: format!("profile:{}:{}", card_id, target_prof),
+                        name,
+                        is_default: is_active,
+                        volume_percent: current_vol,
+                        icon,
+                        description: sub,
+                    });
+                    card_has_routes = true;
+                }
+
+                if card_has_routes {
+                    parsed_card_ids.insert(card_id);
+                }
+            }
+        }
+    }
+
+    // 2. Détecter les sinks directs indépendants (ex: USB DAC, écouteurs Bluetooth) non couverts ci-dessus
+    for item in arr {
+        let info = match item.get("info") {
+            Some(i) => i,
+            None => continue,
+        };
+        let props = match info.get("props") {
+            Some(p) => p,
+            None => continue,
+        };
+        let media_class = props.get("media.class").and_then(|v| v.as_str()).unwrap_or("");
+
+        if media_class == "Audio/Sink" {
+            let node_id = item.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
+            let dev_id = props.get("device.id").and_then(|v| v.as_u64()).unwrap_or(0);
+
+            // Si cette carte a déjà été traitée avec ses profils/routes, ignorer pour éviter les doublons
+            if parsed_card_ids.contains(&dev_id) {
+                continue;
+            }
+
+            let raw_desc = props.get("node.description")
+                .or_else(|| props.get("node.nick"))
+                .or_else(|| props.get("node.name"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("Périphérique audio");
+
+            let lower = raw_desc.to_lowercase();
+            let icon = if lower.contains("hdmi") || lower.contains("tv") {
+                "📺".to_string()
+            } else if lower.contains("casque") || lower.contains("headphone") {
+                "🎧".to_string()
+            } else if lower.contains("usb") || lower.contains("dac") {
+                "🎛️".to_string()
+            } else if lower.contains("bluetooth") || lower.contains("ble") {
+                "📶".to_string()
+            } else {
+                "🔈".to_string()
+            };
+
+            sinks.push(AudioSink {
+                id: format!("sink:{}", node_id),
+                name: raw_desc.to_string(),
+                is_default: false,
+                volume_percent: current_vol,
+                icon,
+                description: format!("Périphérique audio #{}", node_id),
+            });
+        }
+    }
+
+    if sinks.is_empty() {
+        None
+    } else {
+        Some(sinks)
+    }
 }
 
 pub fn parse_audio_sinks(text: &str) -> Vec<AudioSink> {
@@ -990,7 +1269,7 @@ pub fn parse_audio_sinks(text: &str) -> Vec<AudioSink> {
             let parts: Vec<&str> = line.split('.').collect();
             if parts.len() >= 2 {
                 let id_digits: String = parts[0].chars().filter(|c| c.is_ascii_digit()).collect();
-                if let Ok(id) = id_digits.parse::<u32>() {
+                if !id_digits.is_empty() {
                     let rest = parts[1..].join(".");
                     let name_and_vol: Vec<&str> = rest.split('[').collect();
                     let raw_name = name_and_vol[0].trim().to_string();
@@ -1019,11 +1298,12 @@ pub fn parse_audio_sinks(text: &str) -> Vec<AudioSink> {
                     };
 
                     sinks.push(AudioSink {
-                        id,
-                        name: raw_name,
+                        id: format!("sink:{}", id_digits),
+                        name: raw_name.clone(),
                         is_default,
                         volume_percent: vol_pct,
                         icon,
+                        description: format!("Sortie audio PipeWire #{}", id_digits),
                     });
                 }
             }
@@ -1032,11 +1312,12 @@ pub fn parse_audio_sinks(text: &str) -> Vec<AudioSink> {
 
     if sinks.is_empty() {
         sinks.push(AudioSink {
-            id: 1,
+            id: "sink:1".to_string(),
             name: "Sortie Audio HDMI / TV (Par défaut)".to_string(),
             is_default: true,
             volume_percent: 100,
             icon: "📺".to_string(),
+            description: "Sortie principale par défaut".to_string(),
         });
     }
 
@@ -1046,6 +1327,21 @@ pub fn parse_audio_sinks(text: &str) -> Vec<AudioSink> {
 #[tauri::command]
 pub async fn get_audio_sinks() -> Result<Vec<AudioSink>, String> {
     tokio::task::spawn_blocking(|| {
+        let (current_vol, _) = get_current_volume_internal();
+
+        // 1. Détection avancée multi-profils via pw-dump (détecte HDMI même inactif)
+        if let Ok(dump_out) = Command::new("pw-dump").output() {
+            if dump_out.status.success() {
+                let json_text = String::from_utf8_lossy(&dump_out.stdout);
+                if let Some(sinks) = parse_pw_dump_sinks(&json_text, current_vol) {
+                    if !sinks.is_empty() {
+                        return Ok(sinks);
+                    }
+                }
+            }
+        }
+
+        // 2. Repli vers wpctl status
         let output = Command::new("wpctl")
             .arg("status")
             .output();
@@ -1062,19 +1358,36 @@ pub async fn get_audio_sinks() -> Result<Vec<AudioSink>, String> {
 }
 
 #[tauri::command]
-pub async fn set_audio_sink(sink_id: u32) -> Result<bool, String> {
+pub async fn set_audio_sink(sink_id: String) -> Result<bool, String> {
     tokio::task::spawn_blocking(move || {
-        let status = Command::new("wpctl")
-            .args(["set-default", &sink_id.to_string()])
-            .status();
-
-        match status {
-            Ok(s) if s.success() => Ok(true),
-            _ => {
-                let _ = Command::new("pactl")
-                    .args(["set-default-sink", &sink_id.to_string()])
+        if sink_id.starts_with("profile:") {
+            // Format: "profile:<card_id>:<profile_index>"
+            let parts: Vec<&str> = sink_id.split(':').collect();
+            if parts.len() >= 3 {
+                let card_id = parts[1];
+                let profile_index = parts[2];
+                let _ = Command::new("wpctl")
+                    .args(["set-profile", card_id, profile_index])
                     .status();
-                Ok(true)
+                // Attente courte pour l'initialisation du nouveau sink par PipeWire / WirePlumber
+                std::thread::sleep(std::time::Duration::from_millis(150));
+            }
+            Ok(true)
+        } else {
+            // Format direct "sink:<id>" ou "<id>"
+            let raw_id = sink_id.trim_start_matches("sink:").trim();
+            let status = Command::new("wpctl")
+                .args(["set-default", raw_id])
+                .status();
+
+            match status {
+                Ok(s) if s.success() => Ok(true),
+                _ => {
+                    let _ = Command::new("pactl")
+                        .args(["set-default-sink", raw_id])
+                        .status();
+                    Ok(true)
+                }
             }
         }
     })
@@ -1483,23 +1796,98 @@ Audio
         let sinks = parse_audio_sinks(sample);
         assert_eq!(sinks.len(), 3);
 
-        assert_eq!(sinks[0].id, 46);
+        assert_eq!(sinks[0].id, "sink:46");
         assert_eq!(sinks[0].name, "HDA ATI HDMI Digital Stereo (HDMI 3)");
         assert!(!sinks[0].is_default);
         assert_eq!(sinks[0].volume_percent, 40);
         assert_eq!(sinks[0].icon, "📺");
 
-        assert_eq!(sinks[1].id, 59);
+        assert_eq!(sinks[1].id, "sink:59");
         assert_eq!(sinks[1].name, "Arctis Nova 7X Stéréo analogique");
         assert!(sinks[1].is_default);
         assert_eq!(sinks[1].volume_percent, 75);
         assert_eq!(sinks[1].icon, "🎧");
 
-        assert_eq!(sinks[2].id, 88);
+        assert_eq!(sinks[2].id, "sink:88");
         assert_eq!(sinks[2].name, "Family 17h/19h HD Audio Controller Stéréo analogique");
         assert!(!sinks[2].is_default);
         assert_eq!(sinks[2].volume_percent, 40);
     }
+
+    #[test]
+    fn test_parse_volume_info() {
+        let (vol1, muted1) = parse_volume_info("Volume: 0.40");
+        assert_eq!(vol1, 40);
+        assert!(!muted1);
+
+        let (vol2, muted2) = parse_volume_info("Volume: 0.85 [MUTED]");
+        assert_eq!(vol2, 85);
+        assert!(muted2);
+    }
+
+    #[test]
+    fn test_parse_pw_dump_sinks() {
+        let sample_json = r#"[
+            {
+                "id": 45,
+                "type": "PipeWire:Interface:Device",
+                "info": {
+                    "props": {
+                        "media.class": "Audio/Device",
+                        "device.description": "Audio interne"
+                    },
+                    "params": {
+                        "Profile": [
+                            { "index": 1, "name": "output:analog-stereo+input:analog-stereo" }
+                        ],
+                        "EnumProfile": [
+                            { "index": 1, "name": "output:analog-stereo+input:analog-stereo", "available": "yes" },
+                            { "index": 3, "name": "output:hdmi-stereo+input:analog-stereo", "available": "yes" }
+                        ],
+                        "EnumRoute": [
+                            {
+                                "direction": "Output",
+                                "name": "analog-output-speaker",
+                                "description": "Haut-parleurs",
+                                "available": "unknown",
+                                "profiles": [ 1 ],
+                                "info": []
+                            },
+                            {
+                                "direction": "Output",
+                                "name": "hdmi-output-0",
+                                "description": "HDMI / DisplayPort",
+                                "available": "yes",
+                                "profiles": [ 3 ],
+                                "info": [
+                                    2,
+                                    "device.product.name", "LG TV SSCR2",
+                                    "iec958.codecs.detected", "[\"PCM\",\"AC3\",\"EAC3\",\"TrueHD\"]"
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        ]"#;
+
+        let sinks = parse_pw_dump_sinks(sample_json, 75).expect("Parsing pw-dump valide");
+        assert_eq!(sinks.len(), 2);
+
+        // Sortie Haut-parleurs
+        assert_eq!(sinks[0].name, "Audio interne (Haut-parleurs)");
+        assert_eq!(sinks[0].id, "profile:45:1");
+        assert!(sinks[0].is_default);
+        assert_eq!(sinks[0].icon, "🔈");
+
+        // Sortie LG TV SSCR2 HDMI
+        assert_eq!(sinks[1].name, "LG TV SSCR2 (HDMI)");
+        assert_eq!(sinks[1].id, "profile:45:3");
+        assert!(!sinks[1].is_default);
+        assert_eq!(sinks[1].icon, "📺");
+        assert!(sinks[1].description.contains("Dolby / PCM"));
+    }
 }
+
 
 

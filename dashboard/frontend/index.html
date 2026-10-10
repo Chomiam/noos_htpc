@@ -362,6 +362,27 @@
               <span class="hw-badge hw-res" id="active-audio-sink-label">Sortie : Détection...</span>
             </div>
           </div>
+
+          <div class="audio-volume-panel">
+            <div class="audio-volume-header">
+              <div class="volume-title-group">
+                <span class="volume-label">Volume Principal</span>
+                <span class="volume-val-badge" id="master-volume-value">--%</span>
+              </div>
+              <button class="volume-mute-btn" id="btn-toggle-mute" tabindex="0" data-focusable title="Couper / Activer le son">
+                <span class="mute-icon" id="mute-icon-indicator">🔊</span>
+                <span id="mute-text-indicator">Actif</span>
+              </button>
+            </div>
+            <div class="volume-slider-track-wrap">
+              <button class="vol-btn vol-minus" id="btn-vol-down" tabindex="0" data-focusable title="Diminuer le volume (←)">−</button>
+              <div class="volume-slider-container">
+                <input type="range" min="0" max="100" value="80" class="tv-range-slider" id="master-volume-slider" tabindex="0" data-focusable aria-label="Volume principal" />
+                <div class="slider-fill-bar" id="master-volume-fill" style="width: 80%;"></div>
+              </div>
+              <button class="vol-btn vol-plus" id="btn-vol-up" tabindex="0" data-focusable title="Augmenter le volume (→)">+</button>
+            </div>
+          </div>
           <div class="audio-sinks-grid" id="audio-sinks-container">
             <!-- Rendu dynamique via app.js -->
             <div class="audio-sink-loading">Recherche des sorties audio...</div>

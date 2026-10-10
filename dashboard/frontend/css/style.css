@@ -7,9 +7,9 @@
   /* Nuances sombres ultra-profondes (OLED Black) */
   --bg-oled: #07080b;
   --bg-surface: #0f1117;
-  --bg-card: rgba(255, 255, 255, 0.035);
-  --bg-card-hover: rgba(255, 255, 255, 0.07);
-  --bg-pill: rgba(255, 255, 255, 0.06);
+  --bg-card: #131722;
+  --bg-card-hover: #1c2232;
+  --bg-pill: #161b29;
 
   /* Bordures et séparateurs en verre fin */
   --border-subtle: rgba(255, 255, 255, 0.08);
@@ -52,7 +52,7 @@ body.tv-mode {
   position: relative;
 }
 
-/* Lueur diffuse d'ambiance dynamique */
+/* Lueur diffuse d'ambiance dynamique (optimisée sans filtre blur GPU) */
 .ambient-glow {
   position: absolute;
   top: -10%;
@@ -60,11 +60,11 @@ body.tv-mode {
   width: 60vw;
   height: 60vh;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, rgba(7, 8, 11, 0) 70%);
-  filter: blur(80px);
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.16) 0%, rgba(56, 189, 248, 0.05) 40%, rgba(7, 8, 11, 0) 70%);
   pointer-events: none;
   z-index: 0;
   transition: background 0.8s var(--anim-ease), opacity 0.8s var(--anim-ease);
+  will-change: background;
 }
 
 .vignette-overlay {
@@ -130,11 +130,10 @@ body.tv-mode {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(18, 22, 33, 0.85);
   padding: 4px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-subtle);
-  backdrop-filter: blur(20px);
 }
 
 .nav-item {
@@ -166,13 +165,12 @@ body.tv-mode {
   align-items: center;
   gap: 8px;
   padding: 6px 14px;
-  background: var(--bg-pill);
+  background: rgba(22, 27, 40, 0.85);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-pill);
   font-size: 13px;
   font-weight: 600;
   color: var(--text-main);
-  backdrop-filter: blur(15px);
 }
 
 .hdr-active {
@@ -259,11 +257,10 @@ body.tv-mode {
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(22, 28, 44, 0.9);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-pill);
   color: var(--accent-blue);
-  backdrop-filter: blur(10px);
 }
 
 .hero-title {
@@ -374,8 +371,8 @@ body.tv-mode {
   cursor: pointer;
   outline: none;
   transition: transform var(--anim-fast), border-color var(--anim-fast), box-shadow var(--anim-fast), background var(--anim-fast);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
+  will-change: transform;
+  transform: translateZ(0);
   overflow: hidden;
 }
 
@@ -553,8 +550,7 @@ body.tv-mode {
 .modal-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(25px);
+  background: rgba(5, 7, 10, 0.94);
   z-index: 100;
   display: flex;
   align-items: center;
@@ -597,9 +593,7 @@ body.tv-mode {
   width: 100vw;
   height: 100vh;
   z-index: 1000;
-  background: radial-gradient(circle at 50% 0%, rgba(116, 199, 236, 0.09) 0%, rgba(24, 24, 37, 0.98) 45%, var(--ctp-crust, #11111b) 100%);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
+  background: radial-gradient(circle at 50% 0%, rgba(116, 199, 236, 0.08) 0%, rgba(17, 17, 27, 0.99) 45%, #0c0d14 100%);
   display: flex;
   flex-direction: column;
   padding: 3.5vh 5vw;
@@ -695,6 +689,171 @@ body.tv-mode {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   padding: 22px;
+}
+
+/* Contrôle du Volume Principal Système */
+.audio-volume-panel {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.audio-volume-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.volume-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.volume-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.volume-val-badge {
+  font-size: 14px;
+  font-weight: 700;
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--accent-blue);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 3px 12px;
+  border-radius: 12px;
+  min-width: 52px;
+  text-align: center;
+}
+
+.volume-mute-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all var(--anim-fast);
+  outline: none;
+}
+
+.volume-mute-btn.muted {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+.volume-mute-btn:focus,
+.volume-mute-btn.focused {
+  border-color: var(--border-focus);
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.4);
+  transform: scale(1.04);
+}
+
+.volume-slider-track-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.vol-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+  transition: all var(--anim-fast);
+  flex-shrink: 0;
+}
+
+.vol-btn:focus,
+.vol-btn.focused {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
+  color: #fff;
+  transform: scale(1.12);
+}
+
+.volume-slider-container {
+  position: relative;
+  flex: 1;
+  height: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.tv-range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+  margin: 0;
+}
+
+.tv-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  border: 2px solid #fff;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+  cursor: pointer;
+  transition: transform var(--anim-fast);
+}
+
+.tv-range-slider:focus::-webkit-slider-thumb,
+.tv-range-slider.focused::-webkit-slider-thumb {
+  transform: scale(1.35);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.95);
+  border-color: #ffffff;
+}
+
+.tv-range-slider:focus,
+.tv-range-slider.focused {
+  outline: none;
+}
+
+.slider-fill-bar {
+  position: absolute;
+  left: 0;
+  top: calc(50% - 4px);
+  height: 8px;
+  background: linear-gradient(90deg, #0284c7, var(--accent-blue));
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 1;
+  transition: width 0.05s ease-out;
 }
 
 .audio-sinks-grid {
@@ -1479,9 +1638,7 @@ body.tv-mode {
 .restart-splash-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(11, 12, 16, 0.94);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
+  background: rgba(11, 12, 16, 0.98);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -1802,12 +1959,11 @@ body.tv-mode {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: rgba(18, 23, 37, 0.75);
+  background: rgba(18, 23, 37, 0.95);
   border: 1.5px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   padding: 22px 32px;
   box-shadow: 0 15px 45px rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(16px);
 }
 
 .iptv-form-group {
@@ -2101,10 +2257,8 @@ body.tv-mode {
 /* 1. Fin bandeau supérieur glassy sobre */
 .iptv-main-navbar {
   height: 64px;
-  background: rgba(10, 14, 24, 0.78);
+  background: rgba(10, 14, 24, 0.95);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2209,11 +2363,10 @@ body.tv-mode {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: rgba(15, 20, 32, 0.65);
+  background: rgba(15, 20, 32, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 20px;
   padding: 16px;
-  backdrop-filter: blur(16px);
   overflow: hidden;
 }
 
@@ -2313,11 +2466,10 @@ body.tv-mode {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: rgba(15, 20, 32, 0.65);
+  background: rgba(15, 20, 32, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 20px;
   padding: 16px;
-  backdrop-filter: blur(16px);
   overflow: hidden;
 }
 
@@ -2536,11 +2688,10 @@ body.tv-mode {
 /* Guide TV / EPG */
 .live-epg-card {
   flex: 1;
-  background: rgba(15, 20, 32, 0.65);
+  background: rgba(15, 20, 32, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 20px;
   padding: 18px;
-  backdrop-filter: blur(16px);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2847,11 +2998,10 @@ body.tv-mode {
   max-width: 900px;
   margin: 0 auto;
   width: 100%;
-  background: rgba(18, 23, 37, 0.75);
+  background: rgba(18, 23, 37, 0.95);
   border: 1.5px solid rgba(255, 255, 255, 0.08);
   border-radius: 24px;
   padding: 28px 36px;
-  backdrop-filter: blur(16px);
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -2940,8 +3090,7 @@ body.tv-mode {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(4, 7, 13, 0.92);
-  backdrop-filter: blur(28px);
+  background: rgba(4, 7, 13, 0.98);
 }
 
 .iptv-details-container {
@@ -2960,10 +3109,9 @@ body.tv-mode {
 .details-backdrop {
   position: absolute;
   inset: 0;
-  opacity: 0.18;
+  opacity: 0.12;
   background-size: cover;
   background-position: center;
-  filter: blur(35px);
   pointer-events: none;
 }
 
@@ -3210,8 +3358,6 @@ body.tv-mode {
   border-radius: 16px;
   padding: 8px 12px 10px 12px;
   box-shadow: 0 16px 50px rgba(0, 0, 0, 0.92), 0 0 30px rgba(56, 189, 248, 0.22);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
   display: flex;
   flex-direction: column;
   gap: 5px;

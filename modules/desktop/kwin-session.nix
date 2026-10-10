@@ -59,7 +59,10 @@ let
     export QT_WAYLAND_SHELL_INTEGRATION=xdg-shell
     export SDL_VIDEODRIVER="wayland"
     export MOZ_ENABLE_WAYLAND=1
-    export WEBKIT_DISABLE_COMPOSITING_MODE=0
+    # Forcer le rendu GPU composite matériel pour WebKitGTK (Dashboard TV fluide)
+    export WEBKIT_FORCE_COMPOSITING_MODE=1
+    export WEBKIT_ENABLE_GPU_PROCESS=1
+    export WEBKIT_ENABLE_ACCELERATED_2D_CANVAS=1
 
     # Configuration du clavier physique en Français AZERTY pour Wayland (Cage & KWin)
     export XKB_DEFAULT_LAYOUT="fr"

@@ -445,6 +445,7 @@
     initKeyboardConfig();
     loadUpscaleProfiles();
     loadAudioSinks();
+    loadMasterVolume();
     setTimeout(() => {
       focusFirstInModal(modalSettings);
     }, 120);
@@ -456,7 +457,96 @@
     selectCard(currentIndex, false);
   }
 
-  // 6.1. Gestion des Sources et Sorties Audio (PipeWire Sinks)
+  // 6.1. Gestion du Volume Système Principal (PipeWire / WirePlumber)
+  let currentMasterVolume = 80;
+  let isMasterMuted = false;
+
+  async function loadMasterVolume() {
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        const info = await window.__TAURI__.core.invoke('get_master_volume');
+        if (info) {
+          currentMasterVolume = info.volume_percent;
+          isMasterMuted = info.is_muted;
+          updateMasterVolumeUI(currentMasterVolume, isMasterMuted);
+        }
+      } catch (err) {
+        console.warn('Erreur chargement volume :', err);
+      }
+    } else {
+      updateMasterVolumeUI(currentMasterVolume, isMasterMuted);
+    }
+  }
+
+  function updateMasterVolumeUI(vol, muted) {
+    const slider = document.getElementById('master-volume-slider');
+    const valBadge = document.getElementById('master-volume-value');
+    const fill = document.getElementById('master-volume-fill');
+    const muteBtn = document.getElementById('btn-toggle-mute');
+    const muteIcon = document.getElementById('mute-icon-indicator');
+    const muteText = document.getElementById('mute-text-indicator');
+
+    if (slider) slider.value = vol;
+    if (valBadge) valBadge.textContent = `${vol}%`;
+    if (fill) fill.style.width = `${vol}%`;
+
+    if (muteBtn) {
+      if (muted) {
+        muteBtn.classList.add('muted');
+        if (muteIcon) muteIcon.textContent = '🔇';
+        if (muteText) muteText.textContent = 'Muet';
+      } else {
+        muteBtn.classList.remove('muted');
+        if (muteIcon) muteIcon.textContent = vol > 50 ? '🔊' : (vol > 0 ? '🔉' : '🔈');
+        if (muteText) muteText.textContent = 'Son Actif';
+      }
+    }
+  }
+
+  async function adjustMasterVolume(delta) {
+    let newVol = Math.max(0, Math.min(100, currentMasterVolume + delta));
+    await setMasterVolume(newVol);
+  }
+
+  async function setMasterVolume(val) {
+    currentMasterVolume = Math.max(0, Math.min(100, val));
+    isMasterMuted = false;
+    updateMasterVolumeUI(currentMasterVolume, isMasterMuted);
+
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        const info = await window.__TAURI__.core.invoke('set_master_volume', { volumePercent: currentMasterVolume });
+        if (info) {
+          currentMasterVolume = info.volume_percent;
+          isMasterMuted = info.is_muted;
+          updateMasterVolumeUI(currentMasterVolume, isMasterMuted);
+        }
+      } catch (err) {
+        console.error('Erreur réglage volume :', err);
+      }
+    }
+  }
+
+  async function toggleMasterMute() {
+    playConfirmSound();
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        const info = await window.__TAURI__.core.invoke('toggle_master_mute');
+        if (info) {
+          currentMasterVolume = info.volume_percent;
+          isMasterMuted = info.is_muted;
+          updateMasterVolumeUI(currentMasterVolume, isMasterMuted);
+        }
+      } catch (err) {
+        console.error('Erreur toggle mute :', err);
+      }
+    } else {
+      isMasterMuted = !isMasterMuted;
+      updateMasterVolumeUI(currentMasterVolume, isMasterMuted);
+    }
+  }
+
+  // 6.2. Gestion des Sources et Sorties Audio (PipeWire Sinks & Cartes ALSA)
   let currentAudioSinks = [];
 
   async function loadAudioSinks() {
@@ -476,9 +566,9 @@
     } else {
       // Mock de test pour navigateur de développement
       currentAudioSinks = [
-        { id: 46, name: 'HDA ATI HDMI Digital Stereo (HDMI 3)', is_default: false, volume_percent: 100, icon: '📺' },
-        { id: 59, name: 'Arctis Nova 7X Stéréo analogique', is_default: true, volume_percent: 75, icon: '🎧' },
-        { id: 88, name: 'Family 17h/19h HD Audio Controller Stéréo', is_default: false, volume_percent: 80, icon: '🔈' }
+        { id: 'profile:45:3', name: 'LG TV SSCR2 (HDMI)', is_default: false, volume_percent: 80, icon: '📺', description: 'Écran TV • Audio Bitperfect Dolby / PCM' },
+        { id: 'profile:45:1', name: 'Audio interne (Haut-parleurs)', is_default: true, volume_percent: 80, icon: '🔈', description: 'Sortie audio analogique interne' },
+        { id: 'sink:88', name: 'USB DAC Nova HiFi', is_default: false, volume_percent: 80, icon: '🎛️', description: 'Sortie USB Haute Définition' }
       ];
       renderAudioSinks(currentAudioSinks);
     }
@@ -508,12 +598,14 @@
       card.setAttribute('data-focusable', '');
       card.setAttribute('data-sink-id', sink.id);
 
+      const subText = sink.description || `Sortie audio #${sink.id}`;
+
       card.innerHTML = `
         <div class="audio-sink-left">
           <span class="audio-sink-icon">${sink.icon || '🔈'}</span>
           <div class="audio-sink-details">
             <span class="audio-sink-name">${escapeHtml(sink.name)}</span>
-            <span class="audio-sink-sub">Périphérique #${sink.id} • Volume : ${sink.volume_percent}%</span>
+            <span class="audio-sink-sub">${escapeHtml(subText)}</span>
           </div>
         </div>
         <span class="audio-sink-badge ${sink.is_default ? 'active' : 'inactive'}">
@@ -540,8 +632,9 @@
     playConfirmSound();
     if (window.__TAURI__ && window.__TAURI__.core) {
       try {
-        await window.__TAURI__.core.invoke('set_audio_sink', { sinkId });
+        await window.__TAURI__.core.invoke('set_audio_sink', { sinkId: String(sinkId) });
         await loadAudioSinks();
+        await loadMasterVolume();
       } catch (err) {
         console.error('Erreur changement sortie audio :', err);
       }
@@ -2156,6 +2249,27 @@
   if (btnGpuNvidia) btnGpuNvidia.addEventListener('click', () => loadUpscaleProfiles('nvidia'));
   if (btnGpuIntel) btnGpuIntel.addEventListener('click', () => loadUpscaleProfiles('intel'));
 
+  // Contrôles du Volume Principal
+  const btnVolDown = document.getElementById('btn-vol-down');
+  const btnVolUp = document.getElementById('btn-vol-up');
+  const btnToggleMute = document.getElementById('btn-toggle-mute');
+  const masterVolSlider = document.getElementById('master-volume-slider');
+
+  if (btnVolDown) btnVolDown.addEventListener('click', () => adjustMasterVolume(-5));
+  if (btnVolUp) btnVolUp.addEventListener('click', () => adjustMasterVolume(5));
+  if (btnToggleMute) btnToggleMute.addEventListener('click', toggleMasterMute);
+
+  if (masterVolSlider) {
+    masterVolSlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10) || 0;
+      updateMasterVolumeUI(val, isMasterMuted);
+    });
+    masterVolSlider.addEventListener('change', (e) => {
+      const val = parseInt(e.target.value, 10) || 0;
+      setMasterVolume(val);
+    });
+  }
+
   document.querySelectorAll('.power-action-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       handlePowerAction(btn.getAttribute('data-action'));
@@ -2422,7 +2536,15 @@
             lastNavTime = now;
           }
         } else if (isModalOpen) {
-          if (dpadRight || stickRight || dpadDown || stickDown) {
+          const activeEl = document.activeElement;
+          const isSlider = activeEl && activeEl.id === 'master-volume-slider';
+          if (isSlider && (dpadRight || stickRight)) {
+            adjustMasterVolume(5);
+            lastNavTime = now;
+          } else if (isSlider && (dpadLeft || stickLeft)) {
+            adjustMasterVolume(-5);
+            lastNavTime = now;
+          } else if (dpadRight || stickRight || dpadDown || stickDown) {
             navigateModalFocus(modalSettings, 1);
             lastNavTime = now;
           } else if (dpadLeft || stickLeft || dpadUp || stickUp) {
@@ -2440,12 +2562,14 @@
         }
       }
 
-      // Bumpers LB / RB pour navigation entre onglets
+      // Bumpers LB / RB pour navigation entre onglets ou réglage volume en modal
       if (btnLB && !prevButtonsState['LB']) {
         if (!isAnyModalOpen()) {
           cycleCategory(-1);
         } else if (isIptvModalOpen && iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
           cycleIptvTab(-1);
+        } else if (isModalOpen) {
+          adjustMasterVolume(-5);
         }
       }
       if (btnRB && !prevButtonsState['RB']) {
@@ -2453,6 +2577,8 @@
           cycleCategory(1);
         } else if (isIptvModalOpen && iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
           cycleIptvTab(1);
+        } else if (isModalOpen) {
+          adjustMasterVolume(5);
         }
       }
 
@@ -2527,10 +2653,12 @@
         }
       }
 
-      // Action Y (Espace si clavier ouvert, sinon Éjection disque ou menu)
+      // Action Y (Espace si clavier ouvert, Mute si paramètres, sinon Éjection disque ou menu)
       if (btnY && !prevButtonsState['Y']) {
         if (window.TVKeyboard && window.TVKeyboard.isOpen()) {
           window.TVKeyboard.type(' ');
+        } else if (isModalOpen) {
+          toggleMasterMute();
         } else if (!isAnyModalOpen() && getActiveCard() === cardDiscPlayer) {
           playConfirmSound();
           if (window.__TAURI__ && window.__TAURI__.core) {
