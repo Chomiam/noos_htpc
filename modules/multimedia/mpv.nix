@@ -43,6 +43,10 @@ let
     sub-border-size=3
     sub-color='#FFE500'
     sub-border-color='#000000'
+
+    # 5. Contrôles à la manette et télécommande (SDL2 Gamepad activé)
+    input-gamepad=yes
+    input-default-bindings=yes
     sub-shadow-offset=2
     sub-shadow-color='#101010'
     sub-pos=95
@@ -267,6 +271,9 @@ in
   # 1. Installation de MPV avec support de tous les codecs et scripts
   environment.systemPackages = with pkgs; [
     (mpv.override {
+      mpv-unwrapped = pkgs.mpv-unwrapped.override {
+        sdl2Support = true;
+      };
       scripts = with pkgs.mpvScripts; [
         mpris
         uosc          # Interface OSD élégante pour TV

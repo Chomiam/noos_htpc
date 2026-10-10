@@ -1441,17 +1441,17 @@
 
     if (currentIptvTab === 'live') {
       const allStreams = cache.live_streams || [];
-      const filtered = allStreams.filter(s => s.category_id === catId || catId === 'all');
+      const filtered = allStreams.filter(s => s.category_id == catId || catId === 'all');
       renderLiveChannels(filtered, catName);
     } else if (currentIptvTab === 'vod') {
       const allMovies = cache.vod_streams || [];
-      const filtered = allMovies.filter(m => m.category_id === catId || catId === 'all');
+      const filtered = allMovies.filter(m => m.category_id == catId || catId === 'all');
       if (vodCatTitle) vodCatTitle.textContent = catName;
       if (vodItemsCount) vodItemsCount.textContent = `${filtered.length} film${filtered.length > 1 ? 's' : ''}`;
       renderPostersGrid(filtered, iptvVodGrid, 'movie');
     } else if (currentIptvTab === 'series') {
       const allSeries = cache.series_streams || [];
-      const filtered = allSeries.filter(s => s.category_id === catId || catId === 'all');
+      const filtered = allSeries.filter(s => s.category_id == catId || catId === 'all');
       if (seriesCatTitle) seriesCatTitle.textContent = catName;
       if (seriesItemsCount) seriesItemsCount.textContent = `${filtered.length} série${filtered.length > 1 ? 's' : ''}`;
       renderPostersGrid(filtered, iptvSeriesGrid, 'series');
@@ -1626,12 +1626,16 @@
         const coverSrc = sanitizeCoverUrl(rawCover);
         const rating = item.rating ? `★ ${parseFloat(item.rating).toFixed(1)}` : '★ 8.2';
         const year = item.year || (itemType === 'series' ? 'Série' : 'Film');
+        const hasValidImage = coverSrc && coverSrc !== 'assets/logo.png';
+        const imgHtml = hasValidImage
+          ? `<img src="${coverSrc}" alt="${escapeHtml(item.name)}" class="poster-img" referrerpolicy="no-referrer" onerror="this.style.display='none';"/>`
+          : '';
 
         card.innerHTML = `
           <div class="poster-img-wrap">
-            <img src="${coverSrc}" alt="${escapeHtml(item.name)}" class="poster-img" referrerpolicy="no-referrer" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.onerror=null;this.classList.add('fallback-mode');this.src='assets/logo.png';"/>
+            ${imgHtml}
             <div class="poster-placeholder-fallback">
-              <span class="fallback-icon">🎬</span>
+              <span class="fallback-icon">${itemType === 'series' ? '📺' : '🎬'}</span>
               <span class="fallback-name">${escapeHtml(item.name)}</span>
             </div>
             <span class="poster-badge-rating">${rating}</span>
@@ -1663,20 +1667,17 @@
     gridElement._appendBatch = appendBatch;
     appendBatch();
 
-    // Scroll listener pour charger les lots suivants au fil du défilement
-    const contentArea = gridElement.closest('.iptv-content-area');
-    if (contentArea) {
-      if (contentArea._iptvScrollHandler) {
-        contentArea.removeEventListener('scroll', contentArea._iptvScrollHandler);
-      }
-      contentArea._iptvScrollHandler = () => {
-        if (renderedCount >= items.length) return;
-        if (contentArea.scrollTop + contentArea.clientHeight >= contentArea.scrollHeight - 700) {
-          appendBatch();
-        }
-      };
-      contentArea.addEventListener('scroll', contentArea._iptvScrollHandler, { passive: true });
+    // Scroll listener direct sur la grille de jaquettes pour chargement continu par lots
+    if (gridElement._iptvScrollHandler) {
+      gridElement.removeEventListener('scroll', gridElement._iptvScrollHandler);
     }
+    gridElement._iptvScrollHandler = () => {
+      if (renderedCount >= items.length) return;
+      if (gridElement.scrollTop + gridElement.clientHeight >= gridElement.scrollHeight - 600) {
+        appendBatch();
+      }
+    };
+    gridElement.addEventListener('scroll', gridElement._iptvScrollHandler, { passive: true });
   }
 
   let lastFocusedCard = null;
@@ -1872,9 +1873,13 @@
       const card = document.createElement('div');
       card.className = 'poster-card';
       const iconSrc = sanitizeCoverUrl(fav.icon);
+      const hasValidImage = iconSrc && iconSrc !== 'assets/logo.png';
+      const imgHtml = hasValidImage
+        ? `<img src="${iconSrc}" alt="${escapeHtml(fav.name)}" class="poster-img" referrerpolicy="no-referrer" onerror="this.style.display='none';"/>`
+        : '';
       card.innerHTML = `
         <div class="poster-img-wrap">
-          <img src="${iconSrc}" alt="${escapeHtml(fav.name)}" class="poster-img" referrerpolicy="no-referrer" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.onerror=null;this.classList.add('fallback-mode');this.src='assets/logo.png';"/>
+          ${imgHtml}
           <div class="poster-placeholder-fallback">
             <span class="fallback-icon">★</span>
             <span class="fallback-name">${escapeHtml(fav.name)}</span>
