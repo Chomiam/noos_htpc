@@ -48,6 +48,9 @@ let
     if [ -f "$TARGET_DIR/hosts/htpc/hardware-configuration.local.nix" ]; then
       cp -f "$TARGET_DIR/hosts/htpc/hardware-configuration.local.nix" "$TARGET_DIR/.local-backups/"
     fi
+    if [ -f "$TARGET_DIR/hosts/htpc/hardware.local.nix" ]; then
+      cp -f "$TARGET_DIR/hosts/htpc/hardware.local.nix" "$TARGET_DIR/.local-backups/"
+    fi
     if [ -f "$TARGET_DIR/hosts/htpc/host-settings.local.nix" ]; then
       cp -f "$TARGET_DIR/hosts/htpc/host-settings.local.nix" "$TARGET_DIR/.local-backups/"
     fi
@@ -61,18 +64,21 @@ let
     if [ -f "$TARGET_DIR/.local-backups/hardware-configuration.local.nix" ]; then
       cp -f "$TARGET_DIR/.local-backups/hardware-configuration.local.nix" "$TARGET_DIR/hosts/htpc/hardware-configuration.local.nix"
     fi
+    if [ -f "$TARGET_DIR/.local-backups/hardware.local.nix" ]; then
+      cp -f "$TARGET_DIR/.local-backups/hardware.local.nix" "$TARGET_DIR/hosts/htpc/hardware.local.nix"
+    fi
     if [ -f "$TARGET_DIR/.local-backups/host-settings.local.nix" ]; then
       cp -f "$TARGET_DIR/.local-backups/host-settings.local.nix" "$TARGET_DIR/hosts/htpc/host-settings.local.nix"
     fi
-    echo -e "\033[1;32m[✓] Configuration matérielle déclarative préservée (hardware-configuration.local.nix & host-settings.local.nix)\033[0m"
+    echo -e "\033[1;32m[✓] Configuration matérielle déclarative préservée (hardware-configuration.local.nix & greffe GPU)\033[0m"
 
     # 3. Mise à jour impérative du fichier flake.lock
     echo -e "\033[1;33m[3/4] Mise à jour des dépendances et du flake.lock...\033[0m"
     nix flake update
 
-    # 4. Reconstruction déclarative NixOS avec prise en compte des fichiers locaux (--impure)
+    # 4. Reconstruction déclarative NixOS avec prise en compte des fichiers locaux (--impure path:...)
     echo -e "\033[1;33m[4/4] Reconstruction de la configuration NixOS ($TARGET_DIR#htpc)...\033[0m"
-    if sudo nixos-rebuild switch --impure --flake "$TARGET_DIR#htpc"; then
+    if sudo nixos-rebuild switch --impure --flake "path:$TARGET_DIR#htpc"; then
       echo -e "\033[1;32m[✓] Mise à jour appliquée avec succès !\033[0m"
       exit 0
     else

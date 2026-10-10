@@ -1,13 +1,37 @@
 { config, lib, pkgs, inputs, ... }:
 
+let
+  # Recherche déclarative du matériel local (soit dans le Flake, soit sur le système hôte)
+  # Permet à NixOS de toujours trouver la configuration matérielle propre à cette machine physique,
+  # y compris lorsque la commande rebuild est lancée dans un dépôt Git avec fichiers ignorés.
+  findLocalFile = relativePath:
+    let
+      candidatePaths = [
+        (./. + "/${relativePath}")
+        (/etc/nixos/hosts/htpc + "/${relativePath}")
+        (/home/chomiam/Projets/noos_htpc/hosts/htpc + "/${relativePath}")
+      ];
+      existingPaths = builtins.filter builtins.pathExists candidatePaths;
+    in
+    if existingPaths != [] then builtins.head existingPaths else null;
+
+  localHwConfig = findLocalFile "hardware-configuration.local.nix";
+  localHardwareGraft = findLocalFile "hardware.local.nix";
+  localHostSettings = findLocalFile "host-settings.local.nix";
+in
 {
   imports = [
-    # Déclaration matérielle propre à chaque machine (générée lors de l'installation, immunisée aux mises à jour Git)
-    (if builtins.pathExists ./hardware-configuration.local.nix
-     then ./hardware-configuration.local.nix
+    # 1. Matériel détecté par nixos-generate-config (disques, partitions UUID, modules noyau)
+    (if localHwConfig != null
+     then localHwConfig
      else ./hardware-configuration.nix)
+
+    # 2. Modules système Noos HTPC
     ../../modules
-  ] ++ lib.optional (builtins.pathExists ./host-settings.local.nix) ./host-settings.local.nix;
+  ]
+  # 3. Greffe matérielle spécifique (GPU: amd.nix, intel.nix, etc. - unique à cette machine et jamais écrasé par Git)
+  ++ lib.optional (localHardwareGraft != null) localHardwareGraft
+  ++ lib.optional (localHostSettings != null && localHardwareGraft == null) localHostSettings;
 
   # ==============================================================================
   # IDENTITÉ DE LA MACHINE & RÉSEAU

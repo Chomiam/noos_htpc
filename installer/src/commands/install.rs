@@ -425,7 +425,7 @@ pub async fn start_installation(app: AppHandle, req: InstallRequest) -> Result<b
         emit_step(6, "Installation du Système NixOS", 72, "Lancement de nixos-install (téléchargement et compilation)...", 0, 0);
 
         let mut child = match Command::new("nixos-install")
-            .args(["--no-channel-copy", "--impure", "--flake", "/mnt/etc/nixos#htpc", "--no-root-passwd"])
+            .args(["--no-channel-copy", "--impure", "--flake", "path:/mnt/etc/nixos#htpc", "--no-root-passwd"])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
