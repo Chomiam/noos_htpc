@@ -5,9 +5,10 @@ mod home_button;
 mod iptv;
 
 use commands::{
-    apply_system_update, check_for_updates, eject_disc, get_keyboard_config, get_optical_drive,
-    get_system_info, get_upscale_info, hide_virtual_keyboard, launch_app, play_disc, power_action,
-    restart_dashboard, set_keyboard_config, set_upscale_profile, show_virtual_keyboard, toggle_hdr,
+    apply_system_update, check_for_updates, eject_disc, get_audio_sinks, get_keyboard_config,
+    get_optical_drive, get_system_info, get_upscale_info, hide_virtual_keyboard, launch_app,
+    play_disc, power_action, restart_dashboard, set_audio_sink, set_keyboard_config,
+    set_upscale_profile, show_virtual_keyboard, toggle_hdr,
 };
 use iptv::{
     iptv_delete_profile, iptv_get_cache_summary, iptv_get_catalog, iptv_get_channel_epg,
@@ -42,6 +43,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             launch_app,
             get_system_info,
+            get_audio_sinks,
+            set_audio_sink,
             toggle_hdr,
             power_action,
             get_optical_drive,

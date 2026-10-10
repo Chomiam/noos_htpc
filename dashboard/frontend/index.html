@@ -315,12 +315,18 @@
 
   </div>
 
-  <!-- Modal Paramètres & Alimentation -->
-  <div id="modal-settings" class="modal-overlay hidden">
-    <div class="modal-panel">
+  <!-- Modal Paramètres & Alimentation (Plein Écran TV) -->
+  <div id="modal-settings" class="modal-overlay fullscreen-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-panel settings-fullscreen-panel">
       <div class="modal-header">
-        <div class="modal-title">Paramètres du Système</div>
-        <button id="modal-close" class="modal-close-btn">&times;</button>
+        <div class="header-left">
+          <div class="modal-title">Paramètres du Système</div>
+          <div class="modal-subtitle">Configuration multimédia, affichage, audio et alimentation</div>
+        </div>
+        <button id="modal-close" class="btn-action-secondary" tabindex="0" data-focusable aria-label="Retour au menu principal">
+          <span class="btn-pad-icon">B</span>
+          <span>Retour</span>
+        </button>
       </div>
       <div class="modal-body">
         <div class="setting-row">
@@ -328,7 +334,7 @@
             <div class="setting-name">Affichage HDR (Rec.2020)</div>
             <div class="setting-desc">Activer le passthrough haute dynamique pour les flux vidéos compatibles</div>
           </div>
-          <button id="toggle-hdr-btn" class="toggle-btn active">Activé</button>
+          <button id="toggle-hdr-btn" class="toggle-btn active" tabindex="0" data-focusable>Activé</button>
         </div>
 
         <div class="setting-row">
@@ -337,8 +343,28 @@
             <div class="setting-desc">Disposition des touches pour la saisie de texte à la manette</div>
           </div>
           <div class="keyboard-layout-selector">
-            <button id="btn-layout-azerty" class="choice-pill active" data-layout="azerty">AZERTY (FR)</button>
-            <button id="btn-layout-qwerty" class="choice-pill" data-layout="qwerty">QWERTY (EN)</button>
+            <button id="btn-layout-azerty" class="choice-pill active" data-layout="azerty" tabindex="0" data-focusable>AZERTY (FR)</button>
+            <button id="btn-layout-qwerty" class="choice-pill" data-layout="qwerty" tabindex="0" data-focusable>QWERTY (EN)</button>
+          </div>
+        </div>
+
+        <!-- Section Sorties Audio TV (Sources & Périphériques PipeWire) -->
+        <div class="setting-audio-container">
+          <div class="setting-section-header">
+            <div class="setting-section-title">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+              <span>Sorties Audio Actives (Sources & Périphériques)</span>
+            </div>
+            <div class="audio-hw-info">
+              <span class="hw-badge hw-res" id="active-audio-sink-label">Sortie : Détection...</span>
+            </div>
+          </div>
+          <div class="audio-sinks-grid" id="audio-sinks-container">
+            <!-- Rendu dynamique via app.js -->
+            <div class="audio-sink-loading">Recherche des sorties audio...</div>
           </div>
         </div>
 
@@ -360,13 +386,13 @@
           <div class="upscale-gpu-selector">
             <span class="selector-label">Architecture GPU :</span>
             <div class="gpu-pills">
-              <button class="gpu-pill active" data-brand="amd" id="btn-gpu-amd">
+              <button class="gpu-pill active" data-brand="amd" id="btn-gpu-amd" tabindex="0" data-focusable>
                 <span class="brand-dot dot-amd"></span> AMD Radeon (FSR)
               </button>
-              <button class="gpu-pill" data-brand="nvidia" id="btn-gpu-nvidia">
+              <button class="gpu-pill" data-brand="nvidia" id="btn-gpu-nvidia" tabindex="0" data-focusable>
                 <span class="brand-dot dot-nvidia"></span> NVIDIA GeForce (DLSS / NIS)
               </button>
-              <button class="gpu-pill" data-brand="intel" id="btn-gpu-intel">
+              <button class="gpu-pill" data-brand="intel" id="btn-gpu-intel" tabindex="0" data-focusable>
                 <span class="brand-dot dot-intel"></span> Intel Arc / Iris (XeSS)
               </button>
             </div>
@@ -411,15 +437,15 @@
         </div>
 
         <div class="power-actions-grid">
-          <button class="power-action-btn" data-action="suspend">
+          <button class="power-action-btn" data-action="suspend" tabindex="0" data-focusable>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
             <span>Mettre en Veille</span>
           </button>
-          <button class="power-action-btn" data-action="reboot">
+          <button class="power-action-btn" data-action="reboot" tabindex="0" data-focusable>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
             <span>Redémarrer</span>
           </button>
-          <button class="power-action-btn btn-danger" data-action="poweroff">
+          <button class="power-action-btn btn-danger" data-action="poweroff" tabindex="0" data-focusable>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
             <span>Éteindre la TV</span>
           </button>
@@ -428,12 +454,18 @@
     </div>
   </div>
 
-  <!-- Modal Mise à Jour Système -->
-  <div id="modal-update" class="modal-overlay hidden">
-    <div class="modal-panel update-panel">
+  <!-- Modal Mise à Jour Système (Plein Écran TV) -->
+  <div id="modal-update" class="modal-overlay fullscreen-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-panel update-panel update-fullscreen-panel">
       <div class="modal-header">
-        <div class="modal-title">Mise à jour du Système</div>
-        <button id="modal-update-close" class="modal-close-btn">&times;</button>
+        <div class="header-left">
+          <div class="modal-title">Mise à jour du Système</div>
+          <div class="modal-subtitle">Synchronisation GitHub et mise à niveau déclarative Noos HTPC</div>
+        </div>
+        <button id="modal-update-close" class="btn-action-secondary" tabindex="0" data-focusable aria-label="Retour au menu principal">
+          <span class="btn-pad-icon">B</span>
+          <span>Retour</span>
+        </button>
       </div>
       <div class="modal-body">
         
@@ -441,8 +473,8 @@
         <div class="update-channel-bar">
           <span class="channel-label">Canal de mise à jour :</span>
           <div class="channel-buttons">
-            <button id="btn-channel-stable" class="channel-btn" data-channel="stable">Stable</button>
-            <button id="btn-channel-testing" class="channel-btn active" data-channel="testing">Testing</button>
+            <button id="btn-channel-stable" class="channel-btn" data-channel="stable" tabindex="0" data-focusable>Stable</button>
+            <button id="btn-channel-testing" class="channel-btn active" data-channel="testing" tabindex="0" data-focusable>Testing</button>
           </div>
         </div>
 
@@ -456,7 +488,7 @@
             </div>
             <div id="update-status-msg" class="status-message">Recherche des mises à jour disponibles...</div>
           </div>
-          <button id="btn-check-updates" class="btn-check-action">
+          <button id="btn-check-updates" class="btn-check-action" tabindex="0" data-focusable>
             <span class="btn-pad-icon">X</span>
             <span>Vérifier</span>
           </button>
@@ -469,7 +501,7 @@
             <!-- Liste dynamique -->
           </div>
           <div class="update-action-footer">
-            <button id="btn-apply-update" class="btn-primary-action btn-update-apply">
+            <button id="btn-apply-update" class="btn-primary-action btn-update-apply" tabindex="0" data-focusable>
               <span class="btn-pad-icon">A</span>
               <span>Installer la mise à jour</span>
             </button>

@@ -444,6 +444,10 @@
     refreshSystemInfo();
     initKeyboardConfig();
     loadUpscaleProfiles();
+    loadAudioSinks();
+    setTimeout(() => {
+      focusFirstInModal(modalSettings);
+    }, 120);
   }
 
   function closeSettings() {
@@ -452,12 +456,118 @@
     selectCard(currentIndex, false);
   }
 
+  // 6.1. Gestion des Sources et Sorties Audio (PipeWire Sinks)
+  let currentAudioSinks = [];
+
+  async function loadAudioSinks() {
+    const container = document.getElementById('audio-sinks-container');
+    const label = document.getElementById('active-audio-sink-label');
+    if (!container) return;
+
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        const sinks = await window.__TAURI__.core.invoke('get_audio_sinks');
+        currentAudioSinks = sinks || [];
+        renderAudioSinks(currentAudioSinks);
+      } catch (err) {
+        console.warn('Erreur chargement sorties audio :', err);
+        container.innerHTML = `<div class="audio-sink-loading">Erreur audio : ${escapeHtml(err)}</div>`;
+      }
+    } else {
+      // Mock de test pour navigateur de développement
+      currentAudioSinks = [
+        { id: 46, name: 'HDA ATI HDMI Digital Stereo (HDMI 3)', is_default: false, volume_percent: 100, icon: '📺' },
+        { id: 59, name: 'Arctis Nova 7X Stéréo analogique', is_default: true, volume_percent: 75, icon: '🎧' },
+        { id: 88, name: 'Family 17h/19h HD Audio Controller Stéréo', is_default: false, volume_percent: 80, icon: '🔈' }
+      ];
+      renderAudioSinks(currentAudioSinks);
+    }
+  }
+
+  function renderAudioSinks(sinks) {
+    const container = document.getElementById('audio-sinks-container');
+    const label = document.getElementById('active-audio-sink-label');
+    if (!container) return;
+
+    container.innerHTML = '';
+    if (!sinks || sinks.length === 0) {
+      container.innerHTML = '<div class="audio-sink-loading">Aucun périphérique audio détecté.</div>';
+      if (label) label.textContent = 'Sortie : Inconnue';
+      return;
+    }
+
+    const defaultSink = sinks.find(s => s.is_default) || sinks[0];
+    if (label && defaultSink) {
+      label.textContent = `Sortie : ${defaultSink.name}`;
+    }
+
+    sinks.forEach(sink => {
+      const card = document.createElement('div');
+      card.className = `audio-sink-card ${sink.is_default ? 'active' : ''}`;
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('data-focusable', '');
+      card.setAttribute('data-sink-id', sink.id);
+
+      card.innerHTML = `
+        <div class="audio-sink-left">
+          <span class="audio-sink-icon">${sink.icon || '🔈'}</span>
+          <div class="audio-sink-details">
+            <span class="audio-sink-name">${escapeHtml(sink.name)}</span>
+            <span class="audio-sink-sub">Périphérique #${sink.id} • Volume : ${sink.volume_percent}%</span>
+          </div>
+        </div>
+        <span class="audio-sink-badge ${sink.is_default ? 'active' : 'inactive'}">
+          ${sink.is_default ? '✓ Actif' : 'Sélectionner'}
+        </span>
+      `;
+
+      card.addEventListener('click', async () => {
+        await selectAudioSink(sink.id);
+      });
+
+      card.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          await selectAudioSink(sink.id);
+        }
+      });
+
+      container.appendChild(card);
+    });
+  }
+
+  async function selectAudioSink(sinkId) {
+    playConfirmSound();
+    if (window.__TAURI__ && window.__TAURI__.core) {
+      try {
+        await window.__TAURI__.core.invoke('set_audio_sink', { sinkId });
+        await loadAudioSinks();
+      } catch (err) {
+        console.error('Erreur changement sortie audio :', err);
+      }
+    } else {
+      currentAudioSinks.forEach(s => {
+        s.is_default = (s.id === sinkId);
+      });
+      renderAudioSinks(currentAudioSinks);
+    }
+    setTimeout(() => {
+      const activeCard = document.querySelector(`.audio-sink-card[data-sink-id="${sinkId}"]`);
+      if (activeCard) {
+        activeCard.focus();
+      }
+    }, 60);
+  }
+
   // 7. Gestion du Modal Mise à Jour
   function openUpdateModal() {
     if (isModalOpen) closeSettings();
     isUpdateModalOpen = true;
     modalUpdate.classList.remove('hidden');
     checkForUpdates(currentChannel);
+    setTimeout(() => {
+      focusFirstInModal(modalUpdate);
+    }, 120);
   }
 
   function closeUpdateModal() {
@@ -1947,10 +2057,29 @@
     });
   }
 
+  function getModalFocusables(modalEl) {
+    if (!modalEl) return [];
+    return Array.from(modalEl.querySelectorAll('button:not([disabled]):not(.hidden), input:not([disabled]):not(.hidden), .iptv-profile-card, .audio-sink-card, .upscale-card, select, [tabindex="0"]'))
+      .filter(el => {
+        if (el.disabled || el.classList.contains('hidden')) return false;
+        if (el.classList.contains('modal-overlay') || el.classList.contains('modal-panel') || el.classList.contains('modal-body')) return false;
+        return el.offsetParent !== null || el.offsetWidth > 0 || el.offsetHeight > 0;
+      });
+  }
+
+  function focusFirstInModal(modalEl) {
+    if (!modalEl) return;
+    const focusables = getModalFocusables(modalEl);
+    if (focusables.length > 0) {
+      const preferred = focusables.find(el => el.classList.contains('active') || el.id === 'modal-close' || el.id === 'modal-update-close') || focusables[0];
+      preferred.focus();
+      preferred.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
   function navigateModalFocus(modalEl, direction) {
     if (!modalEl) return;
-    const focusables = Array.from(modalEl.querySelectorAll('button:not([disabled]):not(.hidden), input:not([disabled]):not(.hidden), .iptv-profile-card, select, [tabindex="0"]'))
-      .filter(el => el.offsetParent !== null && !el.classList.contains('hidden'));
+    const focusables = getModalFocusables(modalEl);
     if (focusables.length === 0) return;
     const currentIdx = focusables.indexOf(document.activeElement);
     let nextIdx = 0;
@@ -1960,6 +2089,7 @@
       nextIdx = (currentIdx + direction + focusables.length) % focusables.length;
     }
     focusables[nextIdx].focus();
+    focusables[nextIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     playTickSound();
   }
 
@@ -2126,15 +2256,13 @@
 
       // Navigation flèches dans la modale IPTV
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-        if (iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
-          navigateModalFocus(modalIptv, 1);
-          return;
-        }
+        e.preventDefault();
+        navigateModalFocus(modalIptv, 1);
+        return;
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-        if (iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
-          navigateModalFocus(modalIptv, -1);
-          return;
-        }
+        e.preventDefault();
+        navigateModalFocus(modalIptv, -1);
+        return;
       }
 
       return;
@@ -2143,8 +2271,27 @@
     if (isUpdateModalOpen) {
       if (e.key === 'Escape' || e.key === 'Backspace') {
         closeUpdateModal();
-      } else if (e.key === 'Enter' || e.key === ' ') {
+        return;
+      }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        navigateModalFocus(modalUpdate, 1);
+        return;
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        navigateModalFocus(modalUpdate, -1);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === ' ') {
+        const active = document.activeElement;
+        if (active && active.tagName !== 'INPUT' && active.click) {
+          e.preventDefault();
+          active.click();
+          return;
+        }
         if (!isUpdating && btnApplyUpdate && !btnApplyUpdate.disabled && !updateChangelogSection.classList.contains('hidden')) {
+          e.preventDefault();
           applyUpdate();
         }
       }
@@ -2154,6 +2301,25 @@
     if (isModalOpen) {
       if (e.key === 'Escape' || e.key === 'Backspace') {
         closeSettings();
+        return;
+      }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        navigateModalFocus(modalSettings, 1);
+        return;
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        navigateModalFocus(modalSettings, -1);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === ' ') {
+        const active = document.activeElement;
+        if (active && active.tagName !== 'INPUT' && active.click) {
+          e.preventDefault();
+          active.click();
+          return;
+        }
       }
       return;
     }
@@ -2255,6 +2421,22 @@
             navigateModalFocus(modalIptv, -1);
             lastNavTime = now;
           }
+        } else if (isModalOpen) {
+          if (dpadRight || stickRight || dpadDown || stickDown) {
+            navigateModalFocus(modalSettings, 1);
+            lastNavTime = now;
+          } else if (dpadLeft || stickLeft || dpadUp || stickUp) {
+            navigateModalFocus(modalSettings, -1);
+            lastNavTime = now;
+          }
+        } else if (isUpdateModalOpen) {
+          if (dpadRight || stickRight || dpadDown || stickDown) {
+            navigateModalFocus(modalUpdate, 1);
+            lastNavTime = now;
+          } else if (dpadLeft || stickLeft || dpadUp || stickUp) {
+            navigateModalFocus(modalUpdate, -1);
+            lastNavTime = now;
+          }
         }
       }
 
@@ -2297,7 +2479,10 @@
             if (activeEl && activeEl.click) activeEl.click();
           }
         } else if (isUpdateModalOpen) {
-          if (!isUpdating && btnApplyUpdate && !btnApplyUpdate.disabled && !updateChangelogSection.classList.contains('hidden')) {
+          const activeEl = document.activeElement;
+          if (activeEl && activeEl.click) {
+            activeEl.click();
+          } else if (!isUpdating && btnApplyUpdate && !btnApplyUpdate.disabled && !updateChangelogSection.classList.contains('hidden')) {
             applyUpdate();
           }
         } else if (isModalOpen) {

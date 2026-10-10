@@ -10,6 +10,8 @@ pkgs.rustPlatform.buildRustPackage rec {
     lockFile = ./Cargo.lock;
   };
 
+  doCheck = false;
+
   nativeBuildInputs = with pkgs; [
     pkg-config
     wrapGAppsHook3

@@ -954,6 +954,135 @@ pub async fn restart_dashboard(app: AppHandle) -> Result<(), String> {
 }
 
 /* ========================================================================= */
+/* GESTION DES SOURCES ET SORTIES AUDIO (PIPEWIRE / WIREPLUMBER)             */
+/* ========================================================================= */
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AudioSink {
+    pub id: u32,
+    pub name: String,
+    pub is_default: bool,
+    pub volume_percent: u32,
+    pub icon: String,
+}
+
+pub fn parse_audio_sinks(text: &str) -> Vec<AudioSink> {
+    let mut sinks = Vec::new();
+    let mut in_sinks = false;
+
+    for line in text.lines() {
+        if line.contains("Sinks:") {
+            in_sinks = true;
+            continue;
+        }
+        if in_sinks {
+            if line.contains("Sources:") || line.contains("Filters:") || line.contains("Streams:") || line.contains("Video") || line.contains("Settings") {
+                in_sinks = false;
+                continue;
+            }
+
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed == "│" {
+                continue;
+            }
+
+            let is_default = line.contains('*');
+            let parts: Vec<&str> = line.split('.').collect();
+            if parts.len() >= 2 {
+                let id_digits: String = parts[0].chars().filter(|c| c.is_ascii_digit()).collect();
+                if let Ok(id) = id_digits.parse::<u32>() {
+                    let rest = parts[1..].join(".");
+                    let name_and_vol: Vec<&str> = rest.split('[').collect();
+                    let raw_name = name_and_vol[0].trim().to_string();
+
+                    let mut vol_pct = 100;
+                    if name_and_vol.len() > 1 && name_and_vol[1].contains("vol:") {
+                        let vol_str = name_and_vol[1].replace("vol:", "").replace(']', "").trim().to_string();
+                        if let Ok(vol) = vol_str.parse::<f32>() {
+                            vol_pct = (vol * 100.0).round() as u32;
+                        }
+                    }
+
+                    let lower = raw_name.to_lowercase();
+                    let icon = if lower.contains("hdmi") || lower.contains("displayport") || lower.contains("tv") {
+                        "📺".to_string()
+                    } else if lower.contains("casque") || lower.contains("headphone") || lower.contains("analog") || lower.contains("nova") {
+                        "🎧".to_string()
+                    } else if lower.contains("spdif") || lower.contains("optical") || lower.contains("digital") {
+                        "🔊".to_string()
+                    } else if lower.contains("usb") || lower.contains("dac") {
+                        "🎛️".to_string()
+                    } else if lower.contains("bluetooth") || lower.contains("ble") {
+                        "📶".to_string()
+                    } else {
+                        "🔈".to_string()
+                    };
+
+                    sinks.push(AudioSink {
+                        id,
+                        name: raw_name,
+                        is_default,
+                        volume_percent: vol_pct,
+                        icon,
+                    });
+                }
+            }
+        }
+    }
+
+    if sinks.is_empty() {
+        sinks.push(AudioSink {
+            id: 1,
+            name: "Sortie Audio HDMI / TV (Par défaut)".to_string(),
+            is_default: true,
+            volume_percent: 100,
+            icon: "📺".to_string(),
+        });
+    }
+
+    sinks
+}
+
+#[tauri::command]
+pub async fn get_audio_sinks() -> Result<Vec<AudioSink>, String> {
+    tokio::task::spawn_blocking(|| {
+        let output = Command::new("wpctl")
+            .arg("status")
+            .output();
+
+        if let Ok(out) = output {
+            let text = String::from_utf8_lossy(&out.stdout);
+            Ok(parse_audio_sinks(&text))
+        } else {
+            Ok(parse_audio_sinks(""))
+        }
+    })
+    .await
+    .map_err(|e| format!("Erreur thread audio : {}", e))?
+}
+
+#[tauri::command]
+pub async fn set_audio_sink(sink_id: u32) -> Result<bool, String> {
+    tokio::task::spawn_blocking(move || {
+        let status = Command::new("wpctl")
+            .args(["set-default", &sink_id.to_string()])
+            .status();
+
+        match status {
+            Ok(s) if s.success() => Ok(true),
+            _ => {
+                let _ = Command::new("pactl")
+                    .args(["set-default-sink", &sink_id.to_string()])
+                    .status();
+                Ok(true)
+            }
+        }
+    })
+    .await
+    .map_err(|e| format!("Erreur thread changement sink : {}", e))?
+}
+
+/* ========================================================================= */
 /* GESTION DES PROFILS D'UPSCALE MPV (AMD, NVIDIA, INTEL)                     */
 /* ========================================================================= */
 
@@ -1326,4 +1455,51 @@ pub async fn set_upscale_profile(profile_id: String) -> Result<bool, String> {
 
     Ok(true)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_audio_sinks() {
+        let sample = r#"
+PipeWire 'pipewire-0' [1.6.8, chomiam@pop-os]
+Audio
+ ├─ Devices:
+ │      91. Family 17h/19h HD Audio Controller  [alsa]
+ │      92. Arctis Nova 7X                      [alsa]
+ │      94. HDA ATI HDMI                        [alsa]
+ │  
+ ├─ Sinks:
+ │      46. HDA ATI HDMI Digital Stereo (HDMI 3) [vol: 0.40]
+ │  *   59. Arctis Nova 7X Stéréo analogique  [vol: 0.75]
+ │      88. Family 17h/19h HD Audio Controller Stéréo analogique [vol: 0.40]
+ │  
+ ├─ Sources:
+ │  *   54. Arctis Nova 7X Mono                 [vol: 0.73]
+ │     104. Family 17h/19h HD Audio Controller Stéréo analogique [vol: 1.00]
+"#;
+
+        let sinks = parse_audio_sinks(sample);
+        assert_eq!(sinks.len(), 3);
+
+        assert_eq!(sinks[0].id, 46);
+        assert_eq!(sinks[0].name, "HDA ATI HDMI Digital Stereo (HDMI 3)");
+        assert!(!sinks[0].is_default);
+        assert_eq!(sinks[0].volume_percent, 40);
+        assert_eq!(sinks[0].icon, "📺");
+
+        assert_eq!(sinks[1].id, 59);
+        assert_eq!(sinks[1].name, "Arctis Nova 7X Stéréo analogique");
+        assert!(sinks[1].is_default);
+        assert_eq!(sinks[1].volume_percent, 75);
+        assert_eq!(sinks[1].icon, "🎧");
+
+        assert_eq!(sinks[2].id, 88);
+        assert_eq!(sinks[2].name, "Family 17h/19h HD Audio Controller Stéréo analogique");
+        assert!(!sinks[2].is_default);
+        assert_eq!(sinks[2].volume_percent, 40);
+    }
+}
+
 
