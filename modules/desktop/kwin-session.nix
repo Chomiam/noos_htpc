@@ -97,20 +97,21 @@ EOF
     # 3. Détection intelligente de l'écran : HDR natif / Wide Color Gamut (Rec.2020)
     ${lib.optionalString gpuCfg.enableHDR ''
     (
+      sleep 3
       export WAYLAND_DISPLAY=wayland-0
       export XDG_RUNTIME_DIR=/run/user/1000
-      for i in $(seq 1 15); do
-        sleep 1
-        if ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor -j >/dev/null 2>&1; then
+      for i in $(seq 1 10); do
+        if timeout 2 ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor -j >/dev/null 2>&1; then
           echo "[Noos HTPC] Affichage compatible détecté : activation de l'espace colorimétrique Rec.2020 / HDR..."
-          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.1.wcg.enable || true
-          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.1.hdr.enable || true
-          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.HDMI-A-1.wcg.enable || true
-          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.HDMI-A-1.hdr.enable || true
-          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.DP-1.wcg.enable || true
-          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.DP-1.hdr.enable || true
+          timeout 2 ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.1.wcg.enable || true
+          timeout 2 ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.1.hdr.enable || true
+          timeout 2 ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.HDMI-A-1.wcg.enable || true
+          timeout 2 ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.HDMI-A-1.hdr.enable || true
+          timeout 2 ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.DP-1.wcg.enable || true
+          timeout 2 ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.DP-1.hdr.enable || true
           break
         fi
+        sleep 1
       done
     ) &
     ''}
@@ -145,7 +146,8 @@ EOF
     if ${pkgs.kdePackages.kwin}/bin/kwin_wayland \
          --no-lockscreen \
          --xwayland \
-         --exit-with-session ${dashboardPkg}/bin/noos-tv-dashboard; then
+         --exit-with-session ${dashboardPkg}/bin/noos-tv-dashboard \
+         ${dashboardPkg}/bin/noos-tv-dashboard; then
       exit 0
     fi
 
