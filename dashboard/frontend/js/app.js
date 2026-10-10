@@ -2101,17 +2101,31 @@
     categories.forEach(c => {
       const row = document.createElement('label');
       row.className = 'filter-checkbox-item';
-      const isHidden = iptvHiddenCategories.has(c.category_id);
+      row.setAttribute('tabindex', '0');
+      const isHidden = iptvHiddenCategories.has(String(c.category_id));
       row.innerHTML = `
         <span class="filter-item-name">${escapeHtml(c.category_name)}</span>
-        <input type="checkbox" class="filter-toggle-box" data-cat-id="${c.category_id}" ${isHidden ? '' : 'checked'} />
+        <input type="checkbox" class="filter-toggle-box" data-cat-id="${c.category_id}" ${isHidden ? '' : 'checked'} tabindex="-1" />
       `;
 
-      row.querySelector('input').addEventListener('change', (e) => {
-        if (e.target.checked) {
-          iptvHiddenCategories.delete(c.category_id);
+      const input = row.querySelector('input');
+      const toggle = () => {
+        const idStr = String(c.category_id);
+        if (input.checked) {
+          iptvHiddenCategories.delete(idStr);
         } else {
-          iptvHiddenCategories.add(c.category_id);
+          iptvHiddenCategories.add(idStr);
+        }
+      };
+
+      input.addEventListener('change', toggle);
+
+      row.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          input.checked = !input.checked;
+          toggle();
+          playConfirmSound();
         }
       });
 
@@ -2143,6 +2157,7 @@
     document.querySelectorAll('.filter-toggle-box').forEach(box => {
       box.checked = true;
     });
+    showNotification('Toutes les catégories sont maintenant visibles');
   }
 
   // Gestion des Paramètres MPV (Shaders & Upscale)
@@ -2651,6 +2666,23 @@
             playTickSound();
           }
         } else if (dir === 'down') {
+          if (currentIptvTab === 'filters') {
+            const btnUnhide = document.getElementById('btn-filters-unhide-all');
+            const target = btnUnhide || document.getElementById('btn-filters-save');
+            if (target) {
+              target.focus();
+              playTickSound();
+            }
+            return;
+          }
+          if (currentIptvTab === 'settings') {
+            const selUpscale = document.getElementById('iptv-select-upscale');
+            if (selUpscale) {
+              selUpscale.focus();
+              playTickSound();
+            }
+            return;
+          }
           // Descendre vers les catégories ou directement vers les jaquettes
           const activeCat = document.querySelector('#iptv-categories-list .cat-item-btn.active') || catItems[0];
           if (activeCat) {
@@ -2723,7 +2755,128 @@
           const currentTabBtn = document.querySelector('.iptv-nav-tabs .iptv-tab-btn[data-tab="live"]');
           if (currentTabBtn) currentTabBtn.focus();
         }
-        return;
+      // --- ZONE 6 : NAVIGATION DANS L'ONGLET FILTRES (CATÉGORIES À MASQUER / AFFICHER) ---
+      if (currentIptvTab === 'filters') {
+        const btnUnhide = document.getElementById('btn-filters-unhide-all');
+        const btnSave = document.getElementById('btn-filters-save');
+        const isFilterHeaderBtn = activeEl === btnUnhide || activeEl === btnSave;
+        const isFilterItem = activeEl && activeEl.classList.contains('filter-checkbox-item');
+
+        if (isFilterHeaderBtn) {
+          if (dir === 'up') {
+            const tabFilters = document.querySelector('.iptv-nav-tabs .iptv-tab-btn[data-tab="filters"]');
+            if (tabFilters) {
+              tabFilters.focus();
+              playTickSound();
+            }
+          } else if (dir === 'right') {
+            if (activeEl === btnUnhide && btnSave) {
+              btnSave.focus();
+              playTickSound();
+            }
+          } else if (dir === 'left') {
+            if (activeEl === btnSave && btnUnhide) {
+              btnUnhide.focus();
+              playTickSound();
+            } else if (activeEl === btnUnhide) {
+              const btnBack = document.getElementById('btn-iptv-main-back');
+              if (btnBack) btnBack.focus();
+            }
+          } else if (dir === 'down') {
+            const firstItem = document.querySelector('#filters-list-live .filter-checkbox-item') ||
+                              document.querySelector('#filters-list-vod .filter-checkbox-item') ||
+                              document.querySelector('#filters-list-series .filter-checkbox-item');
+            if (firstItem) {
+              firstItem.focus();
+              firstItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              playTickSound();
+            }
+          }
+          return;
+        }
+
+        if (isFilterItem) {
+          const colLive = Array.from(document.querySelectorAll('#filters-list-live .filter-checkbox-item'));
+          const colVod = Array.from(document.querySelectorAll('#filters-list-vod .filter-checkbox-item'));
+          const colSeries = Array.from(document.querySelectorAll('#filters-list-series .filter-checkbox-item'));
+
+          let currentCol = colLive;
+          let colIndex = 0;
+          if (colVod.includes(activeEl)) {
+            currentCol = colVod;
+            colIndex = 1;
+          } else if (colSeries.includes(activeEl)) {
+            currentCol = colSeries;
+            colIndex = 2;
+          }
+
+          const idx = currentCol.indexOf(activeEl);
+
+          if (dir === 'down') {
+            if (idx + 1 < currentCol.length) {
+              currentCol[idx + 1].focus();
+              currentCol[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              playTickSound();
+            }
+          } else if (dir === 'up') {
+            if (idx > 0) {
+              currentCol[idx - 1].focus();
+              currentCol[idx - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              playTickSound();
+            } else {
+              // En haut de la colonne -> remonter aux boutons d'action
+              if (colIndex === 0 && btnUnhide) {
+                btnUnhide.focus();
+              } else if (btnSave) {
+                btnSave.focus();
+              }
+              playTickSound();
+            }
+          } else if (dir === 'right') {
+            let nextCol = null;
+            if (colIndex === 0) nextCol = colVod.length > 0 ? colVod : colSeries;
+            else if (colIndex === 1) nextCol = colSeries;
+
+            if (nextCol && nextCol.length > 0) {
+              const targetIdx = Math.min(idx, nextCol.length - 1);
+              nextCol[targetIdx].focus();
+              nextCol[targetIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              playTickSound();
+            }
+          } else if (dir === 'left') {
+            let prevCol = null;
+            if (colIndex === 2) prevCol = colVod.length > 0 ? colVod : colLive;
+            else if (colIndex === 1) prevCol = colLive;
+
+            if (prevCol && prevCol.length > 0) {
+              const targetIdx = Math.min(idx, prevCol.length - 1);
+              prevCol[targetIdx].focus();
+              prevCol[targetIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              playTickSound();
+            }
+          }
+          return;
+        }
+
+        // Repli pour l'onglet Filtres : cibler le premier bouton ou première case
+        const firstFocus = btnSave || btnUnhide || document.querySelector('.filter-checkbox-item');
+        if (firstFocus) {
+          firstFocus.focus();
+          return;
+        }
+      }
+
+      // --- ZONE 7 : NAVIGATION DANS L'ONGLET PARAMÈTRES MPV ---
+      if (currentIptvTab === 'settings') {
+        const selUpscale = document.getElementById('iptv-select-upscale');
+        if (activeEl === selUpscale) {
+          if (dir === 'up') {
+            const tabSettings = document.querySelector('.iptv-nav-tabs .iptv-tab-btn[data-tab="settings"]');
+            if (tabSettings) tabSettings.focus();
+            playTickSound();
+          }
+          return;
+        }
       }
 
       // Repli si aucun focus reconnu : cibler la 1ère jaquette ou catégorie
