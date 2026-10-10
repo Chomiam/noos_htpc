@@ -1551,10 +1551,20 @@ pub async fn iptv_toggle_favorite(profile_id: String, item: IptvFavorite) -> Res
 pub async fn iptv_play_stream(
     profile_id: String,
     item_type: String,
-    stream_id: u64,
+    stream_id: serde_json::Value,
     extension: Option<String>,
 ) -> Result<String, String> {
     tokio::task::spawn_blocking(move || {
+        let stream_id_str = if let Some(s) = stream_id.as_str() {
+            s.to_string()
+        } else if let Some(u) = stream_id.as_u64() {
+            u.to_string()
+        } else if let Some(i) = stream_id.as_i64() {
+            i.to_string()
+        } else {
+            stream_id.to_string().trim_matches('"').to_string()
+        };
+
         let profiles = load_internal_profiles();
         let p = profiles.into_iter().find(|x| x.id == profile_id);
 
@@ -1579,10 +1589,10 @@ pub async fn iptv_play_stream(
         } else {
             let clean_url = clean_server_url(&server_url);
             match item_type.as_str() {
-                "live" => format!("{}/live/{}/{}/{}.{}", clean_url, username, password, stream_id, ext),
-                "movie" => format!("{}/movie/{}/{}/{}.{}", clean_url, username, password, stream_id, ext),
-                "series" => format!("{}/series/{}/{}/{}.{}", clean_url, username, password, stream_id, ext),
-                _ => format!("{}/live/{}/{}/{}.{}", clean_url, username, password, stream_id, ext),
+                "live" => format!("{}/live/{}/{}/{}.{}", clean_url, username, password, stream_id_str, ext),
+                "movie" => format!("{}/movie/{}/{}/{}.{}", clean_url, username, password, stream_id_str, ext),
+                "series" => format!("{}/series/{}/{}/{}.{}", clean_url, username, password, stream_id_str, ext),
+                _ => format!("{}/live/{}/{}/{}.{}", clean_url, username, password, stream_id_str, ext),
             }
         };
 
@@ -1671,8 +1681,6 @@ pub async fn iptv_play_stream(
             }
         }
 
-        mpv_cmd.arg(&stream_url);
-
         if settings.deband {
             mpv_cmd.args(["--deband=yes", "--deband-iterations=4", "--deband-threshold=48"]);
         }
@@ -1690,6 +1698,8 @@ pub async fn iptv_play_stream(
                 mpv_cmd.arg("--video-sync=audio");
             }
         }
+
+        mpv_cmd.arg(&stream_url);
 
         let child = mpv_cmd.spawn()
             .map_err(|e| format!("Erreur lors du lancement de MPV : {}", e))?;

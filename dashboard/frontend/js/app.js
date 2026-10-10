@@ -183,6 +183,7 @@
   let currentLiveStream = null;
   let currentDetailsItem = null;
   let currentDetailsType = 'movie';
+  let currentSeriesFirstEpisode = null;
   let iptvCatalogCache = {
     live: null,
     vod: null,
@@ -1870,7 +1871,10 @@
 
     if (seasons.length > 0) {
       const firstSeasonEps = details.episodes[String(seasons[0])] || [];
+      currentSeriesFirstEpisode = firstSeasonEps[0] || null;
       renderEpisodesList(firstSeasonEps);
+    } else {
+      currentSeriesFirstEpisode = null;
     }
   }
 
@@ -1887,23 +1891,31 @@
       const epRow = document.createElement('div');
       epRow.className = 'episode-card-item';
       epRow.tabIndex = 0;
+      epRow.setAttribute('data-episode-id', ep.id);
       epRow.innerHTML = `
         <div class="episode-meta-col">
           <div class="episode-title-txt">Épisode ${ep.episode_num} • ${escapeHtml(ep.title)}</div>
           <div class="episode-plot-txt">${escapeHtml(ep.plot || 'Épisode complet de haute qualité vidéo.')}</div>
         </div>
-        <button class="episode-play-btn">▶ Lecture</button>
+        <button class="episode-play-btn" tabindex="-1">▶ Lecture</button>
       `;
 
-      epRow.addEventListener('click', () => {
+      const startEpisode = (e) => {
+        if (e) e.stopPropagation();
         playIptvStream('series', ep.id, ep.container_extension || 'mp4');
-      });
+      };
 
+      epRow.addEventListener('click', startEpisode);
       epRow.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-          playIptvStream('series', ep.id, ep.container_extension || 'mp4');
+          startEpisode(e);
         }
       });
+
+      const playBtn = epRow.querySelector('.episode-play-btn');
+      if (playBtn) {
+        playBtn.addEventListener('click', startEpisode);
+      }
 
       detailsEpisodesList.appendChild(epRow);
     });
@@ -2383,7 +2395,7 @@
 
     // 1. Modale de détails Film / Série ouverte
     if (modalIptvDetails && !modalIptvDetails.classList.contains('hidden')) {
-      const detailButtons = Array.from(modalIptvDetails.querySelectorAll('button:not([disabled]):not(.hidden), .season-pill-btn:not(.hidden), .episode-btn:not(.hidden), .episode-row:not(.hidden)'));
+      const detailButtons = Array.from(modalIptvDetails.querySelectorAll('button:not([disabled]):not(.hidden):not(.episode-play-btn), .season-pill-btn:not(.hidden), .episode-card-item:not(.hidden)'));
       if (detailButtons.length === 0) return;
       const currentIdx = detailButtons.indexOf(document.activeElement);
       if (currentIdx === -1) {
@@ -2756,7 +2768,11 @@
         if (currentDetailsType === 'movie') {
           playIptvStream('movie', currentDetailsItem.stream_id, currentDetailsItem.container_extension || 'mkv');
         } else if (currentDetailsType === 'series') {
-          playIptvStream('series', currentDetailsItem.series_id, 'mp4');
+          if (currentSeriesFirstEpisode) {
+            playIptvStream('series', currentSeriesFirstEpisode.id, currentSeriesFirstEpisode.container_extension || 'mp4');
+          } else {
+            console.warn('Aucun premier épisode disponible pour cette série.');
+          }
         }
       }
     });
