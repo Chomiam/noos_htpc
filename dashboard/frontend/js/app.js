@@ -122,11 +122,23 @@
   const iptvVodGrid = document.getElementById('iptv-vod-grid');
   const vodCatTitle = document.getElementById('vod-cat-title');
   const vodItemsCount = document.getElementById('vod-items-count');
+  const vodPageInfo = document.getElementById('vod-page-info');
+  const btnVodPrevPage = document.getElementById('btn-vod-prev-page');
+  const btnVodNextPage = document.getElementById('btn-vod-next-page');
+
   const iptvSeriesGrid = document.getElementById('iptv-series-grid');
   const seriesCatTitle = document.getElementById('series-cat-title');
   const seriesItemsCount = document.getElementById('series-items-count');
+  const seriesPageInfo = document.getElementById('series-page-info');
+  const btnSeriesPrevPage = document.getElementById('btn-series-prev-page');
+  const btnSeriesNextPage = document.getElementById('btn-series-next-page');
+
   const iptvFavoritesGrid = document.getElementById('iptv-favorites-grid');
   const favoritesCount = document.getElementById('favorites-count');
+
+  const ITEMS_PER_PAGE = 30; // 30 jaquettes par page pour garantir affichage instantané et fluidité
+  let currentVodPage = 1;
+  let currentSeriesPage = 1;
 
   // Éléments Filtres
   const filtersListLive = document.getElementById('filters-list-live');
@@ -1448,13 +1460,89 @@
       const filtered = allMovies.filter(m => m.category_id == catId || catId === 'all');
       if (vodCatTitle) vodCatTitle.textContent = catName;
       if (vodItemsCount) vodItemsCount.textContent = `${filtered.length} film${filtered.length > 1 ? 's' : ''}`;
-      renderPostersGrid(filtered, iptvVodGrid, 'movie');
+      currentVodPage = 1;
+      renderVodPage(filtered);
     } else if (currentIptvTab === 'series') {
       const allSeries = cache.series_streams || [];
       const filtered = allSeries.filter(s => s.category_id == catId || catId === 'all');
       if (seriesCatTitle) seriesCatTitle.textContent = catName;
       if (seriesItemsCount) seriesItemsCount.textContent = `${filtered.length} série${filtered.length > 1 ? 's' : ''}`;
-      renderPostersGrid(filtered, iptvSeriesGrid, 'series');
+      currentSeriesPage = 1;
+      renderSeriesPage(filtered);
+    }
+  }
+
+  function renderVodPage(filtered) {
+    const totalItems = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+    if (currentVodPage > totalPages) currentVodPage = totalPages;
+    if (currentVodPage < 1) currentVodPage = 1;
+
+    const startIdx = (currentVodPage - 1) * ITEMS_PER_PAGE;
+    const pageItems = filtered.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+
+    if (vodPageInfo) vodPageInfo.textContent = `Page ${currentVodPage} / ${totalPages}`;
+    if (btnVodPrevPage) btnVodPrevPage.disabled = (currentVodPage <= 1);
+    if (btnVodNextPage) btnVodNextPage.disabled = (currentVodPage >= totalPages);
+
+    renderPostersGrid(pageItems, iptvVodGrid, 'movie');
+    if (iptvVodGrid) iptvVodGrid.scrollTop = 0;
+  }
+
+  function renderSeriesPage(filtered) {
+    const totalItems = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+    if (currentSeriesPage > totalPages) currentSeriesPage = totalPages;
+    if (currentSeriesPage < 1) currentSeriesPage = 1;
+
+    const startIdx = (currentSeriesPage - 1) * ITEMS_PER_PAGE;
+    const pageItems = filtered.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+
+    if (seriesPageInfo) seriesPageInfo.textContent = `Page ${currentSeriesPage} / ${totalPages}`;
+    if (btnSeriesPrevPage) btnSeriesPrevPage.disabled = (currentSeriesPage <= 1);
+    if (btnSeriesNextPage) btnSeriesNextPage.disabled = (currentSeriesPage >= totalPages);
+
+    renderPostersGrid(pageItems, iptvSeriesGrid, 'series');
+    if (iptvSeriesGrid) iptvSeriesGrid.scrollTop = 0;
+  }
+
+  function changeIptvPage(direction) {
+    if (currentIptvTab === 'vod') {
+      const cache = iptvCatalogCache['vod'];
+      if (!cache) return;
+      const allMovies = cache.vod_streams || [];
+      const filtered = allMovies.filter(m => m.category_id == currentIptvCategory || currentIptvCategory === 'all');
+      const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+      const targetPage = currentVodPage + direction;
+      if (targetPage >= 1 && targetPage <= totalPages) {
+        currentVodPage = targetPage;
+        playNavSound();
+        renderVodPage(filtered);
+        setTimeout(() => {
+          if (iptvVodGrid) {
+            const firstCard = iptvVodGrid.querySelector('.poster-card');
+            if (firstCard) firstCard.focus();
+          }
+        }, 50);
+      }
+    } else if (currentIptvTab === 'series') {
+      const cache = iptvCatalogCache['series'];
+      if (!cache) return;
+      const allSeries = cache.series_streams || [];
+      const filtered = allSeries.filter(s => s.category_id == currentIptvCategory || currentIptvCategory === 'all');
+      const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+      const targetPage = currentSeriesPage + direction;
+      if (targetPage >= 1 && targetPage <= totalPages) {
+        currentSeriesPage = targetPage;
+        playNavSound();
+        renderSeriesPage(filtered);
+        setTimeout(() => {
+          if (iptvSeriesGrid) {
+            const firstCard = iptvSeriesGrid.querySelector('.poster-card');
+            if (firstCard) firstCard.focus();
+          }
+        }, 50);
+      }
     }
   }
 
@@ -2399,18 +2487,23 @@
             cards[idx - 1].focus();
             cards[idx - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             playTickSound();
-          }
         } else if (dir === 'up') {
           if (idx - cols >= 0) {
             cards[idx - cols].focus();
             cards[idx - cols].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             playTickSound();
           } else {
-            // Première ligne : monter vers les onglets supérieurs
-            const currentTabBtn = document.querySelector(`.iptv-nav-tabs .iptv-tab-btn[data-tab="${currentIptvTab}"]`) || tabBtns[0];
-            if (currentTabBtn) {
-              currentTabBtn.focus();
+            // Première ligne : monter vers les contrôles de pagination ou onglets
+            const nextBtn = currentIptvTab === 'vod' ? btnVodNextPage : btnSeriesNextPage;
+            if (nextBtn && !nextBtn.disabled && (currentIptvTab === 'vod' || currentIptvTab === 'series')) {
+              nextBtn.focus();
               playTickSound();
+            } else {
+              const currentTabBtn = document.querySelector(`.iptv-nav-tabs .iptv-tab-btn[data-tab="${currentIptvTab}"]`) || tabBtns[0];
+              if (currentTabBtn) {
+                currentTabBtn.focus();
+                playTickSound();
+              }
             }
           }
         } else if (dir === 'down') {
@@ -2418,12 +2511,56 @@
             cards[idx + cols].focus();
             cards[idx + cols].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             playTickSound();
-            if (idx + cols >= cards.length - 25 && activeGrid._appendBatch) {
-              activeGrid._appendBatch();
-            }
           } else if (idx < cards.length - 1) {
             cards[cards.length - 1].focus();
             cards[cards.length - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            playTickSound();
+          } else if (currentIptvTab === 'vod' || currentIptvTab === 'series') {
+            // Fin de la page courante : basculer automatiquement vers la page suivante
+            changeIptvPage(1);
+          }
+        }
+        return;
+      }
+
+      // --- ZONE 1.5 : NAVIGATION DANS LES CONTRÔLES DE PAGINATION ---
+      const isPaginationBtn = activeEl === btnVodPrevPage || activeEl === btnVodNextPage || activeEl === btnSeriesPrevPage || activeEl === btnSeriesNextPage;
+      if (isPaginationBtn) {
+        if (dir === 'down') {
+          if (activeGrid) {
+            const firstCard = activeGrid.querySelector('.poster-card');
+            if (firstCard) {
+              firstCard.focus();
+              firstCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              playTickSound();
+            }
+          }
+        } else if (dir === 'up') {
+          const currentTabBtn = document.querySelector(`.iptv-nav-tabs .iptv-tab-btn[data-tab="${currentIptvTab}"]`) || tabBtns[0];
+          if (currentTabBtn) {
+            currentTabBtn.focus();
+            playTickSound();
+          }
+        } else if (dir === 'left') {
+          if (activeEl === btnVodNextPage && btnVodPrevPage && !btnVodPrevPage.disabled) {
+            btnVodPrevPage.focus();
+            playTickSound();
+          } else if (activeEl === btnSeriesNextPage && btnSeriesPrevPage && !btnSeriesPrevPage.disabled) {
+            btnSeriesPrevPage.focus();
+            playTickSound();
+          } else {
+            const activeCat = document.querySelector('#iptv-categories-list .cat-item-btn.active') || catItems[0];
+            if (activeCat) {
+              activeCat.focus();
+              playTickSound();
+            }
+          }
+        } else if (dir === 'right') {
+          if (activeEl === btnVodPrevPage && btnVodNextPage && !btnVodNextPage.disabled) {
+            btnVodNextPage.focus();
+            playTickSound();
+          } else if (activeEl === btnSeriesPrevPage && btnSeriesNextPage && !btnSeriesNextPage.disabled) {
+            btnSeriesNextPage.focus();
             playTickSound();
           }
         }
@@ -2641,6 +2778,11 @@
     });
   });
 
+  if (btnVodPrevPage) btnVodPrevPage.addEventListener('click', () => changeIptvPage(-1));
+  if (btnVodNextPage) btnVodNextPage.addEventListener('click', () => changeIptvPage(1));
+  if (btnSeriesPrevPage) btnSeriesPrevPage.addEventListener('click', () => changeIptvPage(-1));
+  if (btnSeriesNextPage) btnSeriesNextPage.addEventListener('click', () => changeIptvPage(1));
+
   if (btnChannelStable) btnChannelStable.addEventListener('click', () => setChannel('stable'));
   if (btnChannelTesting) btnChannelTesting.addEventListener('click', () => setChannel('testing'));
   if (btnCheckUpdates) btnCheckUpdates.addEventListener('click', () => checkForUpdates(currentChannel));
@@ -2745,14 +2887,32 @@
         return;
       }
 
-      // Bumpers clavier (Q / E / PageUp / PageDown) pour cycler les onglets IPTV
-      if (e.key === 'PageUp' || e.key === 'q' || e.key === 'Q') {
+      // Touches PageUp / PageDown ou [ / ] pour changer de page dans les jaquettes
+      if (e.key === 'PageUp' || e.key === '[') {
+        if (iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
+          if (currentIptvTab === 'vod' || currentIptvTab === 'series') {
+            changeIptvPage(-1);
+            return;
+          }
+        }
+      }
+      if (e.key === 'PageDown' || e.key === ']') {
+        if (iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
+          if (currentIptvTab === 'vod' || currentIptvTab === 'series') {
+            changeIptvPage(1);
+            return;
+          }
+        }
+      }
+
+      // Bumpers clavier Q / E pour cycler les onglets IPTV
+      if (e.key === 'q' || e.key === 'Q') {
         if (iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
           cycleIptvTab(-1);
           return;
         }
       }
-      if (e.key === 'PageDown' || e.key === 'e' || e.key === 'E') {
+      if (e.key === 'e' || e.key === 'E') {
         if (iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
           cycleIptvTab(1);
           return;
@@ -2891,6 +3051,8 @@
       const btnY = gp.buttons[3]?.pressed;       // Triangle / Y (Alimentation)
       const btnLB = gp.buttons[4]?.pressed;      // Bumper Gauche (LB / L1) -> Onglet précédent
       const btnRB = gp.buttons[5]?.pressed;      // Bumper Droit (RB / R1) -> Onglet suivant
+      const btnLT = gp.buttons[6]?.pressed;      // Gâchette Gauche (LT / L2) -> Page précédente
+      const btnRT = gp.buttons[7]?.pressed;      // Gâchette Droite (RT / R2) -> Page suivante
       const btnHome = gp.buttons[16]?.pressed;   // Guide / Xbox / PS / Home (Bouton HOME)
 
       // Sticks analogiques avec zone morte 0.45
@@ -2997,6 +3159,22 @@
         }
       }
 
+      // Gâchettes LT / RT pour tourner les pages dans les catalogues Films & Séries
+      if (btnLT && !prevButtonsState['LT']) {
+        if (isIptvModalOpen && iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
+          if (currentIptvTab === 'vod' || currentIptvTab === 'series') {
+            changeIptvPage(-1);
+          }
+        }
+      }
+      if (btnRT && !prevButtonsState['RT']) {
+        if (isIptvModalOpen && iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
+          if (currentIptvTab === 'vod' || currentIptvTab === 'series') {
+            changeIptvPage(1);
+          }
+        }
+      }
+
       // Action HOME (Retour direct au lanceur / Accueil TV)
       if (btnHome && !prevButtonsState['Home']) {
         playConfirmSound();
@@ -3099,6 +3277,8 @@
       prevButtonsState['Y'] = btnY;
       prevButtonsState['LB'] = btnLB;
       prevButtonsState['RB'] = btnRB;
+      prevButtonsState['LT'] = btnLT;
+      prevButtonsState['RT'] = btnRT;
       prevButtonsState['Home'] = btnHome;
       prevButtonsState['Start'] = btnStart;
     }

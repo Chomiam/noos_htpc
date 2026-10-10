@@ -785,22 +785,44 @@
               </div>
             </div>
 
-            <!-- Sous-vue 2 : Films (Grille de jaquettes) -->
+            <!-- Sous-vue 2 : Films (Grille de jaquettes avec pagination fluide) -->
             <div id="iptv-subview-vod" class="iptv-subview hidden">
               <div class="posters-grid-header">
-                <span id="vod-cat-title" class="section-title">Catalogue Films</span>
-                <span id="vod-items-count" class="badge-count">0 film</span>
+                <div class="header-left-meta">
+                  <span id="vod-cat-title" class="section-title">Catalogue Films</span>
+                  <span id="vod-items-count" class="badge-count">0 film</span>
+                </div>
+                <div class="header-pagination" id="vod-pagination-controls">
+                  <button id="btn-vod-prev-page" class="btn-page-nav" title="Page précédente (LT)">
+                    <span class="btn-key-hint">LT</span> ◀ Précédent
+                  </button>
+                  <span id="vod-page-info" class="page-indicator">Page 1 / 1</span>
+                  <button id="btn-vod-next-page" class="btn-page-nav" title="Page suivante (RT)">
+                    Suivant ▶ <span class="btn-key-hint">RT</span>
+                  </button>
+                </div>
               </div>
               <div id="iptv-vod-grid" class="iptv-posters-grid">
                 <!-- Injecté dynamiquement -->
               </div>
             </div>
 
-            <!-- Sous-vue 3 : Séries (Grille de jaquettes) -->
+            <!-- Sous-vue 3 : Séries (Grille de jaquettes avec pagination fluide) -->
             <div id="iptv-subview-series" class="iptv-subview hidden">
               <div class="posters-grid-header">
-                <span id="series-cat-title" class="section-title">Catalogue Séries</span>
-                <span id="series-items-count" class="badge-count">0 série</span>
+                <div class="header-left-meta">
+                  <span id="series-cat-title" class="section-title">Catalogue Séries</span>
+                  <span id="series-items-count" class="badge-count">0 série</span>
+                </div>
+                <div class="header-pagination" id="series-pagination-controls">
+                  <button id="btn-series-prev-page" class="btn-page-nav" title="Page précédente (LT)">
+                    <span class="btn-key-hint">LT</span> ◀ Précédent
+                  </button>
+                  <span id="series-page-info" class="page-indicator">Page 1 / 1</span>
+                  <button id="btn-series-next-page" class="btn-page-nav" title="Page suivante (RT)">
+                    Suivant ▶ <span class="btn-key-hint">RT</span>
+                  </button>
+                </div>
               </div>
               <div id="iptv-series-grid" class="iptv-posters-grid">
                 <!-- Injecté dynamiquement -->
