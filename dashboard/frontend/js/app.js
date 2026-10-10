@@ -2487,6 +2487,7 @@
             cards[idx - 1].focus();
             cards[idx - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             playTickSound();
+          }
         } else if (dir === 'up') {
           if (idx - cols >= 0) {
             cards[idx - cols].focus();
@@ -3038,8 +3039,21 @@
   const prevButtonsState = {};
 
   function pollGamepad() {
-    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-    const gp = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
+    const rawGps = navigator.getGamepads ? navigator.getGamepads() : [];
+    let gp = null;
+    for (let i = 0; i < rawGps.length; i++) {
+      const g = rawGps[i];
+      if (g && g.connected) {
+        if (!gp) gp = g;
+        // Priorité à la manette ayant une action physique en cours
+        const hasBtn = g.buttons && g.buttons.some(b => b && b.pressed);
+        const hasAxis = g.axes && g.axes.some(a => Math.abs(a) > 0.4);
+        if (hasBtn || hasAxis) {
+          gp = g;
+          break;
+        }
+      }
+    }
 
     if (gp) {
       const now = performance.now();
@@ -3063,25 +3077,29 @@
       const dpadUp = gp.buttons[12]?.pressed;
       const dpadDown = gp.buttons[13]?.pressed;
 
-      const stickLeft = axisX < -0.45;
-      const stickRight = axisX > 0.45;
-      const stickUp = axisY < -0.45;
-      const stickDown = axisY > 0.45;
+      // Axes D-pad / Hat alternatifs (manettes DirectInput / 8BitDo)
+      const hatX = (gp.axes.length > 4 && Math.abs(gp.axes[4]) > 0.45) ? gp.axes[4] : ((gp.axes.length > 6 && Math.abs(gp.axes[6]) > 0.45) ? gp.axes[6] : 0);
+      const hatY = (gp.axes.length > 5 && Math.abs(gp.axes[5]) > 0.45) ? gp.axes[5] : ((gp.axes.length > 7 && Math.abs(gp.axes[7]) > 0.45) ? gp.axes[7] : 0);
+
+      const isLeft = dpadLeft || (axisX < -0.45) || (hatX < -0.45);
+      const isRight = dpadRight || (axisX > 0.45) || (hatX > 0.45);
+      const isUp = dpadUp || (axisY < -0.45) || (hatY < -0.45);
+      const isDown = dpadDown || (axisY > 0.45) || (hatY > 0.45);
 
       // Navigation Horizontale / Verticale D-Pad / Stick
       if (now - lastNavTime > NAV_COOLDOWN) {
         if (window.TVKeyboard && window.TVKeyboard.isOpen() && window.TVKeyboard.isFocused()) {
           // Navigation précise dans la grille du clavier virtuel TV
-          if (dpadRight || stickRight) {
+          if (isRight) {
             window.TVKeyboard.moveFocus(0, 1);
             lastNavTime = now;
-          } else if (dpadLeft || stickLeft) {
+          } else if (isLeft) {
             window.TVKeyboard.moveFocus(0, -1);
             lastNavTime = now;
-          } else if (dpadDown || stickDown) {
+          } else if (isDown) {
             window.TVKeyboard.moveFocus(1, 0);
             lastNavTime = now;
-          } else if (dpadUp || stickUp) {
+          } else if (isUp) {
             if (window.TVKeyboard.canMoveUp()) {
               window.TVKeyboard.moveFocus(-1, 0);
             } else {
@@ -3089,24 +3107,30 @@
             }
             lastNavTime = now;
           }
-        } else if (window.TVKeyboard && window.TVKeyboard.isOpen() && (dpadDown || stickDown) && window.TVKeyboard.getTargetInput() === document.activeElement) {
+        } else if (window.TVKeyboard && window.TVKeyboard.isOpen() && isDown && window.TVKeyboard.getTargetInput() === document.activeElement) {
           // Entrer dans le clavier virtuel depuis le champ sélectionné
           window.TVKeyboard.focusKeys(0, 4);
           lastNavTime = now;
         } else if (!isAnyModalOpen()) {
-          if (dpadRight || stickRight) {
+          if (isRight) {
             selectCard(currentIndex + 1);
             lastNavTime = now;
-          } else if (dpadLeft || stickLeft) {
+          } else if (isLeft) {
             selectCard(currentIndex - 1);
+            lastNavTime = now;
+          } else if (isUp) {
+            cycleCategory(-1);
+            lastNavTime = now;
+          } else if (isDown) {
+            cycleCategory(1);
             lastNavTime = now;
           }
         } else if (isIptvModalOpen && !isIptvSyncing) {
           let dir = null;
-          if (dpadRight || stickRight) dir = 'right';
-          else if (dpadLeft || stickLeft) dir = 'left';
-          else if (dpadDown || stickDown) dir = 'down';
-          else if (dpadUp || stickUp) dir = 'up';
+          if (isRight) dir = 'right';
+          else if (isLeft) dir = 'left';
+          else if (isDown) dir = 'down';
+          else if (isUp) dir = 'up';
 
           if (dir) {
             navigateIptvSpatial(dir);
@@ -3115,24 +3139,24 @@
         } else if (isModalOpen) {
           const activeEl = document.activeElement;
           const isSlider = activeEl && activeEl.id === 'master-volume-slider';
-          if (isSlider && (dpadRight || stickRight)) {
+          if (isSlider && isRight) {
             adjustMasterVolume(5);
             lastNavTime = now;
-          } else if (isSlider && (dpadLeft || stickLeft)) {
+          } else if (isSlider && isLeft) {
             adjustMasterVolume(-5);
             lastNavTime = now;
-          } else if (dpadRight || stickRight || dpadDown || stickDown) {
+          } else if (isRight || isDown) {
             navigateModalFocus(modalSettings, 1);
             lastNavTime = now;
-          } else if (dpadLeft || stickLeft || dpadUp || stickUp) {
+          } else if (isLeft || isUp) {
             navigateModalFocus(modalSettings, -1);
             lastNavTime = now;
           }
         } else if (isUpdateModalOpen) {
-          if (dpadRight || stickRight || dpadDown || stickDown) {
+          if (isRight || isDown) {
             navigateModalFocus(modalUpdate, 1);
             lastNavTime = now;
-          } else if (dpadLeft || stickLeft || dpadUp || stickUp) {
+          } else if (isLeft || isUp) {
             navigateModalFocus(modalUpdate, -1);
             lastNavTime = now;
           }
@@ -3283,7 +3307,7 @@
       prevButtonsState['Start'] = btnStart;
     }
 
-    setTimeout(pollGamepad, gp ? 16 : 120);
+    requestAnimationFrame(pollGamepad);
   }
 
   // 15. Initialisation au chargement & écoute des événements système Tauri
@@ -3296,7 +3320,15 @@
     selectCard(0, false);
     refreshSystemInfo();
     initKeyboardConfig();
-    setTimeout(pollGamepad, 80);
+    requestAnimationFrame(pollGamepad);
+
+    window.addEventListener('gamepadconnected', (e) => {
+      console.log('[Noos TV] Manette détectée :', e.gamepad.id);
+      if (!isAnyModalOpen()) selectCard(currentIndex, false);
+    });
+    window.addEventListener('gamepaddisconnected', (e) => {
+      console.log('[Noos TV] Manette déconnectée :', e.gamepad.id);
+    });
 
     if (window.__TAURI__ && window.__TAURI__.event) {
       // 1. Bouton HOME global
