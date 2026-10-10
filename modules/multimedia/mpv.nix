@@ -129,32 +129,112 @@ let
     scale=ewa_lanczossharp
     cscale=spline36
 
-    # --- PROFILS AMD & NVIDIA & SPÉCIALISÉS ---
+    # --- PROFILS AMD RYZEN & RADEON OPTIMISÉS ---
 
-    [upscale-fsr]
-    glsl-shaders-set="/etc/mpv/shaders/FSR.glsl"
-    scale=ewa_lanczossharp
-    cscale=spline36
-
-    [upscale-cas]
+    # AMD APU Ryzen Éco (iGPU Vega / Radeon 680M/780M - Léger et fluide 60 FPS)
+    [upscale-amd-apu]
     glsl-shaders-set="/etc/mpv/shaders/CAS-scaled.glsl"
     scale=spline36
     cscale=spline36
+    dscale=mitchell
+    correct-downscaling=yes
+    linear-downscaling=yes
+    deband=yes
+    deband-iterations=2
+    deband-threshold=35
 
-    [upscale-fsrcnnx-8]
-    glsl-shaders-set="/etc/mpv/shaders/FSRCNNX_x2_8-0-4-1.glsl"
+    # AMD FSR Super Resolution (Algorithme spatial EASU + RCAS)
+    [upscale-amd-fsr]
+    glsl-shaders-set="/etc/mpv/shaders/FSR.glsl"
     scale=ewa_lanczossharp
     cscale=spline36
+    deband=yes
+    deband-iterations=2
+    deband-threshold=35
 
-    [upscale-fsrcnnx-16]
-    glsl-shaders-set="/etc/mpv/shaders/FSRCNNX_x2_16-0-4-1.glsl"
+    # AMD FidelityFX CAS Pur (Netteté chirurgicale adaptative au contraste)
+    [upscale-amd-cas]
+    glsl-shaders-set="/etc/mpv/shaders/CAS-scaled.glsl"
     scale=ewa_lanczossharp
     cscale=spline36
+    deband=yes
 
+    # AMD Radeon RX Dédié Ultra (FSR + KrigBilateral Chroma 4:4:4 + Deband haute qualité)
+    [upscale-amd-high]
+    glsl-shaders-set="/etc/mpv/shaders/FSR.glsl:/etc/mpv/shaders/KrigBilateral.glsl"
+    scale=ewa_lanczossharp
+    cscale=spline36
+    deband=yes
+    deband-iterations=4
+    deband-threshold=48
+
+    # --- PROFILS NVIDIA GEFORCE OPTIMISÉS ---
+
+    # Nvidia GTX (GeForce GTX 10xx / 16xx - NVScaler + Spline36)
+    [upscale-nvidia-gtx]
+    glsl-shaders-set="/etc/mpv/shaders/NVScaler.glsl"
+    scale=spline36
+    cscale=spline36
+    dscale=mitchell
+    deband=yes
+    deband-iterations=2
+    deband-threshold=35
+
+    # Nvidia Image Scaling Officiel (NIS / NVScaler + Lanczos)
+    [upscale-nvidia-nis]
+    glsl-shaders-set="/etc/mpv/shaders/NVScaler.glsl"
+    scale=ewa_lanczossharp
+    cscale=spline36
+    deband=yes
+
+    # Nvidia RTX Tensor Core (FSRCNNX IA 8 couches + KrigBilateral Chroma 4:4:4)
+    [upscale-nvidia-rtx]
+    glsl-shaders-set="/etc/mpv/shaders/FSRCNNX_x2_8-0-4-1.glsl:/etc/mpv/shaders/KrigBilateral.glsl"
+    scale=ewa_lanczossharp
+    cscale=spline36
+    deband=yes
+    deband-iterations=3
+    deband-threshold=40
+
+    # Nvidia RTX Ultra Studio (FSRCNNX IA 16 couches + SSimDownscaler + KrigBilateral)
+    [upscale-nvidia-rtx-ultra]
+    glsl-shaders-set="/etc/mpv/shaders/FSRCNNX_x2_16-0-4-1.glsl:/etc/mpv/shaders/SSimDownscaler.glsl:/etc/mpv/shaders/KrigBilateral.glsl"
+    scale=ewa_lanczossharp
+    cscale=spline36
+    deband=yes
+    deband-iterations=4
+    deband-threshold=48
+
+    # --- PROFILS SPÉCIALISÉS & RESTAURATION ---
+
+    # Profil Animation & Manga (Reconstruction des contours et lignes nettes)
     [upscale-anime4k]
     glsl-shaders-set="/etc/mpv/shaders/Anime4K_Upscale_CNN_x2_M.glsl:/etc/mpv/shaders/Anime4K_Restore_CNN_M.glsl"
     scale=ewa_lanczossharp
     cscale=spline36
+
+    # Restauration Vieux Films & Séries (SD / DVD 480p/576p vers HD/4K)
+    [upscale-vintage-sd]
+    glsl-shaders-set="/etc/mpv/shaders/nnedi3-nns64-win8x6.hook:/etc/mpv/shaders/KrigBilateral.glsl"
+    scale=spline36
+    cscale=spline36
+    deband=yes
+    deband-iterations=4
+    deband-threshold=48
+    deband-range=24
+
+    # Profils génériques FSR / CAS / NNEDI3
+    [upscale-fsr]
+    profile=upscale-amd-fsr
+
+    [upscale-cas]
+    profile=upscale-amd-cas
+
+    [upscale-fsrcnnx-8]
+    profile=upscale-intel-xess-8
+
+    [upscale-fsrcnnx-16]
+    profile=upscale-intel-xess-16
 
     [upscale-nnedi3-64]
     glsl-shaders-set="/etc/mpv/shaders/nnedi3-nns64-win8x6.hook"
@@ -165,9 +245,7 @@ let
     glsl-shaders-append="/etc/mpv/shaders/KrigBilateral.glsl"
 
     [upscale-nvscaler]
-    glsl-shaders-set="/etc/mpv/shaders/NVScaler.glsl"
-    scale=spline36
-    cscale=spline36
+    profile=upscale-nvidia-nis
 
     # Rétrocompatibilité profils iGPU/dGPU
     [iGPU-light-upscale]
@@ -197,8 +275,8 @@ let
     [auto-upscale]
     profile-cond=(width < 3840 and height < 2160) and (width >= 1280 or height >= 720)
     ${if gpuCfg.profile == "intel" then "profile=upscale-intel-cas"
-      else if gpuCfg.profile == "amd" then "profile=upscale-fsr"
-      else if gpuCfg.profile == "nvidia" || gpuCfg.profile == "nvidia-legacy" then "profile=upscale-nvscaler"
+      else if gpuCfg.profile == "amd" then "profile=upscale-amd-fsr"
+      else if gpuCfg.profile == "nvidia" || gpuCfg.profile == "nvidia-legacy" then "profile=upscale-nvidia-gtx"
       else "profile=upscale-intel-igpu"}
   '';
 
@@ -306,36 +384,103 @@ let
     q quit
 
     # ==============================================================================
-    # MENU UOSC DYNAMIQUE MODULAIRE EN FRANÇAIS (Accessible via START / Touche MENU)
+    # MENU UOSC PRINCIPAL HTPC (Accessible via START / Touche MENU)
     # ==============================================================================
-    # script-binding uosc/subtitles #! Sous-titres
-    # script-binding uosc/audio #! Audio & Passthrough
-    # script-binding uosc/stream-quality #! Qualite & Debit flux
-    # no-op #! ---
-    # set scale spline36 ; show-text "Scaler: Spline36 (Recommande)" #! 1. Moteurs d'Upscale (Scalers) > Spline36 (Equilibre Intel UHD - Recommande)
-    # set scale ewa_lanczossharp ; show-text "Scaler: EWA-Lanczos (Haute Precision)" #! 1. Moteurs d'Upscale (Scalers) > EWA-Lanczos / Jinc (Ultra Haute Precision)
-    # set scale mitchell ; show-text "Scaler: Bicubique Mitchell" #! 1. Moteurs d'Upscale (Scalers) > Bicubique Mitchell (Doux & Cinematique)
-    # set scale bilinear ; show-text "Scaler: Bilineaire (Eco)" #! 1. Moteurs d'Upscale (Scalers) > Bilineaire (Mode Eco)
-    # no-op #! ---
-    # change-list glsl-shaders clr "" ; show-text "Shaders desactives (Rendu pur)" #! 2. Shaders & Ameliorations > Desactiver tous les shaders (Natif)
-    # change-list glsl-shaders set "/etc/mpv/shaders/CAS-scaled.glsl" ; show-text "Shader: Intel / AMD CAS (Nettete)" #! 2. Shaders & Ameliorations > Intel / AMD CAS (Nettete intelligente - Recommande UHD 630)
-    # change-list glsl-shaders set "/etc/mpv/shaders/FSR.glsl" ; show-text "Shader: AMD FSR (Super Resolution)" #! 2. Shaders & Ameliorations > AMD FSR (Super Resolution spatiale)
-    # change-list glsl-shaders set "/etc/mpv/shaders/FSRCNNX_x2_8-0-4-1.glsl" ; show-text "Shader: Intel XeSS / FSRCNNX IA" #! 2. Shaders & Ameliorations > Intel XeSS / FSRCNNX (Super-resolution neuronale IA)
-    # change-list glsl-shaders set "/etc/mpv/shaders/Anime4K_Upscale_CNN_x2_M.glsl:/etc/mpv/shaders/Anime4K_Restore_CNN_M.glsl" ; show-text "Shader: Anime4K" #! 2. Shaders & Ameliorations > Anime4K (Anime & Dessins Animes)
-    # change-list glsl-shaders set "/etc/mpv/shaders/NVScaler.glsl" ; show-text "Shader: Nvidia NIS" #! 2. Shaders & Ameliorations > Nvidia NIS (Nvidia Image Scaling)
-    # change-list glsl-shaders set "/etc/mpv/shaders/nnedi3-nns64-win8x6.hook" ; show-text "Shader: NNEDI3 (64 neurones)" #! 2. Shaders & Ameliorations > NNEDI3 (Interpolation Neuronale)
-    # no-op #! ---
-    # cycle deband ; show-text "Debanding: ''\${deband}" #! 3. Traitements Complementaires > Debanding (Anti-bandes de compression)
-    # change-list glsl-shaders toggle "/etc/mpv/shaders/KrigBilateral.glsl" ; show-text "KrigBilateral Chroma bascule" #! 3. Traitements Complementaires > KrigBilateral (Chroma 4:4:4 haute fidelite)
-    # cycle interpolation ; show-text "Interpolation: ''\${interpolation}" #! 3. Traitements Complementaires > Interpolation 60Hz (Anti-saccades 24p)
-    # no-op #! ---
-    # apply-profile upscale-intel-igpu ; show-text "Profil: Intel UHD 630 Eco" #! 4. Profils Complets (Presets 1-Clic) > Intel UHD 630 Eco (Spline36, deband, 60 FPS)
-    # apply-profile upscale-intel-cas ; show-text "Profil: Intel Adaptive CAS" #! 4. Profils Complets (Presets 1-Clic) > Intel Adaptive CAS (Spline36 + CAS nettete)
-    # apply-profile upscale-intel-xess-8 ; show-text "Profil: Intel XeSS IA" #! 4. Profils Complets (Presets 1-Clic) > Intel XeSS IA Equilibre (FSRCNNX 8 couches)
-    # apply-profile upscale-off ; show-text "Profil: Rendu Natif Desactive" #! 4. Profils Complets (Presets 1-Clic) > Rendu Natif (Aucun traitement)
-    # no-op #! ---
+
+    # --- 1. PISTES & FLUX ---
+    # script-binding uosc/subtitles #! 1. Pistes & Flux > Sous-titres
+    # script-binding uosc/audio #! 1. Pistes & Flux > Audio & Passthrough
+    # script-binding uosc/stream-quality #! 1. Pistes & Flux > Qualite & Debit flux
+    # no-op #! 1. Pistes & Flux > ---
+    # cycle audio ; show-text "Piste audio suivante" #! 1. Pistes & Flux > Changer de piste audio
+    # cycle sub ; show-text "Piste sous-titres suivante" #! 1. Pistes & Flux > Changer de piste sous-titres
+    # cycle sub-visibility ; show-text "Sous-titres: ''\${sub-visibility}" #! 1. Pistes & Flux > Afficher / Masquer sous-titres
+
+    # --- 2. MOTEURS D'UPSCALE (SCALERS GÉOMÉTRIQUES) ---
+    # set scale spline36 ; show-text "Scaler: Spline36 (Recommande)" #! 2. Moteurs d'Upscale (Scalers) > Spline36 (Equilibre Intel UHD - Recommande)
+    # set scale ewa_lanczossharp ; show-text "Scaler: EWA-Lanczos (Haute Precision)" #! 2. Moteurs d'Upscale (Scalers) > EWA-Lanczos / Jinc (Ultra Haute Precision)
+    # set scale mitchell ; show-text "Scaler: Bicubique Mitchell" #! 2. Moteurs d'Upscale (Scalers) > Bicubique Mitchell (Doux & Cinematique)
+    # set scale bilinear ; show-text "Scaler: Bilineaire (Eco)" #! 2. Moteurs d'Upscale (Scalers) > Bilineaire (Mode Eco iGPU)
+
+    # --- 3. SHADERS GLSL (SUPER-RÉSOLUTION & NETTETÉ) ---
+    # change-list glsl-shaders clr "" ; show-text "Shaders desactives (Rendu pur)" #! 3. Shaders & Ameliorations > Desactiver tous les shaders (Natif)
+    # change-list glsl-shaders set "/etc/mpv/shaders/CAS-scaled.glsl" ; show-text "Shader: Intel / AMD CAS (Nettete)" #! 3. Shaders & Ameliorations > Intel / AMD CAS (Nettete intelligente - Recommande UHD 630)
+    # change-list glsl-shaders set "/etc/mpv/shaders/FSR.glsl" ; show-text "Shader: AMD FSR (Super Resolution)" #! 3. Shaders & Ameliorations > AMD FSR (Super Resolution spatiale)
+    # change-list glsl-shaders set "/etc/mpv/shaders/FSRCNNX_x2_8-0-4-1.glsl" ; show-text "Shader: Intel XeSS / FSRCNNX IA" #! 3. Shaders & Ameliorations > Intel XeSS / FSRCNNX (Super-resolution neuronale 8 couches)
+    # change-list glsl-shaders set "/etc/mpv/shaders/FSRCNNX_x2_16-0-4-1.glsl" ; show-text "Shader: FSRCNNX 16 couches Ultra" #! 3. Shaders & Ameliorations > FSRCNNX IA Ultra (16 couches)
+    # change-list glsl-shaders set "/etc/mpv/shaders/NVScaler.glsl" ; show-text "Shader: Nvidia NIS" #! 3. Shaders & Ameliorations > Nvidia NIS (Nvidia Image Scaling)
+    # change-list glsl-shaders set "/etc/mpv/shaders/Anime4K_Upscale_CNN_x2_M.glsl:/etc/mpv/shaders/Anime4K_Restore_CNN_M.glsl" ; show-text "Shader: Anime4K" #! 3. Shaders & Ameliorations > Anime4K (Anime & Dessins Animes)
+    # change-list glsl-shaders set "/etc/mpv/shaders/nnedi3-nns64-win8x6.hook" ; show-text "Shader: NNEDI3 (64 neurones)" #! 3. Shaders & Ameliorations > NNEDI3 (Interpolation Neuronale 64)
+
+    # --- 4. PROFILS COMPLETS CLÉ EN MAIN (PAR GPU & CAS D'USAGE) ---
+    # apply-profile upscale-intel-igpu ; show-text "Profil: Intel UHD 630 Eco" #! 4. Profils Complets GPU > Profils Intel > 1. Intel UHD/HD iGPU (Eco 60 FPS)
+    # apply-profile upscale-intel-cas ; show-text "Profil: Intel Adaptive CAS" #! 4. Profils Complets GPU > Profils Intel > 2. Intel Adaptive CAS (Nettete UHD 630)
+    # apply-profile upscale-intel-xess-8 ; show-text "Profil: Intel XeSS IA" #! 4. Profils Complets GPU > Profils Intel > 3. Intel XeSS IA Equilibre (Iris Xe / Arc)
+    # apply-profile upscale-intel-xess-16 ; show-text "Profil: Intel XeSS Ultra" #! 4. Profils Complets GPU > Profils Intel > 4. Intel XeSS IA Ultra (Arc Dedie)
+    # apply-profile upscale-amd-apu ; show-text "Profil: AMD Ryzen APU Eco" #! 4. Profils Complets GPU > Profils AMD > 1. AMD APU Ryzen (Vega / Radeon 600M-700M)
+    # apply-profile upscale-amd-fsr ; show-text "Profil: AMD FSR Super Resolution" #! 4. Profils Complets GPU > Profils AMD > 2. AMD FSR Super Resolution (EASU + RCAS)
+    # apply-profile upscale-amd-cas ; show-text "Profil: AMD FidelityFX CAS" #! 4. Profils Complets GPU > Profils AMD > 3. AMD FidelityFX CAS (Nettete chirurgicale)
+    # apply-profile upscale-amd-high ; show-text "Profil: AMD Radeon RX Ultra" #! 4. Profils Complets GPU > Profils AMD > 4. AMD Radeon RX Ultra (FSR + Krig 4:4:4)
+    # apply-profile upscale-nvidia-gtx ; show-text "Profil: Nvidia GTX NIS" #! 4. Profils Complets GPU > Profils Nvidia > 1. Nvidia GTX (GeForce 10xx / 16xx NIS)
+    # apply-profile upscale-nvidia-nis ; show-text "Profil: Nvidia NIS Officiel" #! 4. Profils Complets GPU > Profils Nvidia > 2. Nvidia Image Scaling Officiel
+    # apply-profile upscale-nvidia-rtx ; show-text "Profil: Nvidia RTX IA Tensor" #! 4. Profils Complets GPU > Profils Nvidia > 3. Nvidia RTX Tensor Core (FSRCNNX IA)
+    # apply-profile upscale-nvidia-rtx-ultra ; show-text "Profil: Nvidia RTX Ultra" #! 4. Profils Complets GPU > Profils Nvidia > 4. Nvidia RTX Ultra Studio (16 couches + SSim)
+    # apply-profile upscale-anime4k ; show-text "Profil: Anime4K" #! 4. Profils Complets GPU > Profils Specialises > 1. Mode Animation & Manga (Anime4K CNN)
+    # apply-profile upscale-vintage-sd ; show-text "Profil: Restauration SD/DVD" #! 4. Profils Complets GPU > Profils Specialises > 2. Restauration Vieux Films (SD / DVD 576p)
+    # apply-profile 4k-native ; show-text "Profil: 4K Natif Eco" #! 4. Profils Complets GPU > Profils Specialises > 3. Contenu 4K Natif (Eco GPU)
+    # apply-profile upscale-off ; show-text "Profil: Rendu Natif Desactive" #! 4. Profils Complets GPU > Profils Specialises > 4. Desactive (Rendu Natif sans filtre)
+
+    # --- 5. FORMAT D'IMAGE & ZOOM ---
+    # set video-aspect-override "-1" ; show-text "Format: Auto / Original" #! 5. Format & Cadrage > Format Original (Auto)
+    # set video-aspect-override "16:9" ; show-text "Format: 16:9 Plein ecran" #! 5. Format & Cadrage > Forcer 16:9 (Plein ecran standard)
+    # set video-aspect-override "21:9" ; show-text "Format: 21:9 Cinemascope" #! 5. Format & Cadrage > Forcer 21:9 (Cinemascope sans bandes noires)
+    # set video-aspect-override "4:3" ; show-text "Format: 4:3 Retro" #! 5. Format & Cadrage > Forcer 4:3 (Series & Films retro)
+    # no-op #! 5. Format & Cadrage > ---
+    # add video-zoom 0.05 ; show-text "Zoom: ''\${video-zoom}" #! 5. Format & Cadrage > Zoom Avant (+5%)
+    # add video-zoom -0.05 ; show-text "Zoom: ''\${video-zoom}" #! 5. Format & Cadrage > Zoom Arriere (-5%)
+    # set video-zoom 0 ; set video-pan-x 0 ; set video-pan-y 0 ; show-text "Zoom et Cadrage reinitialises" #! 5. Format & Cadrage > Reinitialiser Zoom & Cadrage
+
+    # --- 6. VITESSE DE LECTURE ---
+    # set speed 0.75 ; show-text "Vitesse: 0.75x" #! 6. Vitesse de lecture > 0.75x (Ralenti)
+    # set speed 1.0 ; show-text "Vitesse: 1.0x (Normale)" #! 6. Vitesse de lecture > 1.0x (Vitesse Normale)
+    # set speed 1.25 ; show-text "Vitesse: 1.25x" #! 6. Vitesse de lecture > 1.25x
+    # set speed 1.5 ; show-text "Vitesse: 1.5x" #! 6. Vitesse de lecture > 1.5x
+    # set speed 2.0 ; show-text "Vitesse: 2.0x" #! 6. Vitesse de lecture > 2.0x (Accelere)
+
+    # --- 7. ÉTALONNAGE VIDÉO & COULEURS ---
+    # add brightness 2 ; show-text "Luminosite: ''\${brightness}" #! 7. Image & Etalonnage > Luminosite +
+    # add brightness -2 ; show-text "Luminosite: ''\${brightness}" #! 7. Image & Etalonnage > Luminosite -
+    # add contrast 2 ; show-text "Contraste: ''\${contrast}" #! 7. Image & Etalonnage > Contraste +
+    # add contrast -2 ; show-text "Contraste: ''\${contrast}" #! 7. Image & Etalonnage > Contraste -
+    # add saturation 2 ; show-text "Saturation: ''\${saturation}" #! 7. Image & Etalonnage > Couleurs / Saturation +
+    # add saturation -2 ; show-text "Saturation: ''\${saturation}" #! 7. Image & Etalonnage > Couleurs / Saturation -
+    # add gamma 2 ; show-text "Gamma: ''\${gamma}" #! 7. Image & Etalonnage > Gamma +
+    # add gamma -2 ; show-text "Gamma: ''\${gamma}" #! 7. Image & Etalonnage > Gamma -
+    # set brightness 0 ; set contrast 0 ; set saturation 0 ; set gamma 0 ; show-text "Etalonnage Image reinitialise" #! 7. Image & Etalonnage > Reinitialiser Etalonnage (Zero)
+
+    # --- 8. SYNCHRONISATION & DÉCALAGES ---
+    # add audio-delay 0.1 ; show-text "Delai Audio: ''\${audio-delay}s" #! 8. Synchronisation (A/V Sync) > Retarder Audio (+100 ms)
+    # add audio-delay -0.1 ; show-text "Delai Audio: ''\${audio-delay}s" #! 8. Synchronisation (A/V Sync) > Avancer Audio (-100 ms)
+    # set audio-delay 0 ; show-text "Delai Audio reinitialise (0 ms)" #! 8. Synchronisation (A/V Sync) > Reinitialiser Audio (0 ms)
+    # no-op #! 8. Synchronisation (A/V Sync) > ---
+    # add sub-delay 0.1 ; show-text "Delai Sous-titres: ''\${sub-delay}s" #! 8. Synchronisation (A/V Sync) > Retarder Sous-titres (+100 ms)
+    # add sub-delay -0.1 ; show-text "Delai Sous-titres: ''\${sub-delay}s" #! 8. Synchronisation (A/V Sync) > Avancer Sous-titres (-100 ms)
+    # set sub-delay 0 ; show-text "Delai Sous-titres reinitialise (0 ms)" #! 8. Synchronisation (A/V Sync) > Reinitialiser Sous-titres (0 ms)
+    # no-op #! 8. Synchronisation (A/V Sync) > ---
+    # add sub-font-size 2 ; show-text "Taille Sous-titres: ''\${sub-font-size}" #! 8. Synchronisation (A/V Sync) > Agrandir Sous-titres (+2 pt)
+    # add sub-font-size -2 ; show-text "Taille Sous-titres: ''\${sub-font-size}" #! 8. Synchronisation (A/V Sync) > Reduire Sous-titres (-2 pt)
+    # add sub-pos -2 ; show-text "Position Sous-titres: ''\${sub-pos}" #! 8. Synchronisation (A/V Sync) > Monter Sous-titres
+    # add sub-pos 2 ; show-text "Position Sous-titres: ''\${sub-pos}" #! 8. Synchronisation (A/V Sync) > Baisser Sous-titres
+
+    # --- 9. TRAITEMENTS VIDÉO AVANCÉS ---
+    # cycle deband ; show-text "Debanding: ''\${deband}" #! 9. Traitements Avances > Debanding (Anti-bandes de compression)
+    # change-list glsl-shaders toggle "/etc/mpv/shaders/KrigBilateral.glsl" ; show-text "KrigBilateral Chroma bascule" #! 9. Traitements Avances > KrigBilateral (Chroma 4:4:4 haute fidelite)
+    # cycle interpolation ; show-text "Interpolation: ''\${interpolation}" #! 9. Traitements Avances > Interpolation 60Hz (Anti-saccades 24p)
+
+    # --- 10. DIAGNOSTICS & STATISTIQUES ---
     # script-binding stats/display-page-1-toggle #! Diagnostics > 1. Statistiques generales (Resolution, Codec, Debit)
     # script-binding stats/display-page-2-toggle #! Diagnostics > 2. Passes Shaders & Upscale GPU en direct
+
     # no-op #! ---
     # quit #! Quitter le lecteur
   '';
