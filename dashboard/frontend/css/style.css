@@ -2834,10 +2834,12 @@ body.tv-mode {
 
 .poster-card:hover,
 .poster-card:focus {
-  transform: scale(1.05);
+  transform: scale(1.06);
   border-color: #38bdf8;
-  box-shadow: 0 12px 30px rgba(56, 189, 248, 0.45);
+  box-shadow: 0 12px 32px rgba(56, 189, 248, 0.5);
   z-index: 5;
+  outline: 3px solid #38bdf8;
+  outline-offset: 2px;
 }
 
 .poster-img-wrap {

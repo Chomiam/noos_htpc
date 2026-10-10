@@ -1590,6 +1590,8 @@ pub async fn iptv_play_stream(
         mpv_cmd.args([
             "--fs",
             "--border=no",
+            "--osc=no",
+            "--osd-bar=no",
             "--vo=gpu-next",
             "--gpu-context=wayland",
             "--hwdec=auto-safe",

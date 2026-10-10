@@ -1461,7 +1461,7 @@
   // Nettoyage et sécurisation des URLs d'affiches/logos (TMDB, proxies, HTTP/HTTPS)
   function sanitizeCoverUrl(url) {
     if (!url || typeof url !== 'string') return 'assets/logo.png';
-    const trimmed = url.trim();
+    let trimmed = url.trim().replace(/\\\//g, '/');
     if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return 'assets/logo.png';
     // Si l'URL TMDB est incomplète (se termine par un chemin de taille sans nom de fichier image)
     if (/image\.tmdb\.org\/t\/p\/[^/]+(?:\/)?$/.test(trimmed)) {
@@ -1495,7 +1495,7 @@
       const logoSrc = sanitizeCoverUrl(ch.stream_icon);
       item.innerHTML = `
         <div class="ch-icon-wrap">
-          <img src="${logoSrc}" alt="${escapeHtml(ch.name)}" class="ch-logo-img" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='assets/logo.png'"/>
+          <img src="${logoSrc}" alt="${escapeHtml(ch.name)}" class="ch-logo-img" onerror="this.onerror=null;this.src='assets/logo.png'"/>
         </div>
         <div class="ch-meta-wrap">
           <div class="ch-name">${escapeHtml(ch.name)}</div>
@@ -1626,7 +1626,7 @@
 
         card.innerHTML = `
           <div class="poster-img-wrap">
-            <img src="${coverSrc}" alt="${escapeHtml(item.name)}" class="poster-img" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='assets/logo.png'"/>
+            <img src="${coverSrc}" alt="${escapeHtml(item.name)}" class="poster-img" onerror="this.onerror=null;this.src='assets/logo.png'"/>
             <span class="poster-badge-rating">${rating}</span>
             <span class="poster-badge-year">${year}</span>
           </div>
@@ -1653,6 +1653,7 @@
       renderedCount += nextBatch.length;
     }
 
+    gridElement._appendBatch = appendBatch;
     appendBatch();
 
     // Scroll listener pour charger les lots suivants au fil du défilement
@@ -1671,8 +1672,11 @@
     }
   }
 
+  let lastFocusedCard = null;
+
   // Fenêtre modale de détails Film / Série
   async function openIptvDetailsModal(item, itemType) {
+    lastFocusedCard = document.activeElement;
     currentDetailsItem = item;
     currentDetailsType = itemType;
     playConfirmSound();
@@ -1811,6 +1815,12 @@
   function closeIptvDetailsModal() {
     playCancelSound();
     if (modalIptvDetails) modalIptvDetails.classList.add('hidden');
+    if (lastFocusedCard && lastFocusedCard.focus) {
+      setTimeout(() => {
+        lastFocusedCard.focus();
+        lastFocusedCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+    }
   }
 
   // Gestion des Favoris
@@ -1856,7 +1866,7 @@
       const iconSrc = sanitizeCoverUrl(fav.icon);
       card.innerHTML = `
         <div class="poster-img-wrap">
-          <img src="${iconSrc}" alt="${escapeHtml(fav.name)}" class="poster-img" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='assets/logo.png'"/>
+          <img src="${iconSrc}" alt="${escapeHtml(fav.name)}" class="poster-img" onerror="this.onerror=null;this.src='assets/logo.png'"/>
           <span class="poster-badge-rating">★ Fav</span>
           <span class="poster-badge-year">${fav.item_type.toUpperCase()}</span>
         </div>
@@ -2245,6 +2255,324 @@
     playTickSound();
   }
 
+  // Calcul dynamique du nombre de colonnes dans une grille TV (responsif 10-foot)
+  function getGridColumnCount(grid) {
+    if (!grid) return 1;
+    const cards = grid.querySelectorAll('.poster-card');
+    if (cards.length < 2) return 1;
+    const firstTop = cards[0].offsetTop;
+    let count = 0;
+    for (let i = 0; i < cards.length; i++) {
+      if (Math.abs(cards[i].offsetTop - firstTop) < 15) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return Math.max(1, count);
+  }
+
+  // Navigation spatiale 2D intuitive pour manette et télécommande dans Noos IPTV
+  function navigateIptvSpatial(dir) {
+    if (!isIptvModalOpen || isIptvSyncing) return;
+
+    // 1. Modale de détails Film / Série ouverte
+    if (modalIptvDetails && !modalIptvDetails.classList.contains('hidden')) {
+      const detailButtons = Array.from(modalIptvDetails.querySelectorAll('button:not([disabled]):not(.hidden), .season-pill-btn:not(.hidden), .episode-btn:not(.hidden), .episode-row:not(.hidden)'));
+      if (detailButtons.length === 0) return;
+      const currentIdx = detailButtons.indexOf(document.activeElement);
+      if (currentIdx === -1) {
+        detailButtons[0].focus();
+      } else {
+        let nextIdx = currentIdx;
+        if (dir === 'right' || dir === 'down') {
+          nextIdx = (currentIdx + 1) % detailButtons.length;
+        } else if (dir === 'left' || dir === 'up') {
+          nextIdx = (currentIdx - 1 + detailButtons.length) % detailButtons.length;
+        }
+        detailButtons[nextIdx].focus();
+        detailButtons[nextIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      playTickSound();
+      return;
+    }
+
+    // 2. Vue Profils & Comptes
+    if (iptvViewProfiles && !iptvViewProfiles.classList.contains('hidden')) {
+      const items = Array.from(iptvViewProfiles.querySelectorAll('.iptv-profile-card, #btn-iptv-new-account, #btn-close-iptv-modal'));
+      if (items.length === 0) return;
+      const idx = items.indexOf(document.activeElement);
+      if (idx === -1) {
+        items[0].focus();
+      } else {
+        let step = (dir === 'right' || dir === 'down') ? 1 : -1;
+        let nextIdx = (idx + step + items.length) % items.length;
+        items[nextIdx].focus();
+        items[nextIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      playTickSound();
+      return;
+    }
+
+    // 3. Vue Formulaire de connexion
+    if (iptvViewLogin && !iptvViewLogin.classList.contains('hidden')) {
+      const inputs = Array.from(iptvViewLogin.querySelectorAll('input:not([disabled]), button:not([disabled]):not(.hidden)'));
+      if (inputs.length === 0) return;
+      const idx = inputs.indexOf(document.activeElement);
+      if (idx === -1) {
+        inputs[0].focus();
+      } else {
+        let step = (dir === 'down' || dir === 'right') ? 1 : -1;
+        let nextIdx = (idx + step + inputs.length) % inputs.length;
+        inputs[nextIdx].focus();
+      }
+      playTickSound();
+      return;
+    }
+
+    // 4. Vue Principale Noos IPTV MPV Player (Navigation spatiale 2D complète)
+    if (iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
+      const activeEl = document.activeElement;
+      const tabBtns = Array.from(document.querySelectorAll('.iptv-nav-tabs .iptv-tab-btn'));
+      const catItems = Array.from(document.querySelectorAll('#iptv-categories-list .iptv-cat-item'));
+      
+      // Déterminer la grille active
+      let activeGrid = null;
+      if (currentIptvTab === 'vod') activeGrid = iptvVodGrid;
+      else if (currentIptvTab === 'series') activeGrid = iptvSeriesGrid;
+      else if (currentIptvTab === 'favorites') activeGrid = iptvFavoritesGrid;
+
+      const isInsideTabs = tabBtns.includes(activeEl) || activeEl?.id === 'btn-iptv-main-back';
+      const isInsideCats = catItems.includes(activeEl);
+      const isInsideGrid = activeGrid && activeEl && activeEl.classList.contains('poster-card') && activeGrid.contains(activeEl);
+      const isInsideChannels = activeEl && activeEl.classList.contains('channel-card-item');
+      const isPlayPreviewBtn = activeEl?.id === 'btn-iptv-play-fullscreen';
+
+      // --- ZONE 1 : NAVIGATION DANS LA GRILLE DE JAQUETTES (Films / Séries / Favoris) ---
+      if (isInsideGrid) {
+        const cards = Array.from(activeGrid.querySelectorAll('.poster-card'));
+        const idx = cards.indexOf(activeEl);
+        if (idx === -1) {
+          if (cards[0]) cards[0].focus();
+          return;
+        }
+
+        const cols = getGridColumnCount(activeGrid);
+
+        if (dir === 'right') {
+          if (idx + 1 < cards.length) {
+            cards[idx + 1].focus();
+            cards[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            playTickSound();
+            // Préchargement du lot suivant si proche de la fin
+            if (idx + 1 >= cards.length - 20 && activeGrid._appendBatch) {
+              activeGrid._appendBatch();
+            }
+          }
+        } else if (dir === 'left') {
+          // Si le focus est sur la 1ère colonne (colonne 0) : SAUTER IMMÉDIATEMENT vers la barre latérale des catégories !
+          if (idx % cols === 0 || cards[idx].offsetLeft <= cards[0].offsetLeft + 35) {
+            const activeCat = document.querySelector('#iptv-categories-list .iptv-cat-item.active') || catItems[0];
+            if (activeCat) {
+              activeCat.focus();
+              activeCat.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              playTickSound();
+            }
+          } else if (idx > 0) {
+            cards[idx - 1].focus();
+            cards[idx - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            playTickSound();
+          }
+        } else if (dir === 'up') {
+          if (idx - cols >= 0) {
+            cards[idx - cols].focus();
+            cards[idx - cols].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            playTickSound();
+          } else {
+            // Première ligne : monter vers les onglets supérieurs
+            const currentTabBtn = document.querySelector(`.iptv-nav-tabs .iptv-tab-btn[data-tab="${currentIptvTab}"]`) || tabBtns[0];
+            if (currentTabBtn) {
+              currentTabBtn.focus();
+              playTickSound();
+            }
+          }
+        } else if (dir === 'down') {
+          if (idx + cols < cards.length) {
+            cards[idx + cols].focus();
+            cards[idx + cols].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            playTickSound();
+            if (idx + cols >= cards.length - 25 && activeGrid._appendBatch) {
+              activeGrid._appendBatch();
+            }
+          } else if (idx < cards.length - 1) {
+            cards[cards.length - 1].focus();
+            cards[cards.length - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            playTickSound();
+          }
+        }
+        return;
+      }
+
+      // --- ZONE 2 : NAVIGATION DANS LA BARRE LATÉRALE DES CATÉGORIES ---
+      if (isInsideCats) {
+        const idx = catItems.indexOf(activeEl);
+
+        if (dir === 'down') {
+          if (idx + 1 < catItems.length) {
+            catItems[idx + 1].focus();
+            catItems[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            catItems[idx + 1].click(); // Active la catégorie
+            playTickSound();
+          }
+        } else if (dir === 'up') {
+          if (idx > 0) {
+            catItems[idx - 1].focus();
+            catItems[idx - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            catItems[idx - 1].click(); // Active la catégorie
+            playTickSound();
+          } else {
+            // Tout en haut des catégories : monter vers les onglets
+            const currentTabBtn = document.querySelector(`.iptv-nav-tabs .iptv-tab-btn[data-tab="${currentIptvTab}"]`) || tabBtns[0];
+            if (currentTabBtn) {
+              currentTabBtn.focus();
+              playTickSound();
+            }
+          }
+        } else if (dir === 'right') {
+          // SAUT DIRECT DEPUIS LA CATÉGORIE VERS LA GRILLE DE JAQUETTES OU DE CHAÎNES !
+          if (activeGrid) {
+            const firstCard = activeGrid.querySelector('.poster-card');
+            if (firstCard) {
+              firstCard.focus();
+              firstCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              playTickSound();
+            }
+          } else if (currentIptvTab === 'live') {
+            const firstCh = document.querySelector('#iptv-channels-list .channel-card-item');
+            if (firstCh) {
+              firstCh.focus();
+              firstCh.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              playTickSound();
+            }
+          }
+        } else if (dir === 'left') {
+          const btnBack = document.getElementById('btn-iptv-main-back');
+          if (btnBack) btnBack.focus();
+        }
+        return;
+      }
+
+      // --- ZONE 3 : NAVIGATION DANS LES ONGLETS SUPÉRIEURS ---
+      if (isInsideTabs) {
+        const curTabIdx = tabBtns.indexOf(activeEl);
+
+        if (dir === 'right') {
+          if (curTabIdx >= 0 && curTabIdx < tabBtns.length - 1) {
+            tabBtns[curTabIdx + 1].focus();
+            tabBtns[curTabIdx + 1].click();
+            playTickSound();
+          } else if (curTabIdx === tabBtns.length - 1) {
+            const btnBack = document.getElementById('btn-iptv-main-back');
+            if (btnBack) btnBack.focus();
+          }
+        } else if (dir === 'left') {
+          if (activeEl?.id === 'btn-iptv-main-back') {
+            if (tabBtns[tabBtns.length - 1]) tabBtns[tabBtns.length - 1].focus();
+          } else if (curTabIdx > 0) {
+            tabBtns[curTabIdx - 1].focus();
+            tabBtns[curTabIdx - 1].click();
+            playTickSound();
+          }
+        } else if (dir === 'down') {
+          // Descendre vers les catégories ou directement vers les jaquettes
+          const activeCat = document.querySelector('#iptv-categories-list .iptv-cat-item.active') || catItems[0];
+          if (activeCat) {
+            activeCat.focus();
+            activeCat.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            playTickSound();
+          } else if (activeGrid) {
+            const firstCard = activeGrid.querySelector('.poster-card');
+            if (firstCard) {
+              firstCard.focus();
+              firstCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              playTickSound();
+            }
+          }
+        }
+        return;
+      }
+
+      // --- ZONE 4 : NAVIGATION DANS LES CHAÎNES DU DIRECT (LIVE) ---
+      if (isInsideChannels) {
+        const chList = Array.from(document.querySelectorAll('#iptv-channels-list .channel-card-item'));
+        const idx = chList.indexOf(activeEl);
+
+        if (dir === 'down') {
+          if (idx + 1 < chList.length) {
+            chList[idx + 1].focus();
+            chList[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            chList[idx + 1].click();
+            playTickSound();
+          }
+        } else if (dir === 'up') {
+          if (idx > 0) {
+            chList[idx - 1].focus();
+            chList[idx - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            chList[idx - 1].click();
+            playTickSound();
+          } else {
+            const currentTabBtn = document.querySelector('.iptv-nav-tabs .iptv-tab-btn[data-tab="live"]');
+            if (currentTabBtn) currentTabBtn.focus();
+          }
+        } else if (dir === 'left') {
+          // Revenir à la barre latérale des catégories
+          const activeCat = document.querySelector('#iptv-categories-list .iptv-cat-item.active') || catItems[0];
+          if (activeCat) {
+            activeCat.focus();
+            activeCat.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            playTickSound();
+          }
+        } else if (dir === 'right') {
+          // Sauter vers le lecteur preview ou bouton Plein Écran
+          const btnPlay = document.getElementById('btn-iptv-play-fullscreen');
+          if (btnPlay) {
+            btnPlay.focus();
+            playTickSound();
+          }
+        }
+        return;
+      }
+
+      // --- ZONE 5 : BOUTON PLAY PLEIN ÉCRAN PREVIEW ---
+      if (isPlayPreviewBtn) {
+        if (dir === 'left') {
+          const selectedCh = document.querySelector('#iptv-channels-list .channel-card-item.active') || document.querySelector('#iptv-channels-list .channel-card-item');
+          if (selectedCh) {
+            selectedCh.focus();
+            selectedCh.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            playTickSound();
+          }
+        } else if (dir === 'up') {
+          const currentTabBtn = document.querySelector('.iptv-nav-tabs .iptv-tab-btn[data-tab="live"]');
+          if (currentTabBtn) currentTabBtn.focus();
+        }
+        return;
+      }
+
+      // Repli si aucun focus reconnu : cibler la 1ère jaquette ou catégorie
+      if (activeGrid) {
+        const firstCard = activeGrid.querySelector('.poster-card');
+        if (firstCard) {
+          firstCard.focus();
+          firstCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          return;
+        }
+      }
+      const firstCat = catItems[0];
+      if (firstCat) firstCat.focus();
+    }
+  }
+
   if (btnPower) btnPower.addEventListener('click', openSettings);
   if (btnCloseModal) btnCloseModal.addEventListener('click', closeSettings);
   if (btnCloseUpdateModal) btnCloseUpdateModal.addEventListener('click', closeUpdateModal);
@@ -2427,14 +2755,22 @@
         }
       }
 
-      // Navigation flèches dans la modale IPTV
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      // Navigation spatiale 2D dans la modale IPTV
+      if (e.key === 'ArrowRight') {
         e.preventDefault();
-        navigateModalFocus(modalIptv, 1);
+        navigateIptvSpatial('right');
         return;
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        navigateModalFocus(modalIptv, -1);
+        navigateIptvSpatial('left');
+        return;
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        navigateIptvSpatial('down');
+        return;
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        navigateIptvSpatial('up');
         return;
       }
 
@@ -2587,11 +2923,14 @@
             lastNavTime = now;
           }
         } else if (isIptvModalOpen && !isIptvSyncing) {
-          if (dpadRight || stickRight || dpadDown || stickDown) {
-            navigateModalFocus(modalIptv, 1);
-            lastNavTime = now;
-          } else if (dpadLeft || stickLeft || dpadUp || stickUp) {
-            navigateModalFocus(modalIptv, -1);
+          let dir = null;
+          if (dpadRight || stickRight) dir = 'right';
+          else if (dpadLeft || stickLeft) dir = 'left';
+          else if (dpadDown || stickDown) dir = 'down';
+          else if (dpadUp || stickUp) dir = 'up';
+
+          if (dir) {
+            navigateIptvSpatial(dir);
             lastNavTime = now;
           }
         } else if (isModalOpen) {

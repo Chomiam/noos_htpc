@@ -585,7 +585,7 @@ fn ensure_jellyfin_fullscreen_config() {
     "version": 7
 }"#;
 
-    let mpv_content = "vo=gpu-next\ngpu-context=wayland\ntarget-colorspace-hint=yes\ntone-mapping=auto\nhdr-compute-peak=yes\nhwdec=auto-safe\nfs=yes\nborder=no\nkeep-open=no\n";
+    let mpv_content = "vo=gpu-next\ngpu-context=wayland\ntarget-colorspace-hint=yes\ntone-mapping=spline\nhdr-compute-peak=yes\nhwdec=auto-safe\nfs=yes\nborder=no\nkeep-open=no\nosc=no\nosd-bar=no\n";
 
     // 1. Configuration racine
     let _ = std::fs::write(base_dir.join("jellyfin-desktop.conf"), conf_content);
