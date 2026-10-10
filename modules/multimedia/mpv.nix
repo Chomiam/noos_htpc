@@ -82,11 +82,54 @@ let
     gamut-mapping-mode=perceptual
     target-peak=100
 
-    # Profils d'Upscaling Manuels / Sélectionnables dans le Menu UOSC
+    # Profil 0 : Désactivé (Natif)
     [upscale-off]
     glsl-shaders-clr
     scale=spline36
     cscale=spline36
+    deband=no
+
+    # --- PROFILS INTEL OPTIMISÉS (LENOVO M720q, NUC, IRIS XE & ARC) ---
+
+    # Intel iGPU Éco (QuickSync & UHD Graphics 630 / HD - Zéro saccade, 60 FPS fluide, très faible charge)
+    [upscale-intel-igpu]
+    glsl-shaders-clr
+    scale=spline36
+    cscale=spline36
+    dscale=mitchell
+    correct-downscaling=yes
+    linear-downscaling=yes
+    deband=yes
+    deband-iterations=2
+    deband-threshold=35
+    deband-range=16
+    deband-grain=5
+
+    # Intel Adaptive CAS (Netteté intelligente pour Intel UHD 630 & Iris Xe)
+    [upscale-intel-cas]
+    glsl-shaders-set="/etc/mpv/shaders/CAS-scaled.glsl"
+    scale=spline36
+    cscale=spline36
+    dscale=mitchell
+    correct-downscaling=yes
+    linear-downscaling=yes
+    deband=yes
+    deband-iterations=2
+    deband-threshold=35
+
+    # Intel XeSS Équilibré (Super-résolution neuronale 8 couches - Iris Xe / Intel Arc A380)
+    [upscale-intel-xess-8]
+    glsl-shaders-set="/etc/mpv/shaders/FSRCNNX_x2_8-0-4-1.glsl"
+    scale=ewa_lanczossharp
+    cscale=spline36
+
+    # Intel XeSS Ultra (Réseau neuronal 16 couches + SSim - Intel Arc A750/A770)
+    [upscale-intel-xess-16]
+    glsl-shaders-set="/etc/mpv/shaders/FSRCNNX_x2_16-0-4-1.glsl:/etc/mpv/shaders/SSimDownscaler.glsl"
+    scale=ewa_lanczossharp
+    cscale=spline36
+
+    # --- PROFILS AMD & NVIDIA & SPÉCIALISÉS ---
 
     [upscale-fsr]
     glsl-shaders-set="/etc/mpv/shaders/FSR.glsl"
@@ -126,20 +169,10 @@ let
     scale=spline36
     cscale=spline36
 
-    # Profil 1 : Upscaling léger pour iGPU (Intel NUC, Beelink, AMD APU Vega/RDNA)
+    # Rétrocompatibilité profils iGPU/dGPU
     [iGPU-light-upscale]
-    scale=spline36
-    cscale=spline36
-    dscale=mitchell
-    correct-downscaling=yes
-    linear-downscaling=yes
-    deband=yes
-    deband-iterations=2
-    deband-threshold=35
-    deband-range=16
-    deband-grain=5
+    profile=upscale-intel-igpu
 
-    # Profil 2 : Upscaling lourd & Shaders pour GPU dédiés (AMD RX, Nvidia GTX/RTX)
     [dGPU-high-upscale]
     scale=ewa_lanczossharp
     scale-blur=0.981251
@@ -153,17 +186,20 @@ let
     deband-range=24
     deband-grain=16
 
-    # Profil 3 : Contenu 4K Natif (Désactive les filtres inutiles pour économiser le GPU)
+    # Profil Contenu 4K Natif (Désactive les filtres inutiles pour économiser le GPU)
     [4k-native]
     profile-cond=width >= 3840 or height >= 2160
     scale=bilinear
     cscale=bilinear
     deband=no
 
-    # Profil 4 : Détection automatique des contenus 720p / 1080p
+    # Profil Détection automatique des contenus 720p / 1080p selon le GPU
     [auto-upscale]
     profile-cond=(width < 3840 and height < 2160) and (width >= 1280 or height >= 720)
-    profile=upscale-fsr
+    ${if gpuCfg.profile == "intel" then "profile=upscale-intel-cas"
+      else if gpuCfg.profile == "amd" then "profile=upscale-fsr"
+      else if gpuCfg.profile == "nvidia" || gpuCfg.profile == "nvidia-legacy" then "profile=upscale-nvscaler"
+      else "profile=upscale-intel-igpu"}
   '';
 
   # Configuration Thème Catppuccin Mocha & Ergonomie TV 10-Foot pour UOSC
@@ -277,15 +313,17 @@ let
     # script-binding uosc/stream-quality #! Qualite & Debit flux
     # script-binding stats/display-stats-toggle #! Infos lecture & Upscale
     # no-op #! ---
-    # apply-profile upscale-off #! Shaders & Upscaling > 1. Desactive (Natif)
-    # apply-profile upscale-fsr #! Shaders & Upscaling > 2. AMD FSR (Super Resolution)
-    # apply-profile upscale-cas #! Shaders & Upscaling > 3. AMD CAS (Nettete adaptative)
-    # apply-profile upscale-fsrcnnx-8 #! Shaders & Upscaling > 4. FSRCNNX IA Leger (8 couches)
-    # apply-profile upscale-fsrcnnx-16 #! Shaders & Upscaling > 5. FSRCNNX IA Ultra (16 couches)
-    # apply-profile upscale-anime4k #! Shaders & Upscaling > 6. Anime4K (Dessins Animes)
-    # apply-profile upscale-nnedi3-64 #! Shaders & Upscaling > 7. NNEDI3 64 Neurones
-    # apply-profile upscale-krig #! Shaders & Upscaling > 8. KrigBilateral Chroma 4:4:4
-    # apply-profile upscale-nvscaler #! Shaders & Upscaling > 9. Nvidia NIS
+    # apply-profile upscale-intel-igpu #! Upscaling Intel > 1. Intel UHD/HD iGPU (Eco 60 FPS)
+    # apply-profile upscale-intel-cas #! Upscaling Intel > 2. Intel Adaptive CAS (Nettete)
+    # apply-profile upscale-intel-xess-8 #! Upscaling Intel > 3. Intel XeSS IA Equilibre (Iris/Arc)
+    # apply-profile upscale-intel-xess-16 #! Upscaling Intel > 4. Intel XeSS IA Ultra (Arc Dedie)
+    # apply-profile upscale-fsr #! Autres Shaders > AMD FSR (Super Resolution)
+    # apply-profile upscale-cas #! Autres Shaders > AMD CAS
+    # apply-profile upscale-nvscaler #! Autres Shaders > Nvidia NIS
+    # apply-profile upscale-anime4k #! Autres Shaders > Anime4K (Dessins Animes)
+    # apply-profile upscale-nnedi3-64 #! Autres Shaders > NNEDI3 64 Neurones
+    # apply-profile upscale-krig #! Autres Shaders > KrigBilateral Chroma 4:4:4
+    # apply-profile upscale-off #! Autres Shaders > Desactive (Natif)
     # no-op #! ---
     # quit #! Quitter le lecteur
   '';
@@ -320,7 +358,6 @@ in
     "d /home/noos/.config/mpv/script-opts 0755 noos users -"
     "L+ /home/noos/.config/mpv/script-opts/uosc.conf - - - - /etc/mpv/script-opts/uosc.conf"
     "L+ /home/noos/.config/mpv/input.conf - - - - /etc/mpv/input.conf"
-    "L+ /home/noos/.config/mpv/mpv.conf - - - - /etc/mpv/mpv.conf"
     "L+ /home/noos/.config/mpv/shaders - - - - /etc/mpv/shaders"
     "d /home/noos/.config/jellyfin-media-player 0755 noos users -"
     "L+ /home/noos/.config/jellyfin-media-player/shaders - - - - /etc/mpv/shaders"

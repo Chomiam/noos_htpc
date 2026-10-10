@@ -1688,6 +1688,9 @@ pub fn apply_mpv_profile(profile: &UpscaleProfile, max_res_label: &str) {
     let current_mpv = std::fs::read_to_string(&mpv_conf).unwrap_or_default();
     let cleaned_mpv = clean_upscale_section(&current_mpv);
     let new_mpv = format!("{}\n{}", cleaned_mpv.trim(), config_text);
+    if mpv_conf.is_symlink() {
+        let _ = std::fs::remove_file(&mpv_conf);
+    }
     let _ = std::fs::write(&mpv_conf, new_mpv.trim_start());
 
     // 2. Déploiement dans ~/.config/jellyfin-media-player/mpv.conf
@@ -1698,6 +1701,9 @@ pub fn apply_mpv_profile(profile: &UpscaleProfile, max_res_label: &str) {
     let current_jmp = std::fs::read_to_string(&jmp_conf).unwrap_or_default();
     let cleaned_jmp = clean_upscale_section(&current_jmp);
     let new_jmp = format!("{}\n{}", cleaned_jmp.trim(), config_text);
+    if jmp_conf.is_symlink() {
+        let _ = std::fs::remove_file(&jmp_conf);
+    }
     let _ = std::fs::write(&jmp_conf, new_jmp.trim_start());
 }
 

@@ -1626,14 +1626,32 @@ pub async fn iptv_play_stream(
         };
 
         match upscale_id.as_str() {
-            "amd_simple" | "intel_simple" | "nvidia_simple" => {
+            "intel_simple" | "intel-cas" => {
+                mpv_cmd.arg("--profile=upscale-intel-cas");
+            }
+            "intel_igpu" | "igpu-light" => {
+                mpv_cmd.arg("--profile=upscale-intel-igpu");
+            }
+            "intel_moyen" | "intel-xess-8" => {
+                mpv_cmd.arg("--profile=upscale-intel-xess-8");
+            }
+            "intel_eleve" | "intel-xess-16" => {
+                mpv_cmd.arg("--profile=upscale-intel-xess-16");
+            }
+            "amd_simple" => {
                 mpv_cmd.arg("--profile=upscale-cas");
             }
-            "amd_eleve" | "intel_eleve" | "nvidia_eleve" => {
+            "amd_moyen" => {
+                mpv_cmd.arg("--profile=upscale-fsr");
+            }
+            "amd_eleve" => {
                 mpv_cmd.arg("--profile=upscale-fsrcnnx-16");
             }
-            p if p.contains("fsrcnnx") => {
-                mpv_cmd.arg("--profile=upscale-fsrcnnx-8");
+            "nvidia_simple" => {
+                mpv_cmd.arg("--profile=upscale-nvscaler");
+            }
+            "nvidia_moyen" | "nvidia_eleve" => {
+                mpv_cmd.arg("--profile=upscale-nnedi3-64");
             }
             p if p.contains("anime4k") => {
                 mpv_cmd.arg("--profile=upscale-anime4k");
@@ -1641,8 +1659,15 @@ pub async fn iptv_play_stream(
             p if p.contains("nnedi") => {
                 mpv_cmd.arg("--profile=upscale-nnedi3-64");
             }
+            p if p.contains("fsrcnnx-8") => {
+                mpv_cmd.arg("--profile=upscale-fsrcnnx-8");
+            }
+            p if p.contains("fsrcnnx-16") => {
+                mpv_cmd.arg("--profile=upscale-fsrcnnx-16");
+            }
             _ => {
-                mpv_cmd.arg("--profile=upscale-fsr");
+                // Par défaut : profil automatique auto-upscale calibré pour le GPU
+                mpv_cmd.arg("--profile=auto-upscale");
             }
         }
 
