@@ -2,7 +2,10 @@
 
 {
   imports = [
-    ./hardware-configuration.nix
+    # Déclaration matérielle propre à chaque machine (générée lors de l'installation, immunisée aux mises à jour Git)
+    (if builtins.pathExists ./hardware-configuration.local.nix
+     then ./hardware-configuration.local.nix
+     else ./hardware-configuration.nix)
     ../../modules
   ] ++ lib.optional (builtins.pathExists ./host-settings.local.nix) ./host-settings.local.nix;
 

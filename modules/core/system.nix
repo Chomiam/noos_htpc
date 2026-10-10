@@ -13,6 +13,16 @@ let
       TARGET_DIR="/home/chomiam/Projets/noos_htpc"
     fi
 
+    # Si /etc/nixos n'a pas encore de dépôt Git initialisé, le configurer avec le remote officiel
+    if [ ! -d "$TARGET_DIR/.git" ]; then
+      echo -e "\033[1;34m[Noos Update]\033[0m Initialisation du suivi Git local dans $TARGET_DIR..."
+      cd "$TARGET_DIR"
+      git init -b "$CHANNEL"
+      git remote add origin "https://github.com/Chomiam/noos_htpc.git"
+      git config user.name "Noos HTPC"
+      git config user.email "htpc@noos.local"
+    fi
+
     if [ "$ACTION" = "--check" ]; then
       echo "[Noos Update] Recherche de mises à jour sur le canal '$CHANNEL'..."
       cd "$TARGET_DIR"
@@ -32,20 +42,38 @@ let
     echo -e "\033[1;34m[Noos HTPC]\033[0m Lancement de la mise à jour (Canal: $CHANNEL)..."
     cd "$TARGET_DIR"
 
-    # 1. Récupération des dernières sources
-    echo -e "\033[1;33m[1/4] Synchronisation des sources Git ($CHANNEL)...\033[0m"
-    git fetch origin "$CHANNEL"
-    git checkout "$CHANNEL"
-    git pull origin "$CHANNEL"
+    # 1. Sauvegarde préventive de la configuration matérielle unique à ce PC physique
+    echo -e "\033[1;33m[1/4] Protection des paramètres matériels locaux (*.local.nix)...\033[0m"
+    mkdir -p "$TARGET_DIR/.local-backups"
+    if [ -f "$TARGET_DIR/hosts/htpc/hardware-configuration.local.nix" ]; then
+      cp -f "$TARGET_DIR/hosts/htpc/hardware-configuration.local.nix" "$TARGET_DIR/.local-backups/"
+    fi
+    if [ -f "$TARGET_DIR/hosts/htpc/host-settings.local.nix" ]; then
+      cp -f "$TARGET_DIR/hosts/htpc/host-settings.local.nix" "$TARGET_DIR/.local-backups/"
+    fi
 
-    # 2. Mise à jour impérative du fichier flake.lock
-    echo -e "\033[1;33m[2/4] Mise à jour des dépendances et du flake.lock...\033[0m"
+    # 2. Synchronisation des sources Git sans écraser les fichiers locaux ignorés
+    echo -e "\033[1;33m[2/4] Synchronisation des sources Git ($CHANNEL)...\033[0m"
+    git fetch origin "$CHANNEL"
+    git checkout -B "$CHANNEL" "origin/$CHANNEL"
+
+    # Restauration immédiate des fichiers matériels locaux si besoin
+    if [ -f "$TARGET_DIR/.local-backups/hardware-configuration.local.nix" ]; then
+      cp -f "$TARGET_DIR/.local-backups/hardware-configuration.local.nix" "$TARGET_DIR/hosts/htpc/hardware-configuration.local.nix"
+    fi
+    if [ -f "$TARGET_DIR/.local-backups/host-settings.local.nix" ]; then
+      cp -f "$TARGET_DIR/.local-backups/host-settings.local.nix" "$TARGET_DIR/hosts/htpc/host-settings.local.nix"
+    fi
+    echo -e "\033[1;32m[✓] Configuration matérielle déclarative préservée (hardware-configuration.local.nix & host-settings.local.nix)\033[0m"
+
+    # 3. Mise à jour impérative du fichier flake.lock
+    echo -e "\033[1;33m[3/4] Mise à jour des dépendances et du flake.lock...\033[0m"
     nix flake update
 
-    # 3. Reconstruction déclarative NixOS sans mot de passe
-    echo -e "\033[1;33m[3/4] Reconstruction de la configuration NixOS ($TARGET_DIR#htpc)...\033[0m"
-    if sudo nixos-rebuild switch --flake "$TARGET_DIR#htpc"; then
-      echo -e "\033[1;32m[4/4] Mise à jour appliquée avec succès !\033[0m"
+    # 4. Reconstruction déclarative NixOS avec prise en compte des fichiers locaux (--impure)
+    echo -e "\033[1;33m[4/4] Reconstruction de la configuration NixOS ($TARGET_DIR#htpc)...\033[0m"
+    if sudo nixos-rebuild switch --impure --flake "$TARGET_DIR#htpc"; then
+      echo -e "\033[1;32m[✓] Mise à jour appliquée avec succès !\033[0m"
       exit 0
     else
       echo -e "\033[1;31m[✗] Échec de la mise à jour. Aucun changement appliqué (sécurité rollback active).\033[0m"

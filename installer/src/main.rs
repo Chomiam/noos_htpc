@@ -3,7 +3,7 @@
 mod commands;
 
 use commands::disk::list_disks;
-use commands::gpu::detect_gpu;
+use commands::gpu::{detect_gpu, detect_hardware};
 use commands::network::{scan_wifi, connect_wifi, get_network_status};
 use commands::install::{start_installation, get_install_progress, reboot_system};
 
@@ -14,6 +14,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             list_disks,
             detect_gpu,
+            detect_hardware,
             scan_wifi,
             connect_wifi,
             get_network_status,

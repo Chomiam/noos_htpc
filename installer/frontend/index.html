@@ -20,7 +20,7 @@
         <div class="step-pill active" id="pill-step-1">1. Matériel</div>
         <div class="step-pill" id="pill-step-2">2. Réseau</div>
         <div class="step-pill" id="pill-step-3">3. Disque</div>
-        <div class="step-pill" id="pill-step-4">4. Options</div>
+        <div class="step-pill" id="pill-step-4">4. Résumé</div>
         <div class="step-pill" id="pill-step-5">5. Installation</div>
       </div>
       <div class="gamepad-status" id="gamepad-badge">
@@ -51,9 +51,9 @@
           </div>
 
           <div class="info-card">
-            <h3>⚡ Détection Carte Graphique (GPU)</h3>
-            <div id="gpu-info-text">Analyse du matériel en cours...</div>
-            <div class="badge-recommendation" id="gpu-badge">Profil recommandé : Auto</div>
+            <h3>⚡ Détection Matériel & Écran TV</h3>
+            <div id="gpu-info-text">Analyse du matériel et de l'EDID TV en cours...</div>
+            <div class="badge-recommendation" id="gpu-badge">Diagnostic Automatique</div>
           </div>
         </div>
 
@@ -110,56 +110,94 @@
         </div>
       </section>
 
-      <!-- Étape 4 : Options & Profil HTPC -->
+      <!-- Étape 4 : Diagnostic & Résumé Matériel Détecté (100% Automatique) -->
       <section class="wizard-step" id="step-4">
-        <h1 class="step-title">Profil Graphique & Options TV</h1>
-        <p class="step-subtitle">Ajustez le profil matériel optimal pour votre téléviseur.</p>
+        <h1 class="step-title">Diagnostic & Configuration TV</h1>
+        <p class="step-subtitle">Configuration matérielle et affichage TV automatiquement diagnostiqués et validés.</p>
 
-        <div class="options-container">
-          <div class="option-group">
-            <label>Profil GPU :</label>
-            <div class="gpu-selector-grid">
-              <div class="gpu-card" data-focusable data-profile="amd">
-                <h4>AMD Radeon / Ryzen</h4>
-                <p>Driver amdgpu, Vulkan RADV, HDR Wayland & FreeSync</p>
+        <div class="summary-container">
+          <div class="summary-grid">
+            <!-- Carte GPU -->
+            <div class="summary-card">
+              <div class="summary-card-header">
+                <span class="card-icon">⚡</span>
+                <h3>Carte Graphique (GPU)</h3>
               </div>
-              <div class="gpu-card" data-focusable data-profile="intel">
-                <h4>Intel NUC / Iris Xe</h4>
-                <p>QuickSync VA-API moderne (iHD), basse consommation</p>
+              <div class="summary-item">
+                <span class="item-label">Composant détecté :</span>
+                <strong id="summary-gpu-name" class="item-value">Chargement...</strong>
               </div>
-              <div class="gpu-card" data-focusable data-profile="nvidia">
-                <h4>NVIDIA Moderne</h4>
-                <p>Pilotes propriétaires récents (GTX 1650+ / RTX), NVDEC</p>
+              <div class="summary-item">
+                <span class="item-label">Profil appliqué :</span>
+                <span id="summary-gpu-profile" class="item-badge auto">INTEL (Auto)</span>
               </div>
-              <div class="gpu-card" data-focusable data-profile="nvidia-legacy">
-                <h4>NVIDIA Legacy</h4>
-                <p>Pilotes propriétaires 470xx (anciennes GeForce séries 6/7/8)</p>
+            </div>
+
+            <!-- Carte Affichage & TV EDID -->
+            <div class="summary-card">
+              <div class="summary-card-header">
+                <span class="card-icon">📺</span>
+                <h3>Affichage & Téléviseur (EDID)</h3>
               </div>
-              <div class="gpu-card" data-focusable data-profile="vm">
-                <h4>Machine Virtuelle (VM)</h4>
-                <p>QEMU, KVM, VirtIO, VirtualBox, VMware. Modesetting & guest agent</p>
+              <div class="summary-item">
+                <span class="item-label">Téléviseur / Écran :</span>
+                <strong id="summary-tv-name" class="item-value">Chargement...</strong>
               </div>
-              <div class="gpu-card" data-focusable data-profile="generic">
-                <h4>Générique / Autre</h4>
-                <p>Pilotes Mesa standard sans accélération propriétaire</p>
+              <div class="summary-item">
+                <span class="item-label">Résolution native :</span>
+                <span id="summary-tv-resolution" class="item-badge info">1920 × 1080 @ 60Hz</span>
+              </div>
+              <div class="summary-item">
+                <span class="item-label">Plage dynamique :</span>
+                <span id="summary-tv-hdr" class="item-badge info">SDR</span>
+              </div>
+            </div>
+
+            <!-- Carte Services & Audio -->
+            <div class="summary-card">
+              <div class="summary-card-header">
+                <span class="card-icon">🔊</span>
+                <h3>Audio & Multimédia</h3>
+              </div>
+              <div class="summary-item">
+                <span class="item-label">Audio Bitperfect :</span>
+                <span class="item-badge success">Passthrough HDMI / SPDIF</span>
+              </div>
+              <div class="summary-item">
+                <span class="item-label">Ambilight TV :</span>
+                <span class="item-badge success">HyperHDR (PipeWire 60 FPS)</span>
+              </div>
+            </div>
+
+            <!-- Carte Stockage & Persistance -->
+            <div class="summary-card">
+              <div class="summary-card-header">
+                <span class="card-icon">🛡️</span>
+                <h3>Stockage & Persistance</h3>
+              </div>
+              <div class="summary-item">
+                <span class="item-label">Disque cible :</span>
+                <strong id="summary-target-disk" class="item-value">Sélectionné</strong>
+              </div>
+              <div class="summary-item">
+                <span class="item-label">Mises à jour GitHub :</span>
+                <span class="item-badge safe">Config locale protégée (*.local.nix)</span>
               </div>
             </div>
           </div>
 
-          <div class="option-row">
-            <label class="switch-label">Activer le support HDR (High Dynamic Range) :</label>
-            <button class="tv-btn toggle active" data-focusable id="btn-toggle-hdr">HDR : Activé</button>
-          </div>
-
-          <div class="option-row info-row">
-            <label>Nom de la machine (déclaratif) :</label>
-            <div class="static-badge">noos-htpc</div>
+          <!-- Liste des Fonctionnalités Détectées & Compatibles -->
+          <div class="features-box">
+            <h4>✨ Fonctionnalités Matérielles Activées & Optimisées :</h4>
+            <ul id="summary-features-list" class="features-list">
+              <li>Chargement du diagnostic matériel...</li>
+            </ul>
           </div>
         </div>
 
         <div class="action-footer">
           <button class="tv-btn secondary" data-focusable id="btn-back-step-3">Retour (B)</button>
-          <button class="tv-btn danger" data-focusable id="btn-start-install">LANCER L'INSTALLATION (START)</button>
+          <button class="tv-btn success large" data-focusable id="btn-start-install">LANCER L'INSTALLATION (START / A)</button>
         </div>
       </section>
 

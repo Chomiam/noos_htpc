@@ -6,9 +6,11 @@
 (function () {
   let currentStep = 1;
   let selectedDisk = null;
+  let selectedDiskLabel = "";
   let selectedGpuProfile = "amd";
   let enableHDR = true;
   let selectedWifiSsid = null;
+  let hardwareInfo = null;
 
   function escapeHtml(str) {
     if (!str) return "";
@@ -25,12 +27,35 @@
     ? window.__TAURI__.core.invoke
     : async (cmd, args) => {
         console.warn(`[Tauri Mock] Commande invoquée : ${cmd}`, args);
-        if (cmd === "detect_gpu") {
+        if (cmd === "detect_hardware" || cmd === "detect_gpu") {
           return {
-            detected_name: "AMD Radeon 780M (Ryzen 7)",
-            vendor: "AMD",
-            recommended_profile: "amd",
-            hdr_supported: true
+            detected_name: "Intel UHD Graphics 630 (iGPU)",
+            vendor: "Intel",
+            recommended_profile: "intel",
+            hdr_supported: false,
+            is_vm: false,
+            display: {
+              connector: "HDMI-A-1",
+              monitor_name: "LG TV OLED55C1",
+              manufacturer: "LG Electronics",
+              resolution: "3840 × 2160",
+              refresh_rate_hz: 60,
+              is_connected: true,
+              hdr_supported: true,
+              audio_passthrough_supported: true,
+              edid_found: true
+            },
+            summary_text: "Configuration matérielle validée automatiquement : GPU Intel (INTEL) | TV LG TV OLED55C1 (3840 × 2160) | HDR : Désactivé",
+            features_compatible: [
+              "⚡ GPU Intel : Décodage matériel VA-API QuickSync (iHD) actif pour Intel UHD Graphics 630 (iGPU)",
+              "⚡ Profil graphique : Basse consommation optimisée pour mini-PC HTPC",
+              "📺 Affichage TV : LG Electronics OLED55C1 connecté sur port HDMI-A-1",
+              "📺 Résolution native : 3840 × 2160 @ 60Hz certifiée",
+              "🌈 Plage Dynamique : Écran HDR détecté (Profil SDR 8-bit étendu appliqué pour fluidité iGPU)",
+              "🔊 Audio Bitperfect : Passthrough HDMI / SPDIF configuré pour ampli Home-Cinéma (Dolby Digital, DTS, Atmos)",
+              "💡 Ambilight Intégré : HyperHDR actif avec capture PipeWire 60 FPS (synchronisé sur vidéos et menus)",
+              "🛡️ Déclaration Matérielle : Fichier hardware-configuration.local.nix immunisé contre toute mise à jour GitHub"
+            ]
           };
         }
         if (cmd === "list_disks") {
@@ -75,30 +100,31 @@
     }, 150);
   }
 
-  // Initialisation Étape 1 : Matériel
+  // Initialisation Étape 1 : Matériel & Détection TV EDID
   async function initStep1() {
     try {
-      const gpu = await tauriInvoke("detect_gpu");
-      const name = gpu.detected_name || gpu.detectedName || "Carte graphique détectée";
-      const profile = gpu.recommended_profile || gpu.recommendedProfile || "generic";
-      const hdr = gpu.hdr_supported !== undefined ? gpu.hdr_supported : (gpu.hdrSupported !== undefined ? gpu.hdrSupported : false);
-
-      document.getElementById("gpu-info-text").textContent = name;
-      const badge = document.getElementById("gpu-badge");
-      if (badge) badge.textContent = `Profil recommandé : ${profile.toUpperCase()}`;
+      hardwareInfo = await tauriInvoke("detect_hardware");
+      const gpuName = hardwareInfo.detected_name || "Carte graphique détectée";
+      const profile = hardwareInfo.recommended_profile || "generic";
+      const hdr = hardwareInfo.hdr_supported || false;
+      const display = hardwareInfo.display || {};
 
       selectedGpuProfile = profile;
       enableHDR = hdr;
 
-      // Présélectionner dans l'étape 4
-      updateGpuSelection(selectedGpuProfile);
-      const hdrBtn = document.getElementById("btn-toggle-hdr");
-      if (hdrBtn) {
-        hdrBtn.textContent = enableHDR ? "HDR : Activé" : "HDR : Désactivé";
-        hdrBtn.className = enableHDR ? "tv-btn toggle active" : "tv-btn toggle";
+      const tvLabel = display.monitor_name ? ` | TV : ${display.monitor_name}` : "";
+      const textEl = document.getElementById("gpu-info-text");
+      if (textEl) {
+        textEl.textContent = `${gpuName}${tvLabel}`;
+      }
+
+      const badge = document.getElementById("gpu-badge");
+      if (badge) {
+        badge.textContent = `Profil Auto : ${profile.toUpperCase()} ${enableHDR ? "• HDR10" : ""}`;
       }
     } catch (err) {
-      document.getElementById("gpu-info-text").textContent = "Détection générique standard";
+      const textEl = document.getElementById("gpu-info-text");
+      if (textEl) textEl.textContent = "Détection générique standard";
     }
   }
 
@@ -173,6 +199,7 @@
           document.querySelectorAll(".disk-card").forEach((c) => c.classList.remove("selected"));
           card.classList.add("selected");
           selectedDisk = d.path;
+          selectedDiskLabel = `${d.model} (${d.size_human} - ${d.bus_type})`;
           confirmBtn.disabled = false;
         });
         grid.appendChild(card);
@@ -188,15 +215,58 @@
     }
   }
 
-  // Options & Profil GPU
-  function updateGpuSelection(profile) {
-    document.querySelectorAll(".gpu-card").forEach((card) => {
-      if (card.dataset.profile === profile) {
-        card.classList.add("selected");
+  // Initialisation Étape 4 : Diagnostic & Résumé Automatique
+  function initStep4() {
+    if (!hardwareInfo) return;
+
+    const gpuNameEl = document.getElementById("summary-gpu-name");
+    const gpuProfEl = document.getElementById("summary-gpu-profile");
+    const tvNameEl = document.getElementById("summary-tv-name");
+    const tvResEl = document.getElementById("summary-tv-resolution");
+    const tvHdrEl = document.getElementById("summary-tv-hdr");
+    const targetDiskEl = document.getElementById("summary-target-disk");
+    const featuresListEl = document.getElementById("summary-features-list");
+
+    if (gpuNameEl) gpuNameEl.textContent = hardwareInfo.detected_name;
+    if (gpuProfEl) {
+      gpuProfEl.textContent = `${hardwareInfo.recommended_profile.toUpperCase()} (Automatique)`;
+      gpuProfEl.className = "item-badge auto";
+    }
+
+    const display = hardwareInfo.display || {};
+    if (tvNameEl) {
+      tvNameEl.textContent = display.monitor_name
+        ? `${display.monitor_name} (${display.connector})`
+        : "Téléviseur HDMI";
+    }
+    if (tvResEl) {
+      tvResEl.textContent = `${display.resolution || "1920 × 1080"} @ ${display.refresh_rate_hz || 60}Hz`;
+    }
+    if (tvHdrEl) {
+      if (hardwareInfo.hdr_supported) {
+        tvHdrEl.textContent = "Compatible HDR10 (Activé)";
+        tvHdrEl.className = "item-badge success";
+      } else if (display.hdr_supported) {
+        tvHdrEl.textContent = "Écran HDR (SDR 8-bit étendu iGPU)";
+        tvHdrEl.className = "item-badge info";
       } else {
-        card.classList.remove("selected");
+        tvHdrEl.textContent = "SDR Standard 8-bit";
+        tvHdrEl.className = "item-badge info";
       }
-    });
+    }
+
+    if (targetDiskEl) {
+      targetDiskEl.textContent = selectedDiskLabel || selectedDisk || "Disque principal";
+    }
+
+    if (featuresListEl && hardwareInfo.features_compatible) {
+      featuresListEl.innerHTML = "";
+      hardwareInfo.features_compatible.forEach((feat) => {
+        const li = document.createElement("li");
+        li.textContent = feat;
+        featuresListEl.appendChild(li);
+      });
+    }
   }
 
   function setupEventListeners() {
@@ -205,34 +275,8 @@
     document.getElementById("btn-back-step-1").addEventListener("click", () => setStep(1));
     document.getElementById("btn-goto-step-3").addEventListener("click", () => { setStep(3); initStep3(); });
     document.getElementById("btn-back-step-2").addEventListener("click", () => setStep(2));
-    document.getElementById("btn-goto-step-4").addEventListener("click", () => setStep(4));
+    document.getElementById("btn-goto-step-4").addEventListener("click", () => { setStep(4); initStep4(); });
     document.getElementById("btn-back-step-3").addEventListener("click", () => setStep(3));
-
-    // Sélection GPU
-    document.querySelectorAll(".gpu-card").forEach((card) => {
-      card.addEventListener("click", () => {
-        selectedGpuProfile = card.dataset.profile;
-        updateGpuSelection(selectedGpuProfile);
-        if (selectedGpuProfile === "vm" || selectedGpuProfile === "generic" || selectedGpuProfile === "nvidia-legacy") {
-          enableHDR = false;
-        } else {
-          enableHDR = true;
-        }
-        const hdrBtn = document.getElementById("btn-toggle-hdr");
-        if (hdrBtn) {
-          hdrBtn.textContent = enableHDR ? "HDR : Activé" : "HDR : Désactivé";
-          hdrBtn.className = enableHDR ? "tv-btn toggle active" : "tv-btn toggle";
-        }
-      });
-    });
-
-    // Toggle HDR
-    const hdrBtn = document.getElementById("btn-toggle-hdr");
-    hdrBtn.addEventListener("click", () => {
-      enableHDR = !enableHDR;
-      hdrBtn.textContent = enableHDR ? "HDR : Activé" : "HDR : Désactivé";
-      hdrBtn.className = enableHDR ? "tv-btn toggle active" : "tv-btn toggle";
-    });
 
     // Bouton Clavier Virtuel
     document.getElementById("btn-open-osk").addEventListener("click", () => {

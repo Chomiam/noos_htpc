@@ -387,21 +387,32 @@ pub async fn start_installation(app: AppHandle, req: InstallRequest) -> Result<b
         let hw_file = Path::new("/tmp/noos-hw/hardware-configuration.nix");
         if hw_file.exists() {
             let _ = Command::new("cp")
-                .args(["-f", "/tmp/noos-hw/hardware-configuration.nix", "/mnt/etc/nixos/hosts/htpc/hardware-configuration.nix"])
+                .args(["-f", "/tmp/noos-hw/hardware-configuration.nix", "/mnt/etc/nixos/hosts/htpc/hardware-configuration.local.nix"])
                 .status();
-            emit_step(5, "Configuration Matérielle", 68, "Pilotes noyau et partitions spécifiques à ce PC appliqués", 0, 0);
+            emit_step(5, "Configuration Matérielle", 68, "Pilotes noyau et partitions spécifiques à ce PC appliqués (hardware-configuration.local.nix)", 0, 0);
         }
 
         // Injection déclarative du profil GPU sélectionné, du hostname forcé et des options
         let host_override = format!(
-            "{{ lib, ... }}: {{\n  networking.hostName = lib.mkForce \"noos-htpc\";\n  hardware.noos-htpc.gpu.profile = lib.mkForce \"{}\";\n  hardware.noos-htpc.gpu.enableHDR = lib.mkForce {};\n  nix.settings.experimental-features = [ \"nix-command\" \"flakes\" ];\n}}\n",
+            "# Configuration matérielle déclarative spécifique à cette machine.\n# Unique à ce PC physique et immunisé contre les mises à jour GitHub (noos-update).\n{{ lib, ... }}: {{\n  networking.hostName = lib.mkForce \"noos-htpc\";\n  hardware.noos-htpc.gpu.profile = lib.mkForce \"{}\";\n  hardware.noos-htpc.gpu.enableHDR = lib.mkForce {};\n  nix.settings.experimental-features = [ \"nix-command\" \"flakes\" ];\n}}\n",
             req.gpu_profile, req.enable_hdr
         );
         if let Err(e) = std::fs::write("/mnt/etc/nixos/hosts/htpc/host-settings.local.nix", &host_override) {
             emit_step(5, "Erreur Paramètres Locaux", 69, &format!("Impossible d'écrire host-settings.local.nix : {}", e), 0, 0);
             return;
         }
-        emit_step(5, "Configuration Noos Prête", 70, &format!("Profil graphique : {} | HDR : {}", req.gpu_profile.to_uppercase(), if req.enable_hdr { "Activé" } else { "Désactivé" }), 0, 0);
+
+        // Initialisation du dépôt Git local pour permettre les futures mises à jour via noos-update
+        if !Path::new("/mnt/etc/nixos/.git").exists() {
+            let _ = Command::new("git").args(["init", "-b", "testing"]).current_dir("/mnt/etc/nixos").status();
+            let _ = Command::new("git").args(["remote", "add", "origin", "https://github.com/Chomiam/noos_htpc.git"]).current_dir("/mnt/etc/nixos").status();
+            let _ = Command::new("git").args(["config", "user.name", "Noos Installer"]).current_dir("/mnt/etc/nixos").status();
+            let _ = Command::new("git").args(["config", "user.email", "installer@noos-htpc.local"]).current_dir("/mnt/etc/nixos").status();
+            let _ = Command::new("git").args(["add", "."]).current_dir("/mnt/etc/nixos").status();
+            let _ = Command::new("git").args(["commit", "-m", "chore: configuration initiale Noos HTPC"]).current_dir("/mnt/etc/nixos").status();
+        }
+
+        emit_step(5, "Configuration Noos Prête", 70, &format!("Profil graphique : {} | HDR : {} (Protégé des mises à jour)", req.gpu_profile.to_uppercase(), if req.enable_hdr { "Activé" } else { "Désactivé" }), 0, 0);
 
         // ==============================================================================
         // ÉTAPE 6 : INSTALLATION NIXOS (nixos-install) AVEC STREAMING & CONTRÔLE FINAL
