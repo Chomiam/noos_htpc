@@ -27,6 +27,29 @@ fn main() {
     std::env::set_var("WEBKIT_ENABLE_ACCELERATED_2D_CANVAS", "1");
     std::env::set_var("WEBKIT_ENABLE_WEBGL", "1");
 
+    // Support SSL/TLS pour WebKitGTK / GIO (indispensable pour charger les images HTTPS TMDB sur NixOS)
+    if std::env::var("GIO_EXTRA_MODULES").is_err() {
+        if let Ok(paths) = std::fs::read_dir("/nix/store") {
+            for entry in paths.flatten() {
+                let name = entry.file_name();
+                let name_str = name.to_string_lossy();
+                if name_str.contains("glib-networking") && !name_str.ends_with(".drv") {
+                    let modules_path = entry.path().join("lib/gio/modules");
+                    if modules_path.exists() {
+                        std::env::set_var("GIO_EXTRA_MODULES", modules_path.to_string_lossy().to_string());
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    if std::env::var("SSL_CERT_FILE").is_err() && std::path::Path::new("/etc/ssl/certs/ca-bundle.crt").exists() {
+        std::env::set_var("SSL_CERT_FILE", "/etc/ssl/certs/ca-bundle.crt");
+    }
+    if std::env::var("NIX_SSL_CERT_FILE").is_err() && std::path::Path::new("/etc/ssl/certs/ca-bundle.crt").exists() {
+        std::env::set_var("NIX_SSL_CERT_FILE", "/etc/ssl/certs/ca-bundle.crt");
+    }
+
     tracing_subscriber::fmt::init();
 
     tauri::Builder::default()

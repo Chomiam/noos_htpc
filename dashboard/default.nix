@@ -2,7 +2,7 @@
 
 pkgs.rustPlatform.buildRustPackage rec {
   pname = "noos-tv-dashboard";
-  version = "0.2.6";
+  version = "0.2.7";
 
   src = ./.;
 
@@ -21,6 +21,7 @@ pkgs.rustPlatform.buildRustPackage rec {
     gtk3
     webkitgtk_4_1
     glib
+    glib-networking
     cairo
     pango
     libsoup_3

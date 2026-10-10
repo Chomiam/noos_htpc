@@ -65,6 +65,11 @@ let
     export WEBKIT_ENABLE_GPU_PROCESS=1
     export WEBKIT_ENABLE_ACCELERATED_2D_CANVAS=1
 
+    # Support SSL/TLS et GIO pour WebKitGTK (indispensable pour le chargement des jaquettes HTTPS IPTV & TMDB)
+    export GIO_EXTRA_MODULES="${pkgs.glib-networking}/lib/gio/modules:${pkgs.dconf}/lib/gio/modules"
+    export SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
+    export NIX_SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
+
     # Configuration du clavier physique en Français AZERTY pour Wayland (Cage & KWin)
     export XKB_DEFAULT_LAYOUT="fr"
     export XKB_DEFAULT_MODEL="pc105"
@@ -190,6 +195,7 @@ in
       noosTvSession
       kdePackages.kwin
       kdePackages.libkscreen
+      glib-networking
       cage
       gamescope
     ];

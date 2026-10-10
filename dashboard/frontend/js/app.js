@@ -1458,6 +1458,22 @@
     }
   }
 
+  // Nettoyage et sécurisation des URLs d'affiches/logos (TMDB, proxies, HTTP/HTTPS)
+  function sanitizeCoverUrl(url) {
+    if (!url || typeof url !== 'string') return 'assets/logo.png';
+    const trimmed = url.trim();
+    if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return 'assets/logo.png';
+    // Si l'URL TMDB est incomplète (se termine par un chemin de taille sans nom de fichier image)
+    if (/image\.tmdb\.org\/t\/p\/[^/]+(?:\/)?$/.test(trimmed)) {
+      return 'assets/logo.png';
+    }
+    // Remplacer http:// par https:// pour TMDB et éviter les blocages de contenu mixte
+    if (trimmed.startsWith('http://image.tmdb.org/')) {
+      return trimmed.replace('http://image.tmdb.org/', 'https://image.tmdb.org/');
+    }
+    return trimmed;
+  }
+
   // Rendu de la liste des chaînes TV direct
   function renderLiveChannels(channels, catName) {
     if (iptvCurrentCatName) iptvCurrentCatName.textContent = catName || 'Chaînes Direct';
@@ -1476,10 +1492,10 @@
       item.tabIndex = 0;
       item.setAttribute('data-stream-id', ch.stream_id);
       
-      const logoSrc = ch.stream_icon && ch.stream_icon.trim().length > 0 ? ch.stream_icon : 'assets/logo.png';
+      const logoSrc = sanitizeCoverUrl(ch.stream_icon);
       item.innerHTML = `
         <div class="ch-icon-wrap">
-          <img src="${logoSrc}" alt="${escapeHtml(ch.name)}" class="ch-logo-img" onerror="this.src='assets/logo.png'"/>
+          <img src="${logoSrc}" alt="${escapeHtml(ch.name)}" class="ch-logo-img" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='assets/logo.png'"/>
         </div>
         <div class="ch-meta-wrap">
           <div class="ch-name">${escapeHtml(ch.name)}</div>
@@ -1520,7 +1536,7 @@
     if (previewChannelName) previewChannelName.textContent = ch.name;
     if (previewChannelCategory) previewChannelCategory.textContent = ch.category_id || 'Direct';
     if (previewChannelLogo) {
-      previewChannelLogo.src = ch.stream_icon && ch.stream_icon.trim().length > 0 ? ch.stream_icon : 'assets/logo.png';
+      previewChannelLogo.src = sanitizeCoverUrl(ch.stream_icon);
     }
 
     // Chargement du Guide TV (EPG)
@@ -1577,7 +1593,7 @@
     }
   }
 
-  // Rendu de la grille de jaquettes (Films & Séries)
+  // Rendu de la grille de jaquettes (Films & Séries) avec pagination par lots (chunking 80)
   function renderPostersGrid(items, gridElement, itemType) {
     if (!gridElement) return;
     gridElement.innerHTML = '';
@@ -1587,40 +1603,72 @@
       return;
     }
 
-    items.forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'poster-card';
-      card.tabIndex = 0;
-      card.setAttribute('data-item-id', itemType === 'series' ? item.series_id : item.stream_id);
+    // Affichage par paquets de 80 éléments pour fluidité 60 FPS immédiate
+    const CHUNK_SIZE = 80;
+    let renderedCount = 0;
 
-      const coverSrc = (itemType === 'series' ? item.cover : item.stream_icon) || 'assets/logo.png';
-      const rating = item.rating ? `★ ${parseFloat(item.rating).toFixed(1)}` : '★ 8.2';
-      const year = item.year || (itemType === 'series' ? 'Série' : 'Film');
+    function appendBatch() {
+      const nextBatch = items.slice(renderedCount, renderedCount + CHUNK_SIZE);
+      if (nextBatch.length === 0) return;
 
-      card.innerHTML = `
-        <div class="poster-img-wrap">
-          <img src="${coverSrc}" alt="${escapeHtml(item.name)}" class="poster-img" onerror="this.src='assets/logo.png'"/>
-          <span class="poster-badge-rating">${rating}</span>
-          <span class="poster-badge-year">${year}</span>
-        </div>
-        <div class="poster-info">
-          <div class="poster-title">${escapeHtml(item.name)}</div>
-          <div class="poster-sub">${itemType === 'series' ? 'Série TV' : 'Film 4K'}</div>
-        </div>
-      `;
+      const fragment = document.createDocumentFragment();
 
-      card.addEventListener('click', () => {
-        openIptvDetailsModal(item, itemType);
-      });
+      nextBatch.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'poster-card';
+        card.tabIndex = 0;
+        card.setAttribute('data-item-id', itemType === 'series' ? item.series_id : item.stream_id);
 
-      card.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+        const rawCover = (itemType === 'series' ? item.cover : item.stream_icon);
+        const coverSrc = sanitizeCoverUrl(rawCover);
+        const rating = item.rating ? `★ ${parseFloat(item.rating).toFixed(1)}` : '★ 8.2';
+        const year = item.year || (itemType === 'series' ? 'Série' : 'Film');
+
+        card.innerHTML = `
+          <div class="poster-img-wrap">
+            <img src="${coverSrc}" alt="${escapeHtml(item.name)}" class="poster-img" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='assets/logo.png'"/>
+            <span class="poster-badge-rating">${rating}</span>
+            <span class="poster-badge-year">${year}</span>
+          </div>
+          <div class="poster-info">
+            <div class="poster-title">${escapeHtml(item.name)}</div>
+            <div class="poster-sub">${itemType === 'series' ? 'Série TV' : 'Film 4K'}</div>
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
           openIptvDetailsModal(item, itemType);
-        }
+        });
+
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            openIptvDetailsModal(item, itemType);
+          }
+        });
+
+        fragment.appendChild(card);
       });
 
-      gridElement.appendChild(card);
-    });
+      gridElement.appendChild(fragment);
+      renderedCount += nextBatch.length;
+    }
+
+    appendBatch();
+
+    // Scroll listener pour charger les lots suivants au fil du défilement
+    const contentArea = gridElement.closest('.iptv-content-area');
+    if (contentArea) {
+      if (contentArea._iptvScrollHandler) {
+        contentArea.removeEventListener('scroll', contentArea._iptvScrollHandler);
+      }
+      contentArea._iptvScrollHandler = () => {
+        if (renderedCount >= items.length) return;
+        if (contentArea.scrollTop + contentArea.clientHeight >= contentArea.scrollHeight - 700) {
+          appendBatch();
+        }
+      };
+      contentArea.addEventListener('scroll', contentArea._iptvScrollHandler, { passive: true });
+    }
   }
 
   // Fenêtre modale de détails Film / Série
@@ -1632,8 +1680,12 @@
     if (!modalIptvDetails) return;
     modalIptvDetails.classList.remove('hidden');
 
-    const coverSrc = (itemType === 'series' ? item.cover : item.stream_icon) || 'assets/logo.png';
-    if (detailsPosterImg) detailsPosterImg.src = coverSrc;
+    const rawCover = (itemType === 'series' ? item.cover : item.stream_icon);
+    const coverSrc = sanitizeCoverUrl(rawCover);
+    if (detailsPosterImg) {
+      detailsPosterImg.src = coverSrc;
+      detailsPosterImg.onerror = () => { detailsPosterImg.src = 'assets/logo.png'; };
+    }
     if (detailsBackdrop) detailsBackdrop.style.backgroundImage = `url('${coverSrc}')`;
     if (detailsTitle) detailsTitle.textContent = item.name;
     if (detailsRating) detailsRating.textContent = item.rating ? `★ ${parseFloat(item.rating).toFixed(1)}` : '★ 8.5';
@@ -1801,10 +1853,10 @@
     iptvFavorites.forEach(fav => {
       const card = document.createElement('div');
       card.className = 'poster-card';
-      card.tabIndex = 0;
+      const iconSrc = sanitizeCoverUrl(fav.icon);
       card.innerHTML = `
         <div class="poster-img-wrap">
-          <img src="${fav.icon || 'assets/logo.png'}" alt="${escapeHtml(fav.name)}" class="poster-img" onerror="this.src='assets/logo.png'"/>
+          <img src="${iconSrc}" alt="${escapeHtml(fav.name)}" class="poster-img" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='assets/logo.png'"/>
           <span class="poster-badge-rating">★ Fav</span>
           <span class="poster-badge-year">${fav.item_type.toUpperCase()}</span>
         </div>
