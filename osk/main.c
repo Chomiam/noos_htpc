@@ -209,8 +209,40 @@ static void emit_uinput_key(int fd, int code, int shift) {
 
 static void update_key_labels(void);
 
+static gboolean is_mpv_running(void) {
+    if (access("/tmp/noos-mpv.sock", F_OK) == 0) return TRUE;
+    DIR *proc = opendir("/proc");
+    if (!proc) return FALSE;
+    struct dirent *ent;
+    gboolean found = FALSE;
+    while ((ent = readdir(proc)) != NULL) {
+        if (ent->d_name[0] >= '0' && ent->d_name[0] <= '9') {
+            char comm_path[64];
+            snprintf(comm_path, sizeof(comm_path), "/proc/%s/comm", ent->d_name);
+            FILE *f = fopen(comm_path, "r");
+            if (f) {
+                char comm[32];
+                if (fgets(comm, sizeof(comm), f)) {
+                    if (strncmp(comm, "mpv", 3) == 0) {
+                        found = TRUE;
+                        fclose(f);
+                        break;
+                    }
+                }
+                fclose(f);
+            }
+        }
+    }
+    closedir(proc);
+    return found;
+}
+
 static void show_keyboard(void) {
     if (!window || is_visible) return;
+    if (is_mpv_running()) {
+        printf("[Noos OSK] Refus d'affichage : lecteur vidéo MPV en cours d'exécution.\n");
+        return;
+    }
     is_visible = TRUE;
     gtk_widget_show_all(window);
     printf("[Noos OSK] Clavier virtuel affiché en overlay.\n");
@@ -462,8 +494,13 @@ static void *gamepad_thread_fn(void *arg) {
                 if (ie.type == EV_KEY && ie.value == 1) {
                     /* Si le clavier n'est pas affiché, vérifier raccourci d'activation */
                     if (!is_visible) {
-                        /* Bouton Select / Share (314) pour forcer l'affichage */
-                        if (ie.code == 314) {
+                        /* Ne JAMAIS ouvrir le clavier si MPV est en cours d'exécution */
+                        if (is_mpv_running()) {
+                            continue;
+                        }
+                        /* Raccourci manuel : Clic stick droit R3 (318) ou bouton Guide / Xbox (316) */
+                        /* Note: SELECT (314) n'est plus utilisé afin de ne pas interférer avec le lecteur MPV */
+                        if (ie.code == 316 || ie.code == 318) {
                             g_idle_add((GSourceFunc)show_keyboard, NULL);
                         }
                         continue;
