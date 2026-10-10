@@ -311,7 +311,8 @@ let
     # script-binding uosc/subtitles #! Sous-titres
     # script-binding uosc/audio #! Audio & Passthrough
     # script-binding uosc/stream-quality #! Qualite & Debit flux
-    # script-binding stats/display-stats-toggle #! Infos lecture & Upscale
+    # script-binding stats/display-page-1-toggle #! Diagnostics > 1. Statistiques generales (Resolution & Codec)
+    # script-binding stats/display-page-2-toggle #! Diagnostics > 2. Passes Shaders & Upscale GPU en direct
     # no-op #! ---
     # apply-profile upscale-intel-igpu #! Upscaling Intel > 1. Intel UHD/HD iGPU (Eco 60 FPS)
     # apply-profile upscale-intel-cas #! Upscaling Intel > 2. Intel Adaptive CAS (Nettete)
