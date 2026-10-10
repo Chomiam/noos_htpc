@@ -1604,10 +1604,49 @@ pub async fn iptv_play_stream(
             "--input-gamepad=yes",
             "--input-default-bindings=yes",
             "--input-conf=/etc/mpv/input.conf",
+            "--input-ipc-server=/tmp/noos-mpv.sock",
             "--title=Noos IPTV MPV Player",
             &format!("--cache-secs={}", settings.buffer_seconds),
-            &stream_url,
         ]);
+
+        let upscale_id = if !settings.upscale_profile.is_empty() {
+            settings.upscale_profile.clone()
+        } else {
+            let home = std::env::var("HOME").unwrap_or_else(|_| "/home/noos".to_string());
+            let upscale_file = std::path::PathBuf::from(&home).join(".config/noos-htpc/upscale.json");
+            if let Ok(data) = std::fs::read_to_string(upscale_file) {
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&data) {
+                    val.get("active_profile_id").and_then(|v| v.as_str()).unwrap_or("").to_string()
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            }
+        };
+
+        match upscale_id.as_str() {
+            "amd_simple" | "intel_simple" | "nvidia_simple" => {
+                mpv_cmd.arg("--profile=upscale-cas");
+            }
+            "amd_eleve" | "intel_eleve" | "nvidia_eleve" => {
+                mpv_cmd.arg("--profile=upscale-fsrcnnx-16");
+            }
+            p if p.contains("fsrcnnx") => {
+                mpv_cmd.arg("--profile=upscale-fsrcnnx-8");
+            }
+            p if p.contains("anime4k") => {
+                mpv_cmd.arg("--profile=upscale-anime4k");
+            }
+            p if p.contains("nnedi") => {
+                mpv_cmd.arg("--profile=upscale-nnedi3-64");
+            }
+            _ => {
+                mpv_cmd.arg("--profile=upscale-fsr");
+            }
+        }
+
+        mpv_cmd.arg(&stream_url);
 
         if settings.deband {
             mpv_cmd.args(["--deband=yes", "--deband-iterations=4", "--deband-threshold=48"]);

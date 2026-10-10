@@ -57,6 +57,8 @@ let
     cursor-autohide=1000
     osd-font-size=36
     osd-duration=2000
+    input-ipc-server=/tmp/noos-mpv.sock
+    osd-playing-msg="🎮 (A) Pause  (B) Quitter  (X) Sous-titres  (Y) Audio  (START) Menu  (SELECT) Infos"
 
     # ==============================================================================
     # PROFILS D'UPSCALING, TONE-MAPPING & AUDIO BITPERFECT
@@ -79,6 +81,50 @@ let
     hdr-contrast-recovery=0.5
     gamut-mapping-mode=perceptual
     target-peak=100
+
+    # Profils d'Upscaling Manuels / Sélectionnables dans le Menu UOSC
+    [upscale-off]
+    glsl-shaders-clr
+    scale=spline36
+    cscale=spline36
+
+    [upscale-fsr]
+    glsl-shaders-set="/etc/mpv/shaders/FSR.glsl"
+    scale=ewa_lanczossharp
+    cscale=spline36
+
+    [upscale-cas]
+    glsl-shaders-set="/etc/mpv/shaders/CAS-scaled.glsl"
+    scale=spline36
+    cscale=spline36
+
+    [upscale-fsrcnnx-8]
+    glsl-shaders-set="/etc/mpv/shaders/FSRCNNX_x2_8-0-4-1.glsl"
+    scale=ewa_lanczossharp
+    cscale=spline36
+
+    [upscale-fsrcnnx-16]
+    glsl-shaders-set="/etc/mpv/shaders/FSRCNNX_x2_16-0-4-1.glsl"
+    scale=ewa_lanczossharp
+    cscale=spline36
+
+    [upscale-anime4k]
+    glsl-shaders-set="/etc/mpv/shaders/Anime4K_Upscale_CNN_x2_M.glsl:/etc/mpv/shaders/Anime4K_Restore_CNN_M.glsl"
+    scale=ewa_lanczossharp
+    cscale=spline36
+
+    [upscale-nnedi3-64]
+    glsl-shaders-set="/etc/mpv/shaders/nnedi3-nns64-win8x6.hook"
+    scale=ewa_lanczossharp
+    cscale=spline36
+
+    [upscale-krig]
+    glsl-shaders-append="/etc/mpv/shaders/KrigBilateral.glsl"
+
+    [upscale-nvscaler]
+    glsl-shaders-set="/etc/mpv/shaders/NVScaler.glsl"
+    scale=spline36
+    cscale=spline36
 
     # Profil 1 : Upscaling léger pour iGPU (Intel NUC, Beelink, AMD APU Vega/RDNA)
     [iGPU-light-upscale]
@@ -117,7 +163,7 @@ let
     # Profil 4 : Détection automatique des contenus 720p / 1080p
     [auto-upscale]
     profile-cond=(width < 3840 and height < 2160) and (width >= 1280 or height >= 720)
-    ${if (gpuCfg.profile == "intel" || gpuCfg.profile == "generic") then "profile=iGPU-light-upscale" else "profile=dGPU-high-upscale"}
+    profile=upscale-fsr
   '';
 
   # Configuration Thème Catppuccin Mocha & Ergonomie TV 10-Foot pour UOSC
@@ -194,10 +240,10 @@ let
     GAMEPAD_START script-binding uosc/menu
     GAMEPAD_MENU script-binding uosc/menu
     GAMEPAD_BACK script-binding stats/display-stats-toggle
+    GAMEPAD_RIGHT_TRIGGER script-binding uosc/stream-quality
     GAMEPAD_LEFT_SHOULDER seek -60
     GAMEPAD_RIGHT_SHOULDER seek 60
     GAMEPAD_LEFT_TRIGGER seek -10
-    GAMEPAD_RIGHT_TRIGGER seek 10
     GAMEPAD_RIGHT_STICK_UP add volume 5
     GAMEPAD_RIGHT_STICK_DOWN add volume -5
 
@@ -224,47 +270,24 @@ let
     q quit
 
     # ==============================================================================
-    # MENUS UOSC DYNAMIQUES (Affichés dans le menu 'm' / Bouton START manette)
+    # MENU UOSC DYNAMIQUE EN FRANÇAIS (Accessible via START / Touche MENU)
     # ==============================================================================
-
-    #! Sous-titres : Pistes et Synchronisation
-    s script-binding uosc/subtitles
-
-    #! Audio : Pistes sonores & Passthrough Dolby/DTS
-    a script-binding uosc/audio
-
-    #! Qualité et Débit du flux vidéo
-    v script-binding uosc/stream-quality
-
-    #! Informations de lecture en direct (Codecs, HDR, Débit, Passthrough)
-    i script-binding stats/display-stats-toggle
-
-    #! Shaders & Technologies d'Upscaling > 1. Désactivé (Natif)
-    _ change-list glsl-shaders clr all; set scale bilinear; set cscale bilinear; show-text "Upscaling : Désactivé (Natif)"
-
-    #! Shaders & Technologies d'Upscaling > 2. AMD FSR (FidelityFX Super Resolution)
-    _ change-list glsl-shaders clr all; change-list glsl-shaders append "/etc/mpv/shaders/FSR.glsl"; show-text "Upscaling : AMD FSR activé"
-
-    #! Shaders & Technologies d'Upscaling > 3. AMD CAS (Contrast Adaptive Sharpening)
-    _ change-list glsl-shaders clr all; change-list glsl-shaders append "/etc/mpv/shaders/CAS-scaled.glsl"; show-text "Upscaling : AMD CAS activé"
-
-    #! Shaders & Technologies d'Upscaling > 4. FSRCNNX IA Léger (8-0-4-1)
-    _ change-list glsl-shaders clr all; change-list glsl-shaders append "/etc/mpv/shaders/FSRCNNX_x2_8-0-4-1.glsl"; show-text "Upscaling : FSRCNNX IA Léger activé"
-
-    #! Shaders & Technologies d'Upscaling > 5. FSRCNNX IA Ultra (16-0-4-1)
-    _ change-list glsl-shaders clr all; change-list glsl-shaders append "/etc/mpv/shaders/FSRCNNX_x2_16-0-4-1.glsl"; show-text "Upscaling : FSRCNNX IA Ultra activé"
-
-    #! Shaders & Technologies d'Upscaling > 6. Anime4K (Spécial Animation & Dessins Animés)
-    _ change-list glsl-shaders clr all; change-list glsl-shaders append "/etc/mpv/shaders/Anime4K_Upscale_CNN_x2_M.glsl"; change-list glsl-shaders append "/etc/mpv/shaders/Anime4K_Restore_CNN_M.glsl"; show-text "Upscaling : Anime4K activé"
-
-    #! Shaders & Technologies d'Upscaling > 7. NNEDI3 64 Neurones (Interpolation de contours)
-    _ change-list glsl-shaders clr all; change-list glsl-shaders append "/etc/mpv/shaders/nnedi3-nns64-win8x6.hook"; show-text "Upscaling : NNEDI3 64 activé"
-
-    #! Shaders & Technologies d'Upscaling > 8. KrigBilateral (Reconstruction Chroma 4:4:4)
-    _ change-list glsl-shaders append "/etc/mpv/shaders/KrigBilateral.glsl"; show-text "Chroma : KrigBilateral activé"
-
-    #! Shaders & Technologies d'Upscaling > 9. Nvidia Image Scaler (NVScaler)
-    _ change-list glsl-shaders clr all; change-list glsl-shaders append "/etc/mpv/shaders/NVScaler.glsl"; show-text "Upscaling : Nvidia NVScaler activé"
+    # script-binding uosc/subtitles #! Sous-titres
+    # script-binding uosc/audio #! Audio & Passthrough
+    # script-binding uosc/stream-quality #! Qualite & Debit flux
+    # script-binding stats/display-stats-toggle #! Infos lecture & Upscale
+    # no-op #! ---
+    # apply-profile upscale-off #! Shaders & Upscaling > 1. Desactive (Natif)
+    # apply-profile upscale-fsr #! Shaders & Upscaling > 2. AMD FSR (Super Resolution)
+    # apply-profile upscale-cas #! Shaders & Upscaling > 3. AMD CAS (Nettete adaptative)
+    # apply-profile upscale-fsrcnnx-8 #! Shaders & Upscaling > 4. FSRCNNX IA Leger (8 couches)
+    # apply-profile upscale-fsrcnnx-16 #! Shaders & Upscaling > 5. FSRCNNX IA Ultra (16 couches)
+    # apply-profile upscale-anime4k #! Shaders & Upscaling > 6. Anime4K (Dessins Animes)
+    # apply-profile upscale-nnedi3-64 #! Shaders & Upscaling > 7. NNEDI3 64 Neurones
+    # apply-profile upscale-krig #! Shaders & Upscaling > 8. KrigBilateral Chroma 4:4:4
+    # apply-profile upscale-nvscaler #! Shaders & Upscaling > 9. Nvidia NIS
+    # no-op #! ---
+    # quit #! Quitter le lecteur
   '';
 in
 {

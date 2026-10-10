@@ -56,8 +56,8 @@ in
   #   - "nvidia"        : Pour cartes graphiques Nvidia modernes (GTX 1650 et supérieur)
   #   - "nvidia-legacy" : Pour anciennes cartes GeForce (pilotes 470xx)
   hardware.noos-htpc.gpu = {
-    profile = lib.mkDefault "amd";    # <-- Modifiez ici selon votre GPU
-    enableHDR = lib.mkDefault true;   # Active le support HDR sur TV compatible (AMD / Nvidia)
+    profile = lib.mkDefault "intel";  # Lenovo ThinkCentre M720q (Intel UHD Graphics 630 QuickSync)
+    enableHDR = lib.mkDefault false;  # Non supporté sur iGPU DP->HDMI standard
   };
 
   # ==============================================================================
