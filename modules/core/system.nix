@@ -138,6 +138,7 @@ in
     experimental-features = [ "nix-command" "flakes" ];
     auto-optimise-store = true;
     warn-dirty = false;
+    trusted-users = [ "root" "noos" "@wheel" ];
     substituters = [
       "https://cache.nixos.org"
       "https://noos.cachix.org"
@@ -147,6 +148,22 @@ in
       "noos.cachix.org-1:oA+kmOj0Yvzq6XWXVDFlTq5wGdY2gpr0cpzB0P9ndKI="
     ];
   };
+
+  # 6. Garantie d'intégrité et de permissions du dépôt /etc/nixos pour les mises à jour
+  system.activationScripts.noosRepoInit = lib.stringAfter [ "users" "groups" ] ''
+    if [ -d /etc/nixos ]; then
+      ${pkgs.git}/bin/git config --system --add safe.directory /etc/nixos || true
+      chown -R noos:users /etc/nixos || true
+      if [ ! -d /etc/nixos/.git ]; then
+        echo "[Noos Init] Initialisation automatique du dépôt Git dans /etc/nixos..."
+        ${pkgs.git}/bin/git init -b testing /etc/nixos || true
+        ${pkgs.git}/bin/git -C /etc/nixos remote add origin "https://github.com/Chomiam/noos_htpc.git" || true
+        ${pkgs.git}/bin/git -C /etc/nixos fetch origin testing || true
+        ${pkgs.git}/bin/git -C /etc/nixos reset --mixed origin/testing || true
+        chown -R noos:users /etc/nixos || true
+      fi
+    fi
+  '';
 
   # 5. Paquets système essentiels et utilitaires Noos
   environment.systemPackages = with pkgs; [

@@ -410,6 +410,8 @@ pub async fn start_installation(app: AppHandle, req: InstallRequest) -> Result<b
             let _ = Command::new("git").args(["config", "user.email", "installer@noos-htpc.local"]).current_dir("/mnt/etc/nixos").status();
             let _ = Command::new("git").args(["add", "."]).current_dir("/mnt/etc/nixos").status();
             let _ = Command::new("git").args(["commit", "-m", "chore: configuration initiale Noos HTPC"]).current_dir("/mnt/etc/nixos").status();
+            let _ = Command::new("chown").args(["-R", "1000:100", "/mnt/etc/nixos"]).status();
+            let _ = Command::new("git").args(["config", "--system", "--add", "safe.directory", "/etc/nixos"]).status();
         }
 
         emit_step(5, "Configuration Noos Prête", 70, &format!("Profil graphique : {} | HDR : {} (Protégé des mises à jour)", req.gpu_profile.to_uppercase(), if req.enable_hdr { "Activé" } else { "Désactivé" }), 0, 0);
