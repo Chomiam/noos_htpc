@@ -127,7 +127,7 @@ let
     timeline_size=38
     timeline_line_width=3
     timeline_border=1
-    timeline_cache=true
+    timeline_cache=yes
 
     # Contrôles de lecture & timeline persistants en pause
     controls_persistency=paused
@@ -148,7 +148,7 @@ let
     menu_item_height=48
     menu_min_width=400
     menu_padding=8
-    menu_type_to_search=false
+    menu_type_to_search=no
 
     # Barre supérieure de titre et infos
     top_bar=no-border
