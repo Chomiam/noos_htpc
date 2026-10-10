@@ -90,7 +90,9 @@
 1. **Alimentation obligatoire du cache binaire lors de chaque mise à jour :**
    * À chaque mise à jour du Dashboard TV (`dashboard/`) ou de toute application/paquet compilé Rust, il est **impératif et obligatoire** de compiler et pousser le paquet binaire dans le cache Cachix officiel du projet :
      ```bash
-     cachix push noos <chemin-du-paquet-nix-store>
+     # Compilation et téléversement immédiat dans le cache binaire officiel
+     nix build .#noos-tv-dashboard --impure
+     cachix push noos result
      ```
    * **Objectif** : Éviter absolument toute compilation lourde sur les mini PC ou consoles de salon des utilisateurs finaux lors de l'exécution de `noos-update` ou de l'installation, en leur permettant de télécharger instantanément les binaires précompilés depuis `https://noos.cachix.org`.
 2. **Confidentialité stricte du Token Cachix :**
