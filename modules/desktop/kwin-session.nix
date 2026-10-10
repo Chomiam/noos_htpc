@@ -53,6 +53,8 @@ let
     # 1. Variables d'environnement Wayland pour grand écran TV
     export XDG_SESSION_TYPE=wayland
     export XDG_CURRENT_DESKTOP=KDE
+    export WAYLAND_DISPLAY="wayland-0"
+    export KWIN_FORCE_ASSUME_HDR_SUPPORT=1
     export GDK_BACKEND="wayland,x11"
     export QT_QPA_PLATFORM="wayland;xcb"
     export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
@@ -92,26 +94,21 @@ VariantList=
 EOF
 
 
-    # 3. Détection intelligente de l'écran : HDR natif ou Fallback SDR avec tonemapping
+    # 3. Détection intelligente de l'écran : HDR natif / Wide Color Gamut (Rec.2020)
     ${lib.optionalString gpuCfg.enableHDR ''
     (
-      for i in $(seq 1 12); do
+      export WAYLAND_DISPLAY=wayland-0
+      export XDG_RUNTIME_DIR=/run/user/1000
+      for i in $(seq 1 15); do
         sleep 1
         if ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor -j >/dev/null 2>&1; then
-          KSCREEN_JSON=$(${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor -j 2>/dev/null || true)
-          HDR_SUPPORTED=$(echo "$KSCREEN_JSON" | grep -iE '"hdrCapable"\s*:\s*true|"hdr"\s*:\s*true' || true)
-
-          if [ -n "$HDR_SUPPORTED" ]; then
-            echo "[Noos HTPC] Écran compatible HDR détecté : activation de l'espace colorimétrique Rec.2020 / HDR10..."
-            ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.1.hdr.enable || true
-            ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.HDMI-A-1.hdr.enable || true
-            ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.DP-1.hdr.enable || true
-          else
-            echo "[Noos HTPC] Écran ou matériel SDR détecté : maintien du mode SDR sRGB avec tonemapping automatique activé pour MPV."
-            ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.1.hdr.disable || true
-            ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.HDMI-A-1.hdr.disable || true
-            ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.DP-1.hdr.disable || true
-          fi
+          echo "[Noos HTPC] Affichage compatible détecté : activation de l'espace colorimétrique Rec.2020 / HDR..."
+          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.1.wcg.enable || true
+          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.1.hdr.enable || true
+          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.HDMI-A-1.wcg.enable || true
+          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.HDMI-A-1.hdr.enable || true
+          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.DP-1.wcg.enable || true
+          ${pkgs.kdePackages.libkscreen}/bin/kscreen-doctor output.DP-1.hdr.enable || true
           break
         fi
       done

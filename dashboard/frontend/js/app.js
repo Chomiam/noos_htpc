@@ -955,6 +955,13 @@
     if (window.__TAURI__ && window.__TAURI__.core) {
       try {
         await window.__TAURI__.core.invoke('toggle_hdr', { enable: hdrEnabled });
+        setTimeout(async () => {
+          try {
+            const info = await window.__TAURI__.core.invoke('get_system_info');
+            hdrEnabled = info.hdr_enabled;
+            applyHdrState(hdrEnabled);
+          } catch (_) {}
+        }, 500);
       } catch (err) {
         console.error('Erreur toggle HDR :', err);
       }

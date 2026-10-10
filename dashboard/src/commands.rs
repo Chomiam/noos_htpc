@@ -457,12 +457,20 @@ pub async fn get_system_info() -> Result<SystemInfo, String> {
 
     let mut hdr_enabled = false;
     let mut hdr_capable = false;
-    if let Ok(output) = Command::new("kscreen-doctor").arg("-j").output() {
+    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/run/user/1000".to_string());
+    let wayland_display = std::env::var("WAYLAND_DISPLAY").unwrap_or_else(|_| "wayland-0".to_string());
+
+    if let Ok(output) = Command::new("kscreen-doctor")
+        .env("XDG_RUNTIME_DIR", &runtime_dir)
+        .env("WAYLAND_DISPLAY", &wayland_display)
+        .arg("-j")
+        .output()
+    {
         if let Ok(text) = String::from_utf8(output.stdout) {
-            if text.contains("\"hdr\":true") || text.contains("\"hdr\": true") {
+            if text.contains("\"hdr\":true") || text.contains("\"hdr\": true") || text.contains("\"wcg\":true") || text.contains("\"wcg\": true") {
                 hdr_enabled = true;
             }
-            if text.contains("\"hdrCapable\":true") || text.contains("\"hdrCapable\": true") || text.contains("\"hdr\":") {
+            if text.contains("\"hdrCapable\":true") || text.contains("\"hdrCapable\": true") || text.contains("\"wcg\":") || text.contains("\"hdr\":") {
                 hdr_capable = true;
             }
         }
@@ -486,9 +494,23 @@ pub async fn get_system_info() -> Result<SystemInfo, String> {
 pub async fn toggle_hdr(enable: bool) -> Result<bool, String> {
     tokio::task::spawn_blocking(move || {
         let action = if enable { "hdr.enable" } else { "hdr.disable" };
-        let _ = Command::new("kscreen-doctor").args([&format!("output.1.{}", action)]).status();
-        let _ = Command::new("kscreen-doctor").args([&format!("output.HDMI-A-1.{}", action)]).status();
-        let _ = Command::new("kscreen-doctor").args([&format!("output.DP-1.{}", action)]).status();
+        let wcg_action = if enable { "wcg.enable" } else { "wcg.disable" };
+        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/run/user/1000".to_string());
+        let wayland_display = std::env::var("WAYLAND_DISPLAY").unwrap_or_else(|_| "wayland-0".to_string());
+
+        for target in ["output.1", "output.HDMI-A-1", "output.DP-1"] {
+            let _ = Command::new("kscreen-doctor")
+                .env("XDG_RUNTIME_DIR", &runtime_dir)
+                .env("WAYLAND_DISPLAY", &wayland_display)
+                .arg(&format!("{}.{}", target, action))
+                .status();
+
+            let _ = Command::new("kscreen-doctor")
+                .env("XDG_RUNTIME_DIR", &runtime_dir)
+                .env("WAYLAND_DISPLAY", &wayland_display)
+                .arg(&format!("{}.{}", target, wcg_action))
+                .status();
+        }
     });
     Ok(enable)
 }
