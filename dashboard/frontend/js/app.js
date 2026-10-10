@@ -2688,7 +2688,7 @@
       prevButtonsState['Start'] = btnStart;
     }
 
-    requestAnimationFrame(pollGamepad);
+    setTimeout(pollGamepad, gp ? 16 : 120);
   }
 
   // 15. Initialisation au chargement & écoute des événements système Tauri
@@ -2701,7 +2701,7 @@
     selectCard(0, false);
     refreshSystemInfo();
     initKeyboardConfig();
-    requestAnimationFrame(pollGamepad);
+    setTimeout(pollGamepad, 80);
 
     if (window.__TAURI__ && window.__TAURI__.event) {
       // 1. Bouton HOME global
