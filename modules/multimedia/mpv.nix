@@ -306,25 +306,36 @@ let
     q quit
 
     # ==============================================================================
-    # MENU UOSC DYNAMIQUE EN FRANÇAIS (Accessible via START / Touche MENU)
+    # MENU UOSC DYNAMIQUE MODULAIRE EN FRANÇAIS (Accessible via START / Touche MENU)
     # ==============================================================================
     # script-binding uosc/subtitles #! Sous-titres
     # script-binding uosc/audio #! Audio & Passthrough
     # script-binding uosc/stream-quality #! Qualite & Debit flux
-    # script-binding stats/display-page-1-toggle #! Diagnostics > 1. Statistiques generales (Resolution & Codec)
-    # script-binding stats/display-page-2-toggle #! Diagnostics > 2. Passes Shaders & Upscale GPU en direct
     # no-op #! ---
-    # apply-profile upscale-intel-igpu #! Upscaling Intel > 1. Intel UHD/HD iGPU (Eco 60 FPS)
-    # apply-profile upscale-intel-cas #! Upscaling Intel > 2. Intel Adaptive CAS (Nettete)
-    # apply-profile upscale-intel-xess-8 #! Upscaling Intel > 3. Intel XeSS IA Equilibre (Iris/Arc)
-    # apply-profile upscale-intel-xess-16 #! Upscaling Intel > 4. Intel XeSS IA Ultra (Arc Dedie)
-    # apply-profile upscale-fsr #! Autres Shaders > AMD FSR (Super Resolution)
-    # apply-profile upscale-cas #! Autres Shaders > AMD CAS
-    # apply-profile upscale-nvscaler #! Autres Shaders > Nvidia NIS
-    # apply-profile upscale-anime4k #! Autres Shaders > Anime4K (Dessins Animes)
-    # apply-profile upscale-nnedi3-64 #! Autres Shaders > NNEDI3 64 Neurones
-    # apply-profile upscale-krig #! Autres Shaders > KrigBilateral Chroma 4:4:4
-    # apply-profile upscale-off #! Autres Shaders > Desactive (Natif)
+    # set scale spline36 ; show-text "Scaler: Spline36 (Recommande)" #! 1. Moteurs d'Upscale (Scalers) > Spline36 (Equilibre Intel UHD - Recommande)
+    # set scale ewa_lanczossharp ; show-text "Scaler: EWA-Lanczos (Haute Precision)" #! 1. Moteurs d'Upscale (Scalers) > EWA-Lanczos / Jinc (Ultra Haute Precision)
+    # set scale mitchell ; show-text "Scaler: Bicubique Mitchell" #! 1. Moteurs d'Upscale (Scalers) > Bicubique Mitchell (Doux & Cinematique)
+    # set scale bilinear ; show-text "Scaler: Bilineaire (Eco)" #! 1. Moteurs d'Upscale (Scalers) > Bilineaire (Mode Eco)
+    # no-op #! ---
+    # change-list glsl-shaders clr "" ; show-text "Shaders desactives (Rendu pur)" #! 2. Shaders & Ameliorations > Desactiver tous les shaders (Natif)
+    # change-list glsl-shaders set "/etc/mpv/shaders/CAS-scaled.glsl" ; show-text "Shader: Intel / AMD CAS (Nettete)" #! 2. Shaders & Ameliorations > Intel / AMD CAS (Nettete intelligente - Recommande UHD 630)
+    # change-list glsl-shaders set "/etc/mpv/shaders/FSR.glsl" ; show-text "Shader: AMD FSR (Super Resolution)" #! 2. Shaders & Ameliorations > AMD FSR (Super Resolution spatiale)
+    # change-list glsl-shaders set "/etc/mpv/shaders/FSRCNNX_x2_8-0-4-1.glsl" ; show-text "Shader: Intel XeSS / FSRCNNX IA" #! 2. Shaders & Ameliorations > Intel XeSS / FSRCNNX (Super-resolution neuronale IA)
+    # change-list glsl-shaders set "/etc/mpv/shaders/Anime4K_Upscale_CNN_x2_M.glsl:/etc/mpv/shaders/Anime4K_Restore_CNN_M.glsl" ; show-text "Shader: Anime4K" #! 2. Shaders & Ameliorations > Anime4K (Anime & Dessins Animes)
+    # change-list glsl-shaders set "/etc/mpv/shaders/NVScaler.glsl" ; show-text "Shader: Nvidia NIS" #! 2. Shaders & Ameliorations > Nvidia NIS (Nvidia Image Scaling)
+    # change-list glsl-shaders set "/etc/mpv/shaders/nnedi3-nns64-win8x6.hook" ; show-text "Shader: NNEDI3 (64 neurones)" #! 2. Shaders & Ameliorations > NNEDI3 (Interpolation Neuronale)
+    # no-op #! ---
+    # cycle deband ; show-text "Debanding: ''\${deband}" #! 3. Traitements Complementaires > Debanding (Anti-bandes de compression)
+    # change-list glsl-shaders toggle "/etc/mpv/shaders/KrigBilateral.glsl" ; show-text "KrigBilateral Chroma bascule" #! 3. Traitements Complementaires > KrigBilateral (Chroma 4:4:4 haute fidelite)
+    # cycle interpolation ; show-text "Interpolation: ''\${interpolation}" #! 3. Traitements Complementaires > Interpolation 60Hz (Anti-saccades 24p)
+    # no-op #! ---
+    # apply-profile upscale-intel-igpu ; show-text "Profil: Intel UHD 630 Eco" #! 4. Profils Complets (Presets 1-Clic) > Intel UHD 630 Eco (Spline36, deband, 60 FPS)
+    # apply-profile upscale-intel-cas ; show-text "Profil: Intel Adaptive CAS" #! 4. Profils Complets (Presets 1-Clic) > Intel Adaptive CAS (Spline36 + CAS nettete)
+    # apply-profile upscale-intel-xess-8 ; show-text "Profil: Intel XeSS IA" #! 4. Profils Complets (Presets 1-Clic) > Intel XeSS IA Equilibre (FSRCNNX 8 couches)
+    # apply-profile upscale-off ; show-text "Profil: Rendu Natif Desactive" #! 4. Profils Complets (Presets 1-Clic) > Rendu Natif (Aucun traitement)
+    # no-op #! ---
+    # script-binding stats/display-page-1-toggle #! Diagnostics > 1. Statistiques generales (Resolution, Codec, Debit)
+    # script-binding stats/display-page-2-toggle #! Diagnostics > 2. Passes Shaders & Upscale GPU en direct
     # no-op #! ---
     # quit #! Quitter le lecteur
   '';
