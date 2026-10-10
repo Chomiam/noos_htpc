@@ -22,7 +22,7 @@ if ! command -v nix >/dev/null 2>&1; then
 fi
 
 echo -e "${COLOR_INFO}[*] Compilation de la dérivation ISO (nix build .#iso)...${COLOR_RESET}"
-nix build "$SCRIPT_DIR#iso" --print-out-paths
+nix build "$SCRIPT_DIR#iso" --extra-experimental-features "nix-command flakes" --impure --print-out-paths
 
 ISO_FILE=$(find "$SCRIPT_DIR/result/iso" -name "*.iso" | head -n 1)
 
