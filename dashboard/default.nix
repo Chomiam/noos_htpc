@@ -2,7 +2,7 @@
 
 pkgs.rustPlatform.buildRustPackage rec {
   pname = "noos-tv-dashboard";
-  version = "0.2.8";
+  version = "0.2.9";
 
   src = ./.;
 

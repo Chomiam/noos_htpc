@@ -1467,9 +1467,12 @@
     if (/image\.tmdb\.org\/t\/p\/[^/]+(?:\/)?$/.test(trimmed)) {
       return 'assets/logo.png';
     }
-    // Remplacer http:// par https:// pour TMDB et éviter les blocages de contenu mixte
+    // Remplacer http:// par https:// pour TMDB et les CDN modernes afin d'éviter les blocages Mixed Content WebKitGTK
     if (trimmed.startsWith('http://image.tmdb.org/')) {
       return trimmed.replace('http://image.tmdb.org/', 'https://image.tmdb.org/');
+    }
+    if (trimmed.startsWith('http://') && !trimmed.slice(7).includes(':') && !trimmed.includes('localhost')) {
+      return trimmed.replace('http://', 'https://');
     }
     return trimmed;
   }
@@ -1626,7 +1629,11 @@
 
         card.innerHTML = `
           <div class="poster-img-wrap">
-            <img src="${coverSrc}" alt="${escapeHtml(item.name)}" class="poster-img" onerror="this.onerror=null;this.src='assets/logo.png'"/>
+            <img src="${coverSrc}" alt="${escapeHtml(item.name)}" class="poster-img" referrerpolicy="no-referrer" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.onerror=null;this.classList.add('fallback-mode');this.src='assets/logo.png';"/>
+            <div class="poster-placeholder-fallback">
+              <span class="fallback-icon">🎬</span>
+              <span class="fallback-name">${escapeHtml(item.name)}</span>
+            </div>
             <span class="poster-badge-rating">${rating}</span>
             <span class="poster-badge-year">${year}</span>
           </div>
@@ -1687,6 +1694,7 @@
     const rawCover = (itemType === 'series' ? item.cover : item.stream_icon);
     const coverSrc = sanitizeCoverUrl(rawCover);
     if (detailsPosterImg) {
+      detailsPosterImg.setAttribute('referrerpolicy', 'no-referrer');
       detailsPosterImg.src = coverSrc;
       detailsPosterImg.onerror = () => { detailsPosterImg.src = 'assets/logo.png'; };
     }
@@ -1866,7 +1874,11 @@
       const iconSrc = sanitizeCoverUrl(fav.icon);
       card.innerHTML = `
         <div class="poster-img-wrap">
-          <img src="${iconSrc}" alt="${escapeHtml(fav.name)}" class="poster-img" onerror="this.onerror=null;this.src='assets/logo.png'"/>
+          <img src="${iconSrc}" alt="${escapeHtml(fav.name)}" class="poster-img" referrerpolicy="no-referrer" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.onerror=null;this.classList.add('fallback-mode');this.src='assets/logo.png';"/>
+          <div class="poster-placeholder-fallback">
+            <span class="fallback-icon">★</span>
+            <span class="fallback-name">${escapeHtml(fav.name)}</span>
+          </div>
           <span class="poster-badge-rating">★ Fav</span>
           <span class="poster-badge-year">${fav.item_type.toUpperCase()}</span>
         </div>
@@ -2334,7 +2346,7 @@
     if (iptvViewMain && !iptvViewMain.classList.contains('hidden')) {
       const activeEl = document.activeElement;
       const tabBtns = Array.from(document.querySelectorAll('.iptv-nav-tabs .iptv-tab-btn'));
-      const catItems = Array.from(document.querySelectorAll('#iptv-categories-list .iptv-cat-item'));
+      const catItems = Array.from(document.querySelectorAll('#iptv-categories-list .cat-item-btn'));
       
       // Déterminer la grille active
       let activeGrid = null;
@@ -2372,7 +2384,7 @@
         } else if (dir === 'left') {
           // Si le focus est sur la 1ère colonne (colonne 0) : SAUTER IMMÉDIATEMENT vers la barre latérale des catégories !
           if (idx % cols === 0 || cards[idx].offsetLeft <= cards[0].offsetLeft + 35) {
-            const activeCat = document.querySelector('#iptv-categories-list .iptv-cat-item.active') || catItems[0];
+            const activeCat = document.querySelector('#iptv-categories-list .cat-item-btn.active') || catItems[0];
             if (activeCat) {
               activeCat.focus();
               activeCat.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -2485,7 +2497,7 @@
           }
         } else if (dir === 'down') {
           // Descendre vers les catégories ou directement vers les jaquettes
-          const activeCat = document.querySelector('#iptv-categories-list .iptv-cat-item.active') || catItems[0];
+          const activeCat = document.querySelector('#iptv-categories-list .cat-item-btn.active') || catItems[0];
           if (activeCat) {
             activeCat.focus();
             activeCat.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -2526,7 +2538,7 @@
           }
         } else if (dir === 'left') {
           // Revenir à la barre latérale des catégories
-          const activeCat = document.querySelector('#iptv-categories-list .iptv-cat-item.active') || catItems[0];
+          const activeCat = document.querySelector('#iptv-categories-list .cat-item-btn.active') || catItems[0];
           if (activeCat) {
             activeCat.focus();
             activeCat.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

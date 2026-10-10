@@ -118,12 +118,16 @@ let
 
   # Configuration Thème Catppuccin Mocha & Ergonomie TV 10-Foot pour UOSC
   uoscConfig = ''
-    # Thème Catppuccin Mocha & Ergonomie TV 10-Foot pour Noos HTPC
+    # Configuration Thème Catppuccin Mocha & Ergonomie TV 10-Foot pour UOSC
     timeline_style=bar
     timeline_size=38
     timeline_line_width=3
     timeline_border=1
     timeline_cache=true
+
+    # Contrôles de lecture & timeline persistants en pause
+    controls_persistency=paused
+    timeline_persistency=paused
 
     # Barre de contrôles de lecture moderne
     controls=menu,gap,subtitles,audio,video,stream-quality,gap,space,speed,gap,prev,items,play-pause,next,gap,space,fullscreen
@@ -137,9 +141,9 @@ let
     volume_border=1
 
     # Menus et popups grand écran
-    menu_item_height=42
-    menu_min_width=340
-    menu_padding=6
+    menu_item_height=48
+    menu_min_width=400
+    menu_padding=8
     menu_type_to_search=false
 
     # Barre supérieure de titre et infos
@@ -149,8 +153,8 @@ let
     top_bar_title=yes
 
     # Échelle pour grand écran TV 4K / 1080p
-    scale=1.1
-    scale_fullscreen=1.4
+    scale=1.2
+    scale_fullscreen=1.5
     font_bold=yes
     border_radius=8
 
@@ -169,29 +173,41 @@ let
     # BINDINGS MPV & CONTRÔLEUR TV / GAMEPAD - NOOS HTPC
     # ==============================================================================
 
-    # Manette de jeu (Gamepad Xbox / PlayStation / Universel)
-    GAMEPAD_DPAD_UP add volume 2
-    GAMEPAD_DPAD_DOWN add volume -2
-    GAMEPAD_DPAD_LEFT seek -10
-    GAMEPAD_DPAD_RIGHT seek 10
-    GAMEPAD_A cycle pause
-    GAMEPAD_B script-binding uosc/menu-back
-    GAMEPAD_X script-binding uosc/subtitles
-    GAMEPAD_Y script-binding uosc/audio
+    # Contrôleur / Gamepad (Xbox, PlayStation, Manette Universelle)
+    # Les commandes keypress permettent de piloter nativement les menus UOSC tout en contrôlant la lecture hors menu
+    GAMEPAD_DPAD_UP keypress up
+    GAMEPAD_DPAD_DOWN keypress down
+    GAMEPAD_DPAD_LEFT keypress left
+    GAMEPAD_DPAD_RIGHT keypress right
+    GAMEPAD_LEFT_STICK_UP keypress up
+    GAMEPAD_LEFT_STICK_DOWN keypress down
+    GAMEPAD_LEFT_STICK_LEFT keypress left
+    GAMEPAD_LEFT_STICK_RIGHT keypress right
+    GAMEPAD_ACTION_DOWN keypress enter
+    GAMEPAD_ACTION_RIGHT keypress esc
+    GAMEPAD_ACTION_LEFT script-binding uosc/subtitles
+    GAMEPAD_ACTION_UP script-binding uosc/audio
     GAMEPAD_START script-binding uosc/menu
+    GAMEPAD_MENU script-binding uosc/menu
     GAMEPAD_BACK script-binding stats/display-stats-toggle
     GAMEPAD_LEFT_SHOULDER seek -60
     GAMEPAD_RIGHT_SHOULDER seek 60
+    GAMEPAD_LEFT_TRIGGER seek -10
+    GAMEPAD_RIGHT_TRIGGER seek 10
+    GAMEPAD_RIGHT_STICK_UP add volume 5
+    GAMEPAD_RIGHT_STICK_DOWN add volume -5
 
-    # Télécommande TV / Clavier standard
+    # Télécommande TV / Clavier standard & Commandes simulées par keypress
+    UP add volume 2
+    DOWN add volume -2
+    LEFT seek -10
+    RIGHT seek 10
+    ENTER cycle pause
+    ESC quit
     SPACE cycle pause
     PLAYPAUSE cycle pause
     PLAY set pause no
     PAUSE set pause yes
-    UP add volume 2
-    DOWN add volume -2
-    RIGHT seek 10
-    LEFT seek -10
     Shift+RIGHT seek 60
     Shift+LEFT seek -60
     m cycle mute
@@ -201,8 +217,6 @@ let
     i script-binding stats/display-stats-toggle
     TAB script-binding uosc/toggle-ui
     MENU script-binding uosc/menu
-    ENTER script-binding uosc/menu
-    ESC script-binding uosc/menu-back
     q quit
 
     # ==============================================================================

@@ -1147,7 +1147,9 @@ pub async fn iptv_get_catalog(profile_id: String, section: String) -> Result<Ipt
                         let stream_id = get_field_as_u64(&v, "stream_id")?;
                         let name = get_field_as_string(&v, "name").unwrap_or_else(|| "Film".into());
                         let category_id = get_field_as_string(&v, "category_id").unwrap_or_else(|| "1".into());
-                        let stream_icon = get_field_as_string(&v, "stream_icon");
+                        let stream_icon = get_field_as_string(&v, "stream_icon")
+                            .or_else(|| get_field_as_string(&v, "cover"))
+                            .or_else(|| get_field_as_string(&v, "movie_image"));
                         let rating = get_field_as_string(&v, "rating");
                         let year = get_field_as_string(&v, "year");
                         let container_extension = get_field_as_string(&v, "container_extension").or_else(|| Some("mkv".into()));
@@ -1182,7 +1184,9 @@ pub async fn iptv_get_catalog(profile_id: String, section: String) -> Result<Ipt
                         let series_id = get_field_as_u64(&v, "series_id")?;
                         let name = get_field_as_string(&v, "name").unwrap_or_else(|| "Série".into());
                         let category_id = get_field_as_string(&v, "category_id").unwrap_or_else(|| "1".into());
-                        let cover = get_field_as_string(&v, "cover");
+                        let cover = get_field_as_string(&v, "cover")
+                            .or_else(|| get_field_as_string(&v, "stream_icon"))
+                            .or_else(|| get_field_as_string(&v, "series_icon"));
                         let rating = get_field_as_string(&v, "rating");
                         let year = get_field_as_string(&v, "year");
                         let num = get_field_as_u64(&v, "num").map(|n| n as u32);
